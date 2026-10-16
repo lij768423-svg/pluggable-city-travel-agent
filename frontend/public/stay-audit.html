@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>景点停留时长核对</title>
+<style>
+/* 停留时长核对页（由 backend/app/stay_audit.py 提供数据和保存）。布局：顶部是方案选择和进度，下面是一列景点卡；每张卡用对数刻度的"时长尺"把三份来源放在一起比 */
+:root {
+  --bg: #f5f7fb; --panel: #ffffff; --ink: #27334b; --muted: #64748b; --faint: #8a97ac; --line: #e0e6ef;
+  --accent: #315bcd; --accent-soft: #eff4ff; --dataset: #8a94a8; --llm: #315bcd; --ctrip: #c9851b;
+  --good: #23855b; --good-soft: #e5f4ec; --warn: #b4521f; --warn-soft: #fcefe6;
+  --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+  --sans: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+.wrap { max-width: 940px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1 { font-family: var(--serif); font-size: 26px; line-height: 1.3; margin: 0; text-wrap: balance; }
+h2 { font-size: 15px; margin: 0; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 64ch; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; }
+.policy { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.policy label { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; cursor: pointer; }
+.policy label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.policy input { position: absolute; opacity: 0; pointer-events: none; }
+.policy b { font-size: 13.5px; }
+.policy span { color: var(--muted); font-size: 12.5px; }
+.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--good-soft); color: var(--good); margin-left: 6px; font-weight: 500; }
+.row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.field { display: flex; gap: 8px; align-items: center; }
+input[type=text], input[type=number], input[type=url] { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; min-width: 0; }
+input:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.progress { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.counts { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 12.5px; }
+.status { font-size: 12.5px; color: var(--muted); }
+.status.err { color: var(--warn); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 6px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.tabs button[aria-pressed=true] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.list { display: grid; gap: 12px; }
+.poi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.poi.done { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.poi-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.poi-head h3 { margin: 0; font-size: 16.5px; }
+.chip { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 6px; }
+.chip.low { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--line)); }
+.chip.gap { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+.chip.ok { color: var(--good); background: var(--good-soft); border-color: transparent; }
+.summary { color: var(--muted); font-size: 13px; }
+.ruler { display: grid; grid-template-columns: 52px 1fr 128px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
+.ruler .lab { color: var(--muted); }
+.ruler .val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12px; text-align: right; color: var(--ink); white-space: nowrap; }
+.track { position: relative; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--line) 55%, transparent); }
+.track b { position: absolute; top: 2px; height: 8px; border-radius: 4px; min-width: 4px; }
+.track b.approx { background-image: repeating-linear-gradient(90deg, transparent 0 4px, color-mix(in srgb, var(--panel) 70%, transparent) 4px 6px); }
+.track .typ { position: absolute; top: -2px; width: 2px; height: 16px; background: var(--ink); border-radius: 1px; }
+.axis { grid-column: 2; position: relative; height: 16px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.why { font-size: 12.5px; color: var(--muted); display: grid; gap: 2px; border-left: 2px solid var(--line); padding-left: 10px; }
+.why a { color: var(--accent); }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+.choices button small { font-family: var(--mono); color: var(--muted); font-size: 11.5px; }
+.choices button:hover:not(:disabled) { border-color: var(--accent); }
+.choices button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.choices button[aria-pressed=true] small { color: #fff; opacity: .85; }
+.chip.rec { color: var(--muted); }
+.err-box { color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 10px 12px; }
+.choices button:disabled { opacity: .45; cursor: not-allowed; }
+.extra { display: grid; gap: 8px; }
+.extra .row input[type=number] { width: 84px; }
+.extra .row input[type=url], .extra .row input.excerpt { flex: 1 1 220px; }
+.hint { font-size: 12px; color: var(--warn); }
+.saved { font-size: 12px; color: var(--good); }
+@media (max-width: 560px) {
+  .ruler { grid-template-columns: 44px 1fr; }
+  .ruler .val { grid-column: 2; text-align: left; margin-top: -4px; }
+  .axis { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>景点停留时长核对</h1>
+    <p class="lede">杭州 50 个热门景点。每个景点并排列出三份时长：ChinaTravel 原数据、大模型估计（三次取中位数）、携程攻略页原文。选一个你认可的，拿不准就跳过。每次选择会直接写进 <span class="num">backend/eval/stay_audit/top50.csv</span>。</p>
+  </header>
+
+  <section class="panel" aria-labelledby="policy-h">
+    <h2 id="policy-h">排程用哪份时长</h2>
+    <div class="policy" role="radiogroup" aria-labelledby="policy-h" id="policy"></div>
+    <p class="status">如果只换核过的景点，还要另留一部分核过的景点只用于评分，避免排程和评分用同一份数据。</p>
+  </section>
+
+  <section class="panel" aria-label="进度">
+    <div class="row">
+      <label class="field" for="reviewer">核对人 <input type="text" id="reviewer" placeholder="你的名字" autocomplete="name" maxlength="40" style="width:9em"></label>
+      <span class="status" id="save-status">正在读取核对表…</span>
+    </div>
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+    <div class="counts" id="counts"></div>
+    <div class="legend">
+      <span><i style="background:var(--dataset)"></i>原数据</span>
+      <span><i style="background:var(--llm)"></i>模型估计（竖线是典型值）</span>
+      <span><i style="background:var(--ctrip)"></i>携程原文</span>
+    </div>
+  </section>
+
+  <div class="tabs" role="group" aria-label="筛选" id="tabs"></div>
+  <div class="list" id="list"></div>
+</div>
+
+<script>
+const POLICIES = [
+  { id: "eval_only", name: "只用来评分", desc: "排程不变，新时长只用于给行程打分。" },
+  { id: "manual_only", name: "只换核过的景点", desc: "你核过的景点改用你的结论，其余仍用原数据。", rec: true },
+  { id: "manual_plus_llm", name: "核过的 + 模型高置信", desc: "核过的用你的结论，其余换成模型中、高置信的估计。" },
+  { id: "all_llm", name: "全部换成模型估计", desc: "覆盖最全，模型估错的也会带进排程。" },
+];
+const TABS = [["all", "全部"], ["todo", "未处理"], ["gap", "原数据与模型不重叠"], ["nosrc", "没有公开来源"]];
+const AXIS = [[15, "15分"], [30, "30分"], [60, "1时"], [120, "2时"], [240, "4时"], [480, "8时"]];
+const MIN_LOG = Math.log(10), MAX_LOG = Math.log(600);
+const pos = m => Math.max(0, Math.min(100, (Math.log(Math.max(m, 10)) - MIN_LOG) / (MAX_LOG - MIN_LOG) * 100));
+const range = (a, b) => `${a}–${b}分`;
+const CONF = { high: "模型高置信", medium: "模型中置信", low: "模型低置信" };
+
+const state = { items: [], picks: {}, policy: null, reviewer: "", tab: "all", busy: new Set(), errors: {} };
+const nosrc = p => !p.url || p.user_source;
+
+function setStatus(text, err) { const e = document.getElementById("save-status"); e.textContent = text; e.className = "status" + (err ? " err" : ""); }
+
+async function api(method, path, body) {
+  const res = await fetch(path, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = Array.isArray(data.detail) ? data.detail.map(d => d.msg).join("；") : data.detail;
+    throw new Error(detail || `保存失败（HTTP ${res.status}）`);
+  }
+  return data;
+}
+
+async function choose(p, choice, extra = {}) {
+  const old = state.picks[p.id] || {};
+  const body = { choice, reviewer: state.reviewer, url: old.url || "", excerpt: old.excerpt || "", ...extra };
+  if (choice === "custom") { body.low = extra.low ?? old.low ?? p.llm[0]; body.high = extra.high ?? old.high ?? p.llm[1]; }
+  state.busy.add(p.id); delete state.errors[p.id]; render();
+  try {
+    state.picks[p.id] = await api("PUT", `/api/stay-audit/picks/${p.id}`, body);
+    setStatus("已保存");
+  } catch (e) { state.errors[p.id] = e.message; setStatus("有一条没保存成功，见对应景点。", true); }
+  state.busy.delete(p.id); render();
+}
+
+async function saveSettings(patch) {
+  try {
+    const s = await api("PUT", "/api/stay-audit/settings", patch);
+    state.policy = s.policy || null; state.reviewer = s.reviewer || "";
+    if (patch.reviewer !== undefined) state.picks = (await api("GET", "/api/stay-audit")).picks;
+    setStatus("已保存");
+  } catch (e) { setStatus(e.message, true); }
+  render();
+}
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "style") e.setAttribute("style", v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) e.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return e;
+}
+
+function bar(label, lo, hi, color, valueText, typ) {
+  const track = el("div", { class: "track" }, el("b", { style: `left:${pos(lo)}%;width:${Math.max(.8, pos(hi) - pos(lo))}%;background:${color}` }));
+  if (typ) track.append(el("i", { class: "typ", style: `left:calc(${pos(typ)}% - 1px)`, title: `典型 ${typ} 分钟` }));
+  return [el("span", { class: "lab" }, label), track, el("span", { class: "val" }, valueText)];
+}
+
+function card(p) {
+  const pick = state.picks[p.id];
+  const done = pick && pick.choice;
+  const busy = state.busy.has(p.id);
+  const btn = (id, label, sub, disabled) => el("button", { type: "button", "aria-pressed": String(done === id), disabled: disabled || busy, onclick: () => choose(p, id) }, label, sub ? el("small", {}, sub) : null);
+  let ctripRow;
+  if (p.ctrip) ctripRow = bar("携程", p.ctrip[0], p.ctrip[1], "var(--ctrip)", p.excerpt);
+  else ctripRow = [el("span", { class: "lab" }, "携程"), el("span", { class: "status" }, p.ctrip_days ? `原文「${p.excerpt}」，按天计，请自定义` : p.url && !p.user_source ? "页面没有给出时长" : "没找到公开来源"), el("span")];
+  let badge = null;
+  if (done === "skip") badge = el("span", { class: "chip ok" }, "已跳过");
+  else if (done && pick.counted) badge = el("span", { class: "chip ok" }, "已计入人工参考");
+  else if (done) badge = el("span", { class: "chip gap" }, pick.reviewer ? "缺来源，只记录" : "缺核对人，只记录");
+  const node = el("article", { class: "poi" + (done ? " done" : ""), id: `poi-${p.id}` },
+    el("div", { class: "poi-head" },
+      el("h3", {}, p.name), el("span", { class: "chip" }, p.type),
+      el("span", { class: "chip" + (p.confidence === "low" ? " low" : "") }, CONF[p.confidence]),
+      p.gap ? el("span", { class: "chip gap" }, "原数据与模型不重叠") : null, badge),
+    p.summary ? el("p", { class: "summary" }, p.summary) : null,
+    el("div", { class: "ruler" },
+      bar("原数据", p.dataset[0], p.dataset[1], "var(--dataset)", range(p.dataset[0], p.dataset[1])),
+      bar("模型", p.llm[0], p.llm[1], "var(--llm)", `${range(p.llm[0], p.llm[1])} · 典型${p.llm[2]}`, p.llm[2]),
+      ctripRow,
+      el("div", { class: "axis", "aria-hidden": "true" }, AXIS.map(([m, t]) => el("span", { style: `left:${pos(m)}%` }, t)))),
+    el("div", { class: "why" },
+      el("span", {}, `模型估计范围：${p.scope}`),
+      el("span", {}, `模型依据：${p.reason}（三次估计最大相差 ${p.spread} 分钟）`),
+      p.url && !p.user_source ? el("span", {}, "来源：", el("a", { href: p.url, target: "_blank", rel: "noopener" }, p.source || "公开页面"), `，原文「${p.excerpt}」`) : null),
+    el("div", { class: "choices", role: "group", "aria-label": `${p.name} 的结论` },
+      btn("llm", "采用模型", range(p.llm[0], p.llm[1])),
+      btn("dataset", "采用原数据", range(p.dataset[0], p.dataset[1])),
+      btn("ctrip", "采用携程", p.ctrip ? range(p.ctrip[0], p.ctrip[1]) : "无", !p.ctrip),
+      btn("custom", "自定义", done === "custom" ? range(pick.low, pick.high) : null),
+      btn("skip", "拿不准，跳过")));
+
+  const extra = el("div", { class: "extra" });
+  if (done === "custom") {
+    const lo = el("input", { type: "number", id: `lo-${p.id}`, min: 1, max: 1440, step: 5, value: pick.low, "aria-label": "最短分钟" });
+    const hi = el("input", { type: "number", id: `hi-${p.id}`, min: 1, max: 1440, step: 5, value: pick.high, "aria-label": "最长分钟" });
+    const msg = el("span", { class: "hint" });
+    const commit = () => {
+      const a = Math.round(+lo.value), b = Math.round(+hi.value);
+      if (!(a > 0 && b >= a && b <= 1440)) { msg.textContent = "请填 1–1440 之间的分钟数，最短不能大于最长。"; return; }
+      if (a !== pick.low || b !== pick.high) choose(p, "custom", { low: a, high: b });
+    };
+    lo.addEventListener("change", commit); hi.addEventListener("change", commit);
+    extra.append(el("div", { class: "row" }, el("span", {}, "停留"), lo, el("span", {}, "到"), hi, el("span", {}, "分钟"), msg));
+  }
+  if (done && done !== "skip" && nosrc(p)) {
+    const url = el("input", { type: "url", id: `url-${p.id}`, placeholder: "来源链接（官网、攻略页）", value: pick.url || "", "aria-label": "来源链接" });
+    const ex = el("input", { type: "text", class: "excerpt", id: `ex-${p.id}`, placeholder: "页面上的原文，如“建议游玩1-2小时”", value: pick.excerpt || "", "aria-label": "原文摘录", maxlength: 300 });
+    const commit = () => {
+      const u = url.value.trim(), x = ex.value.trim();
+      if (u === (pick.url || "") && x === (pick.excerpt || "")) return;
+      choose(p, done, { url: u, excerpt: x, ...(done === "custom" ? { low: pick.low, high: pick.high } : {}) });
+    };
+    url.addEventListener("change", commit); ex.addEventListener("change", commit);
+    extra.append(el("div", { class: "row" }, url, ex));
+    if (!pick.counted) extra.append(el("p", { class: "hint" }, "这个景点没有公开来源。补上链接和原文后，你的结论才会作为人工核实值用于评分；不补也会记下，表里标为“待核”。"));
+  }
+  if (done && done !== "skip" && !pick.reviewer) extra.append(el("p", { class: "hint" }, "还没填核对人。填上后，已选的条目会一起更新。"));
+  if (state.errors[p.id]) extra.append(el("p", { class: "err-box" }, state.errors[p.id]));
+  if (extra.childNodes.length) node.append(extra);
+  return node;
+}
+
+function render() {
+  const picks = Object.values(state.picks).filter(x => x && x.choice);
+  document.getElementById("bar").style.width = `${picks.length / (state.items.length || 1) * 100}%`;
+  const by = c => picks.filter(x => x.choice === c).length;
+  document.getElementById("counts").replaceChildren(
+    el("span", {}, "已处理 ", el("b", { class: "num" }, `${picks.length}/${state.items.length}`)),
+    el("span", {}, `计入人工参考 ${picks.filter(x => x.counted).length}`),
+    el("span", {}, `采用模型 ${by("llm")}`), el("span", {}, `原数据 ${by("dataset")}`), el("span", {}, `携程 ${by("ctrip")}`),
+    el("span", {}, `自定义 ${by("custom")}`), el("span", {}, `跳过 ${by("skip")}`));
+  document.getElementById("policy").replaceChildren(...POLICIES.map(pol => el("label", {},
+    el("input", { type: "radio", name: "policy", id: `pol-${pol.id}`, value: pol.id, checked: state.policy === pol.id, onchange: () => saveSettings({ policy: pol.id }) }),
+    el("b", {}, pol.name, pol.rec ? el("span", { class: "tag" }, "建议") : null), el("span", {}, pol.desc))));
+  const count = { all: state.items.length, todo: state.items.filter(p => !state.picks[p.id]?.choice).length, gap: state.items.filter(p => p.gap).length, nosrc: state.items.filter(nosrc).length };
+  document.getElementById("tabs").replaceChildren(...TABS.map(([id, name]) => el("button", { type: "button", "aria-pressed": String(state.tab === id), onclick: () => { state.tab = id; try { localStorage.setItem("stay-audit-tab", id); } catch {} render(); } }, `${name} `, el("span", { class: "num" }, count[id]))));
+  const shown = state.items.filter(p => state.tab === "all" || (state.tab === "todo" && !state.picks[p.id]?.choice) || (state.tab === "gap" && p.gap) || (state.tab === "nosrc" && nosrc(p)));
+  const focusId = document.activeElement && document.activeElement.id;
+  document.getElementById("list").replaceChildren(...(shown.length ? shown.map(card) : [el("p", { class: "status" }, "这一栏都处理完了。")]));
+  if (focusId) { const f = document.getElementById(focusId); if (f) f.focus(); }
+}
+
+const reviewer = document.getElementById("reviewer");
+reviewer.addEventListener("change", () => saveSettings({ reviewer: reviewer.value.trim() }));
+
+(async function boot() {
+  try { state.tab = localStorage.getItem("stay-audit-tab") || "all"; } catch {}
+  try {
+    const data = await api("GET", "/api/stay-audit");
+    state.items = data.items.map(p => ({ ...p, gap: p.dataset[1] < p.llm[0] || p.dataset[0] > p.llm[1] }));
+    state.picks = data.picks || {};
+    state.policy = data.settings.policy || null;
+    state.reviewer = data.settings.reviewer || "";
+    reviewer.value = state.reviewer;
+    setStatus("每次选择会直接保存");
+  } catch (e) {
+    setStatus(`读取核对表失败：${e.message}。请确认后端服务在运行。`, true);
+  }
+  render();
+})();
+</script>
+</body>
+</html>

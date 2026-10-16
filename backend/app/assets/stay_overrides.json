@@ -1,0 +1,503 @@
+{
+  "policy": "manual_only",
+  "generated_at": "2026-10-16T06:24:05+00:00",
+  "rule": "用户核对结论覆盖排程停留区间；poi_reviews.json 已有停留修订的景点保持不变；跳过的不换",
+  "places": [
+    {
+      "poi_id": 0,
+      "name": "灵隐寺",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/2040.html「1-3小时」"
+    },
+    {
+      "poi_id": 2,
+      "name": "西湖风景名胜区",
+      "low_min": 120,
+      "high_min": 240,
+      "choice": "llm",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；来源 https://you.ctrip.com/sight/hangzhou14/49894.html「0.5-1天」"
+    },
+    {
+      "poi_id": 5,
+      "name": "西溪国家湿地公园",
+      "low_min": 150,
+      "high_min": 300,
+      "choice": "llm",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；来源 https://you.ctrip.com/sight/hangzhou14/25481.html「0.5-1天」"
+    },
+    {
+      "poi_id": 6,
+      "name": "灵隐飞来峰景区",
+      "low_min": 180,
+      "high_min": 300,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/48020.html「3-5小时」"
+    },
+    {
+      "poi_id": 9,
+      "name": "雷峰塔",
+      "low_min": 30,
+      "high_min": 60,
+      "choice": "llm",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；来源 https://you.ctrip.com/sight/hangzhou14/2033.html「1.5-2.5小时」"
+    },
+    {
+      "poi_id": 13,
+      "name": "岳王庙景区",
+      "low_min": 45,
+      "high_min": 75,
+      "choice": "llm",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；来源 https://you.ctrip.com/sight/hangzhou14/140707.html「1-2小时」"
+    },
+    {
+      "poi_id": 16,
+      "name": "三潭印月",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/2038.html「1-3小时」"
+    },
+    {
+      "poi_id": 19,
+      "name": "良渚古城遗址公园",
+      "low_min": 180,
+      "high_min": 300,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/65183916.html「3-5小时」"
+    },
+    {
+      "poi_id": 20,
+      "name": "清河坊街",
+      "low_min": 60,
+      "high_min": 120,
+      "choice": "llm",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；来源 https://you.ctrip.com/sight/hangzhou14/135781.html「1-3小时」"
+    },
+    {
+      "poi_id": 29,
+      "name": "杭州植物园",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/25434.html「1-3小时」"
+    },
+    {
+      "poi_id": 30,
+      "name": "浙江省博物馆(之江馆区)",
+      "low_min": 180,
+      "high_min": 300,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/141029950.html「3-5小时」"
+    },
+    {
+      "poi_id": 35,
+      "name": "龙井村",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/5067368.html「1-3小时」"
+    },
+    {
+      "poi_id": 42,
+      "name": "九溪烟树",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/2024.html「1-3小时」"
+    },
+    {
+      "poi_id": 43,
+      "name": "九溪十八涧",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/69128722.html「1-3小时」"
+    },
+    {
+      "poi_id": 55,
+      "name": "苏堤",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/2036.html「1-3小时」"
+    },
+    {
+      "poi_id": 57,
+      "name": "杭州博物馆",
+      "low_min": 120,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/67801.html「2-3小时」"
+    },
+    {
+      "poi_id": 73,
+      "name": "钱王祠",
+      "low_min": 60,
+      "high_min": 120,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/25580.html「1-2小时」"
+    },
+    {
+      "poi_id": 88,
+      "name": "京杭大运河博物馆",
+      "low_min": 90,
+      "high_min": 150,
+      "choice": "llm",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；未找到公开来源，按核对人判断"
+    },
+    {
+      "poi_id": 91,
+      "name": "南宋御街",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/109855.html「1-3小时」"
+    },
+    {
+      "poi_id": 106,
+      "name": "秋水山庄",
+      "low_min": 90,
+      "high_min": 180,
+      "choice": "dataset",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据"
+    },
+    {
+      "poi_id": 109,
+      "name": "孤山",
+      "low_min": 60,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/2043.html「1-3小时」"
+    },
+    {
+      "poi_id": 117,
+      "name": "少年儿童公园",
+      "low_min": 90,
+      "high_min": 180,
+      "choice": "llm",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；来源 https://you.ctrip.com/sight/hangzhou14/140703.html「4-5小时」"
+    },
+    {
+      "poi_id": 118,
+      "name": "中国丝绸博物馆",
+      "low_min": 90,
+      "high_min": 120,
+      "choice": "dataset",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据；来源 https://you.ctrip.com/sight/hangzhou14/4077.html「2-3小时」"
+    },
+    {
+      "poi_id": 146,
+      "name": "杭州奥体中心体育馆",
+      "low_min": 120,
+      "high_min": 150,
+      "choice": "dataset",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据"
+    },
+    {
+      "poi_id": 179,
+      "name": "中国动漫博物馆",
+      "low_min": 120,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/69560041.html「2-3小时」"
+    },
+    {
+      "poi_id": 190,
+      "name": "南宋德寿宫遗址博物馆",
+      "low_min": 30,
+      "high_min": 60,
+      "choice": "dataset",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据"
+    },
+    {
+      "poi_id": 202,
+      "name": "中国茶叶博物馆",
+      "low_min": 120,
+      "high_min": 180,
+      "choice": "ctrip",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "携程攻略；来源 https://you.ctrip.com/sight/hangzhou14/4078.html「2-3小时」"
+    },
+    {
+      "poi_id": 208,
+      "name": "湖滨路步行街",
+      "low_min": 45,
+      "high_min": 120,
+      "choice": "llm",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；未找到公开来源，按核对人判断"
+    },
+    {
+      "poi_id": 253,
+      "name": "杭州奥体博览城",
+      "low_min": 60,
+      "high_min": 150,
+      "choice": "llm",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；未找到公开来源，按核对人判断"
+    },
+    {
+      "poi_id": 269,
+      "name": "中国伞博物馆",
+      "low_min": 120,
+      "high_min": 180,
+      "choice": "dataset",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据"
+    },
+    {
+      "poi_id": 285,
+      "name": "中国扇博物馆",
+      "low_min": 30,
+      "high_min": 120,
+      "choice": "dataset",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据"
+    },
+    {
+      "poi_id": 309,
+      "name": "中国刀剪剑博物馆",
+      "low_min": 30,
+      "high_min": 60,
+      "choice": "llm",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；未找到公开来源，按核对人判断"
+    },
+    {
+      "poi_id": 324,
+      "name": "杭州工艺美术博物馆",
+      "low_min": 60,
+      "high_min": 120,
+      "choice": "llm",
+      "counted_as_manual": false,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "大模型估计；未找到公开来源，按核对人判断"
+    },
+    {
+      "poi_id": 364,
+      "name": "中国茶叶博物馆龙井馆区",
+      "low_min": 60,
+      "high_min": 90,
+      "choice": "dataset",
+      "counted_as_manual": true,
+      "reviewer": "project-maintainer",
+      "reviewed_at": "2026-10-16",
+      "evidence": "ChinaTravel 原数据；来源 https://www.teamuseum.cn/mobile/basicIntroduction.htm"
+    }
+  ],
+  "kept_reviewed": [
+    {
+      "poi_id": 1,
+      "name": "杭州宋城",
+      "picked": [
+        180,
+        360
+      ]
+    },
+    {
+      "poi_id": 28,
+      "name": "杭州乐园",
+      "picked": [
+        300,
+        420
+      ]
+    },
+    {
+      "poi_id": 36,
+      "name": "断桥残雪",
+      "picked": [
+        15,
+        40
+      ]
+    },
+    {
+      "poi_id": 100,
+      "name": "白堤",
+      "picked": [
+        30,
+        120
+      ]
+    },
+    {
+      "poi_id": 136,
+      "name": "平湖秋月",
+      "picked": [
+        20,
+        40
+      ]
+    },
+    {
+      "poi_id": 199,
+      "name": "北山街历史文化街区",
+      "picked": [
+        120,
+        240
+      ]
+    },
+    {
+      "poi_id": 201,
+      "name": "钱塘苏小小之墓",
+      "picked": [
+        10,
+        30
+      ]
+    },
+    {
+      "poi_id": 204,
+      "name": "长桥",
+      "picked": [
+        10,
+        25
+      ]
+    },
+    {
+      "poi_id": 225,
+      "name": "鼓楼",
+      "picked": [
+        20,
+        40
+      ]
+    },
+    {
+      "poi_id": 283,
+      "name": "三公园",
+      "picked": [
+        45,
+        90
+      ]
+    },
+    {
+      "poi_id": 303,
+      "name": "中山公园",
+      "picked": [
+        45,
+        90
+      ]
+    },
+    {
+      "poi_id": 330,
+      "name": "雷峰夕照",
+      "picked": [
+        30,
+        60
+      ]
+    },
+    {
+      "poi_id": 338,
+      "name": "西泠桥",
+      "picked": [
+        10,
+        25
+      ]
+    },
+    {
+      "poi_id": 344,
+      "name": "湖滨晴雨",
+      "picked": [
+        15,
+        30
+      ]
+    },
+    {
+      "poi_id": 345,
+      "name": "云亭",
+      "picked": [
+        10,
+        25
+      ]
+    }
+  ]
+}

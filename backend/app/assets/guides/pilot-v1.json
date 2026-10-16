@@ -1,0 +1,497 @@
+{
+  "version": "hangzhou-guides-pilot-2026-10-15-v1-public",
+  "sources": [
+    {
+      "id": "wikivoyage-hangzhou",
+      "title": "Hangzhou — Wikivoyage",
+      "url": "https://en.wikivoyage.org/wiki/Hangzhou",
+      "publisher": "Wikivoyage contributors",
+      "kind": "open_license",
+      "published_at": null,
+      "visited_at": null,
+      "fetched_at": "2026-10-15",
+      "content_sha256": "71f340e50bf54c767bc576432346c3feb8a53a22d44205af748208b0e0709da2",
+      "permission": "CC-BY-SA-4.0",
+      "permission_reference": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "usage_scope": "local_research_selection",
+      "training_allowed": false,
+      "withdrawn": false,
+      "attribution": "Adapted and translated from Hangzhou, Wikivoyage contributors, CC BY-SA 4.0. Chinese adaptations by this project, 2026-10-15. History: https://en.wikivoyage.org/w/index.php?title=Hangzhou&action=history"
+    }
+  ],
+  "samples": [
+    {
+      "id": "HZ-G01",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "West Lake / Solitary Hill",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "白堤与孤山",
+      "places": [
+        {
+          "raw_name": "Bai Causeway",
+          "poi_id": 100,
+          "canonical_name": "白堤",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        },
+        {
+          "raw_name": "Solitary Hill",
+          "poi_id": 109,
+          "canonical_name": "孤山",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "白堤连接孤山，可沿湖岸组合漫步。",
+      "relation": "nearby",
+      "interests": [
+        "自然风光",
+        "人文历史"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G02",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "West Lake / Yanggong Causeway / Maojiabu",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "杨公堤与茅家埠",
+      "places": [
+        {
+          "raw_name": "Yanggong Causeway",
+          "poi_id": 238,
+          "canonical_name": "杨公堤",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        },
+        {
+          "raw_name": "Maojiabu",
+          "poi_id": 200,
+          "canonical_name": "茅家埠景区",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "杨公堤附近可接茅家埠，适合关注西湖西岸自然景观。",
+      "relation": "nearby",
+      "interests": [
+        "自然风光",
+        "小众安静"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G03",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "Temples / Lingyin Temple",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "灵隐寺与飞来峰",
+      "places": [
+        {
+          "raw_name": "Lingyin Temple",
+          "poi_id": 0,
+          "canonical_name": "灵隐寺",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        },
+        {
+          "raw_name": "Peak Flying from Afar",
+          "poi_id": 6,
+          "canonical_name": "灵隐飞来峰景区",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "灵隐寺旁有飞来峰石刻，石刻与寺庙可结合了解。",
+      "relation": "nearby",
+      "interests": [
+        "宗教寺庙",
+        "人文历史"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G04",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "See / Wushan Square; Buy / Hefang Street",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "吴山与清河坊",
+      "places": [
+        {
+          "raw_name": "Wushan Hill",
+          "poi_id": 263,
+          "canonical_name": "吴山大观",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        },
+        {
+          "raw_name": "Hefang Jie",
+          "poi_id": 20,
+          "canonical_name": "清河坊街",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "吴山广场与河坊街相邻，可组合山麓与老街游览。",
+      "relation": "nearby",
+      "interests": [
+        "人文历史",
+        "购物街区"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G05",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "Museums / Grand Canal Museum",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "拱宸桥与运河博物馆",
+      "places": [
+        {
+          "raw_name": "Gongchen Bridge",
+          "poi_id": 95,
+          "canonical_name": "拱宸桥",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        },
+        {
+          "raw_name": "Canal Museum",
+          "poi_id": 88,
+          "canonical_name": "京杭大运河博物馆",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "运河博物馆靠近拱宸桥，可结合看桥与了解运河历史。",
+      "relation": "nearby",
+      "interests": [
+        "人文历史",
+        "博物馆展览"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G06",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "Other attractions / Longjing",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "龙井村茶文化",
+      "places": [
+        {
+          "raw_name": "Longjing Village",
+          "poi_id": 35,
+          "canonical_name": "龙井村",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "龙井村以茶园和龙井茶文化体验为特色。",
+      "relation": "single",
+      "interests": [
+        "茶文化",
+        "自然风光"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G07",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "Parks / Xixi National Wetland Park",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "西溪湿地",
+      "places": [
+        {
+          "raw_name": "Xixi National Wetlands Park",
+          "poi_id": 5,
+          "canonical_name": "西溪国家湿地公园",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "西溪湿地提供观察鸟类与自然景观的机会。",
+      "relation": "single",
+      "interests": [
+        "自然风光",
+        "小众安静"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G08",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "West Lake",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "环西湖步行",
+      "places": [
+        {
+          "raw_name": "West Lake",
+          "poi_id": 2,
+          "canonical_name": "西湖风景名胜区",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "环湖步行是较长的游览任务，不能把整片西湖当一个短停留点。",
+      "relation": "single",
+      "interests": [
+        "自然风光",
+        "户外徒步"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": 300,
+      "duration_scope": "来源所述完整环湖步行约五小时；不是每个湖岸子景点的停留时长",
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G09",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "Other attractions / Manjuelong Village",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "满觉陇品茶",
+      "places": [
+        {
+          "raw_name": "Manjuelong Village",
+          "poi_id": 96,
+          "canonical_name": "满觉陇",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "满觉陇有茶馆；来源提醒周末及节假日可能拥挤。",
+      "relation": "single",
+      "interests": [
+        "茶文化",
+        "自然风光"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": "历史攻略提醒周末、节假日拥挤；没有量化排队分钟数",
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G10",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "West Lake / Su Causeway",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "苏堤湖上漫步",
+      "places": [
+        {
+          "raw_name": "Su Causeway",
+          "poi_id": 55,
+          "canonical_name": "苏堤",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "苏堤穿过西湖，适合沿堤看湖景。",
+      "relation": "single",
+      "interests": [
+        "自然风光",
+        "拍照出片"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    },
+    {
+      "id": "HZ-G11",
+      "source_id": "wikivoyage-hangzhou",
+      "source_locator": "See / Wushan Square",
+      "cluster_id": "wikivoyage-hangzhou",
+      "split": "knowledge",
+      "title": "清河坊步行街区",
+      "places": [
+        {
+          "raw_name": "Hefang Jie",
+          "poi_id": 20,
+          "canonical_name": "清河坊街",
+          "confidence": 1.0,
+          "basis": "人工逐项核对中英文名称、景点范围与现有地点库；执行者为 Codex"
+        }
+      ],
+      "facts": "河坊街有步行街道与购物摊铺，可结合街区散步。",
+      "relation": "single",
+      "interests": [
+        "购物街区",
+        "人文历史"
+      ],
+      "audiences": [
+        "solo",
+        "friends"
+      ],
+      "audience_basis": "curator_inference",
+      "months": [],
+      "season_note": null,
+      "duration_minutes": null,
+      "duration_scope": null,
+      "queue_note": null,
+      "caveats": [
+        "未提供的信息保持未知；当前开放、票价、预约和交通不由本样本覆盖"
+      ],
+      "review": "agent_checked",
+      "reviewed_at": "2026-10-15",
+      "reviewer": "Codex；未经过真实用户复核"
+    }
+  ],
+  "limitations": [
+    "20条结构化片段来自9篇来源，不是20名作者或20篇独立攻略；没有小红书笔记。",
+    "同源片段不可视为独立证据；全部仅作为knowledge，未构建独立攻略留出集。",
+    "11条改编自Wikivoyage，沿用CC BY-SA 4.0；其余为公开事实独立整理，不分发原文章和图片。",
+    "人群标签为整理推断；无亲子或老人适配证据；真实用户复核待完成。",
+    "仅两条记录特定范围历史耗时，一条记录非量化拥挤提醒；不能据此估算排队时间。",
+    "HZ-G20只映射西湖区域，不创建演出地点，不作为演出预订或晚间入场依据。",
+    "公开版仅含 11 条 Wikivoyage CC BY-SA 4.0 改编样本；未附带仅限本地研究的来源。"
+  ]
+}
