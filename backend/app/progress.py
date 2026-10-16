@@ -22,14 +22,14 @@ class Ticker:
         self.sink, self.stage, self.interval = sink, stage, interval
         self.counts: dict[str, int] = {}
         self.seen: dict[str, set] = {}
-        self.last = 0.0
+        self.last: float | None = None
 
     def wants(self, only) -> bool:
         return not only or self.stage in only
 
     def say(self, detail: str) -> None:
         now = time.monotonic()
-        if now - self.last < self.interval:
+        if self.last is not None and now - self.last < self.interval:
             return
         self.last = now
         self.sink(detail)

@@ -1,6 +1,6 @@
 {
   "distribution": "public-source",
-  "source_revision": "3b9fa287420fe3c3d5aeee971f9bd63434335143",
+  "source_revision": "923b46eb81a67386970e1151467a8c7f9ee51738",
   "guide_samples": 11,
   "excluded": [
     "internal history and deployment documents",
@@ -61,7 +61,7 @@
     "backend/app/place_guides.py": "50f4e8dacf90ae50d8f6dcfc23af3e77861b8abad6b049b0eddfc6c1b9a4c91a",
     "backend/app/places.py": "f27b10e4a0ef9a974f99e759dfa3dcb248b0d3a3f0c483337be53083cf495f7d",
     "backend/app/planning_quality.py": "c36616c72c617d2fef2319888e966328273cc9c17643bdb6522c5c0b3ff339ef",
-    "backend/app/progress.py": "afaa9cfff61e2d0d6504c7284e9f960c5e84adc4acc2997eebc39d99cedd3adf",
+    "backend/app/progress.py": "d61251e0052fe306402ee87365510b635475701c7882c7eeb9913feb7fc1f615",
     "backend/app/prompts.py": "6185f83413e8f3bdd1c498c84f7778d58a2ab6aaae03eb480cfa079bfd6a6eba",
     "backend/app/reasonableness.py": "efdc88dd98630e348d8cd1e7c051d3181fcec3ed5299702266b812b44792dacc",
     "backend/app/refine.py": "5ea1dae945858807c8eeeccbc5caa3be2bd1518468e1c50683b09e7f332fb557",
@@ -127,7 +127,7 @@
     "backend/tests/test_places.py": "40be946316967bfcdfcf300bd77470fdef471ee68c50075c5cea865cc1da9efa",
     "backend/tests/test_planning_quality.py": "89146c12ae0e853237f223019c853d54d2c84ad672ad09f0e1b08d478a0c42c3",
     "backend/tests/test_progress.py": "dd364f46af3ad917bdc7eba8d0d05756c60344e17bfcc192222c1592f994ecfc",
-    "backend/tests/test_progress_ticks.py": "2245d8d35af37d57413733a09a0d40518815312c835993326c09a3e8bd672fed",
+    "backend/tests/test_progress_ticks.py": "50c2aff7551c5b44245922eb4df42da4b01ea7b003ee2cb26018b4975c68d09e",
     "backend/tests/test_reasonableness.py": "2d9ec88b874c606e0545bac58d1cd2defac5b652e3d8c06c4a15efd75f32affd",
     "backend/tests/test_refine.py": "e419aae1c24c2b85eea0da16607e13229a9bb4daff3eb93093d9a661dc5d9c60",
     "backend/tests/test_replan.py": "8ba97fc8fe9ad09f70bc383de8b413477476e88cc28fd2af1187fa9ae256d633",

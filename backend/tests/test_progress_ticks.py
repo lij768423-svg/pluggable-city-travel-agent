@@ -2,7 +2,8 @@ from app.graph import run_plan
 from app.progress import Ticker
 
 
-def test_ticker_counts_distinct_items_and_throttles():
+def test_ticker_counts_distinct_items_and_throttles(monkeypatch):
+    monkeypatch.setattr("app.progress.time.monotonic", lambda: 0.0)
     seen = []
     ticker = Ticker(seen.append, "meals", interval=0)
     ticker.track("r", [1, 2, 2], "已比较 {n} 家餐厅")
@@ -12,6 +13,9 @@ def test_ticker_counts_distinct_items_and_throttles():
     quiet.say("第一条")
     quiet.say("被限流吃掉")
     assert seen[-1] == "第一条"
+    monkeypatch.setattr("app.progress.time.monotonic", lambda: 999.0)
+    quiet.say("下一条")
+    assert seen[-2:] == ["第一条", "下一条"]
     assert Ticker(seen.append, "meals").wants({"meals"})
     assert not Ticker(seen.append, "schedule").wants({"meals"})
 
