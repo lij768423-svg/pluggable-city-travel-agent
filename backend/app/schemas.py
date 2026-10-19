@@ -1,7 +1,7 @@
 """全项目唯一的数据结构定义（AGENTS.md §5）。时间统一用"当天分钟数"（0–1440）。"""
 from __future__ import annotations
 
-from datetime import date as Date
+from datetime import date as Date, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -92,6 +92,8 @@ class PlaceReference(BaseModel):
 
 class PlaceDetailsRequest(BaseModel):
     places: list[PlaceReference] = Field(min_length=1, max_length=12)
+    # 所属行程；按该行程固定的目录版本解析地点，缺省或无权访问时读当前发布版
+    plan_id: str | None = Field(None, max_length=64)
 
 
 class Hotel(BaseModel):
@@ -119,6 +121,7 @@ class UserProfile(BaseModel):
     pace: Pace = "normal"
     interests: list[str] = Field(default_factory=list)
     dietary: list[str] = Field(default_factory=list)
+    preferred_regions: list[str] = Field(default_factory=list)
     companions: Companions = "solo"
     transport: Transport = "taxi"
     hotel: Hotel = Field(default_factory=Hotel)
@@ -130,7 +133,7 @@ class UserProfile(BaseModel):
     day_end: int | None = Field(None, ge=120, le=1440)
     daily_windows: list[DayWindow] = Field(default_factory=list)
     max_walking_m: int | None = Field(None, ge=500, le=30000)
-    allow_taxi_fallback: bool = False
+    allow_taxi_fallback: bool = True
     include_evening: bool = True
     food_preference: Literal["balanced", "local", "quick", "quality"] = "balanced"
     meal_budget_min: float | None = Field(None, ge=0, le=2000)
@@ -160,6 +163,7 @@ class UserProfile(BaseModel):
 
 
 class OpeningRules(BaseModel):
+    open_months: list[int] = Field(default_factory=list)
     closed_weekdays: list[int] = Field(default_factory=list)
     closed_dates: list[Date] = Field(default_factory=list)
     open_dates: list[Date] = Field(default_factory=list)
@@ -168,6 +172,62 @@ class OpeningRules(BaseModel):
     source_url: str = ""
     verified_at: Date | None = None
     holiday_unknown: bool = True
+    # 只在 open_dates 列出的日期开放（补充地点逐日准入结果）；未列出或未填日期一律不可排程
+    dates_listed_only: bool = False
+
+    @field_validator("open_months")
+    @classmethod
+    def valid_months(cls, months: list[int]) -> list[int]:
+        if any(month < 1 or month > 12 for month in months):
+            raise ValueError("开放月份须为 1–12")
+        return sorted(set(months))
+
+
+class MealEditPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=0)
+    day: int = Field(ge=1, le=5)
+    action: Literal["replace", "self_arranged"] = "replace"
+    item_index: int | None = Field(None, ge=0, le=60)
+    restaurant_id: int | None = None
+    meal: Literal["lunch", "dinner"] | None = None
+    estimated_cost: float | None = Field(None, ge=0, le=2000, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def valid_edit(self) -> "MealEditPreviewRequest":
+        if self.action == "replace" and (self.item_index is None or self.restaurant_id is None):
+            raise ValueError("更换餐厅需提供原餐次和新餐厅")
+        if self.action == "self_arranged" and (self.meal is None or self.estimated_cost is None):
+            raise ValueError("自行安排需明确餐次和预留费用")
+        return self
+
+
+class MealEditCommitRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=0)
+    preview_id: str = Field(min_length=12, max_length=100)
+
+
+class FieldEvidence(BaseModel):
+    basis: Literal["dataset", "model_estimate", "rule", "curator_inference", "observed", "manual_review", "unknown"]
+    reference: str
+    source_date: Date | None = None
+    reviewed_at: Date | None = None
+
+
+class ExperienceCondition(BaseModel):
+    label: str
+    months: list[int] = Field(default_factory=list)
+    start_min: int = Field(0, ge=0, le=1440)
+    end_min: int = Field(1440, ge=0, le=1440)
+    weather_required: bool = False
+    reference: str
+
+    @model_validator(mode="after")
+    def valid_condition(self) -> "ExperienceCondition":
+        if self.end_min <= self.start_min or any(month < 1 or month > 12 for month in self.months):
+            raise ValueError("体验条件的时段或月份无效")
+        return self
 
 
 class POI(BaseModel):
@@ -199,6 +259,14 @@ class POI(BaseModel):
     day_anchor: bool = False
     onsite_dining: bool = False
     family_only: bool = False
+    region_id: str = ""
+    region_label: str = ""
+    experience_kind: Literal["independent", "continuous_walk", "full_day", "session"] = "independent"
+    experience_conditions: list[ExperienceCondition] = Field(default_factory=list)
+    field_evidence: dict[str, FieldEvidence] = Field(default_factory=dict)
+    # 补充地点登记的别名；原库条目为空，名称匹配行为不变
+    aliases: list[str] = Field(default_factory=list)
+    catalog_source: Literal["chinatravel", "supplement"] = "chinatravel"
 
 
 class Restaurant(BaseModel):
@@ -256,12 +324,23 @@ class Candidate(BaseModel):
     poi_id: int
     score: float
     breakdown: dict[str, float] = Field(default_factory=dict)
+    interests: list[str] = Field(default_factory=list)
+    region_id: str = ""
+    region_label: str = ""
+    area_id: str = ""
+    area_label: str = ""
+    place_type: str = ""
+    experience_id: str = ""
+    experience_kind: str = "independent"
+    member_ids: list[int] = Field(default_factory=list)
+    available_days: list[int] = Field(default_factory=list)
+    notices: list[str] = Field(default_factory=list)
 
 
 class Selection(BaseModel):
     poi_id: int
     reason: str
-    source: Literal["llm", "rule", "repair", "jev"] = "llm"
+    source: Literal["llm", "rule", "repair", "jev", "external_ai"] = "llm"
     guide_ids: list[str] = Field(default_factory=list)
 
 
@@ -351,6 +430,9 @@ class Item(BaseModel):
     alternatives: list[MealAlternative] = Field(default_factory=list)
     notices: list[str] = Field(default_factory=list)
     evening: bool = False
+    area: str = ""  # 所属片区名（景点），由时间线生成时填写
+    meal_detour_min: int | None = None
+    meal_context: Literal["restaurant", "park_exit"] = "restaurant"
 
 
 class ReservedMeal(BaseModel):
@@ -360,6 +442,7 @@ class ReservedMeal(BaseModel):
     reason: str
     inside_poi_id: int | None = None
     estimated_cost: float = Field(0, ge=0)
+    status: Literal["pending", "self_arranged"] = "pending"
 
 
 class DayPlan(BaseModel):
@@ -371,6 +454,7 @@ class DayPlan(BaseModel):
     return_leg: LegEvidence | None = None
     walking_m: int = 0
     reserved_meals: list[ReservedMeal] = Field(default_factory=list)
+    areas: list[str] = Field(default_factory=list)  # 当天到访片区名，按顺序
 
 
 class Itinerary(BaseModel):
@@ -393,7 +477,188 @@ class ValidationReport(BaseModel):
     experience_status: Literal["complete", "needs_attention"] = "needs_attention"
     data_status: Literal["verified", "partial"] = "partial"
     unknowns: list[str] = Field(default_factory=list)
+    constraint_status: Literal["passed", "failed"] | None = None
+    arrangement_status: Literal["complete", "needs_confirmation", "missing"] = "missing"
+    evidence_status: Literal["verified", "partial"] = "partial"
+    complete_executable: bool = False
+
+    @model_validator(mode="after")
+    def derive_execution_status(self) -> "ValidationReport":
+        if self.constraint_status is None:
+            self.constraint_status = "passed" if self.passed else "failed"
+        self.complete_executable = (
+            self.constraint_status == "passed"
+            and self.arrangement_status == "complete"
+            and self.evidence_status == "verified"
+        )
+        return self
 
     @property
     def hard(self) -> list[Violation]:
         return [v for v in self.violations if v.severity == "hard"]
+
+
+class ExternalSelection(BaseModel):
+    """宿主 AI 只交候选 ID、理由与偏好权重，不能排时间。"""
+    model_config = ConfigDict(extra="forbid")
+    poi_id: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=500)
+    priority: int = Field(0, ge=0, le=100)
+
+
+# 补充景点独立数据合同；未接入旧POI数值字段前先保留未知值。
+# 用户2026-10-18确认：来源未写截止日时，可按项目复核期限使用，最长为核对日起90天
+REVIEW_HORIZON_DAYS = 90
+
+
+class SupplementEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    basis: Literal["observed", "manual_review", "project_recommendation", "model_estimate"]
+    origin: Literal["independent_publication", "user_survey", "project_planning", "amap"]
+    authority: Literal["official", "operator", "observer", "project", "unknown"] = "unknown"
+    reference: str = Field(min_length=1, max_length=2000)
+    source_date: Date | None = None
+    observed_at: Date | None = None
+    reviewed_at: Date | None = None
+    valid_from: Date | None = None
+    valid_until: Date | None = None
+    # source：来源给出的适用期；review_horizon：来源未写截止日，截止日是项目复核期限而非来源有效期
+    validity_basis: Literal["source", "review_horizon"] = "source"
+    # 由规则推断得出、不是来源直接陈述（如按条例推断免费全天）；展示为待确认，不算已核实
+    inferred: bool = False
+    storage_allowed: bool = False
+
+    @model_validator(mode="after")
+    def ordered_validity(self) -> "SupplementEvidence":
+        if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
+            raise ValueError("证据有效期倒置")
+        if self.validity_basis == "review_horizon":
+            if self.reviewed_at is None or self.valid_from is None or self.valid_until is None:
+                raise ValueError("复核期限须有核对日、起始日和截止日")
+            if self.valid_until > self.reviewed_at + timedelta(days=REVIEW_HORIZON_DAYS):
+                raise ValueError(f"复核期限不能超过核对日起{REVIEW_HORIZON_DAYS}天")
+        return self
+
+
+class SupplementCoordinate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
+    lon: float = Field(ge=-180, le=180, allow_inf_nan=False)
+    crs: Literal["GCJ02", "BD09", "WGS84", "unknown"]
+
+
+class SupplementInterval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    start: int = Field(ge=0, lt=1440, strict=True)
+    end: int = Field(gt=0, le=1440, strict=True)
+
+    @model_validator(mode="after")
+    def continuous_window(self) -> "SupplementInterval":
+        if self.end <= self.start:
+            raise ValueError("跨夜/倒置时段首版不支持")
+        return self
+
+
+class SupplementRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    canonical_key: str = Field(pattern=r"^[a-z0-9][a-z0-9:._-]{2,119}$")
+    internal_id: int | None = Field(default=None, ge=1_000_000, le=2**53-1, strict=True)
+    name: str = Field(min_length=1, max_length=150)
+    aliases: list[str] = Field(default_factory=list, max_length=30)
+    district: Literal["上城区", "拱墅区", "西湖区", "滨江区", "萧山区", "余杭区",
+                      "临平区", "钱塘区", "富阳区", "临安区", "桐庐县", "淳安县", "建德市"]
+    area: str = ""
+    state: Literal["needs_review", "published", "archived"] = "needs_review"
+    kind: Literal["attraction", "subplace", "facility"] = "attraction"
+    place_type: str = Field("", max_length=30)
+    experience_group: str = ""
+    position: SupplementCoordinate | None = None
+    entrance: SupplementCoordinate | None = None
+    ticket_price_upper: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    ticket_price_exact: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    weekly_opening: dict[int, list[SupplementInterval]] = Field(default_factory=dict)
+    date_opening: dict[str, list[SupplementInterval]] = Field(default_factory=dict)
+    closed_dates: list[Date] = Field(default_factory=list)
+    duration_min_hours: float | None = Field(default=None, gt=0, le=24, allow_inf_nan=False)
+    duration_max_hours: float | None = Field(default=None, gt=0, le=24, allow_inf_nan=False)
+    duration_scope: str = ""
+    interests: list[str] = Field(default_factory=list)
+    audience: list[str] = Field(default_factory=list)
+    evidence: dict[str, SupplementEvidence] = Field(default_factory=dict)
+    source_conflicts: list[str] = Field(default_factory=list)
+    review_note: str = ""
+
+    @model_validator(mode="after")
+    def consistent_fields(self) -> "SupplementRecord":
+        if (self.ticket_price_exact is not None and (
+                self.ticket_price_upper is None or self.ticket_price_exact > self.ticket_price_upper)):
+            raise ValueError("精确票价不能缺少或超过已知上界")
+        if (self.duration_min_hours is not None and self.duration_max_hours is not None
+                and self.duration_min_hours > self.duration_max_hours):
+            raise ValueError("规划停留区间倒置")
+        if any(day not in range(7) for day in self.weekly_opening):
+            raise ValueError("星期键只能0到6，0为周一")
+        for key in self.date_opening:
+            if Date.fromisoformat(key).isoformat() != key:
+                raise ValueError("日期键须为YYYY-MM-DD")
+        for intervals in [*self.weekly_opening.values(), *self.date_opening.values()]:
+            ordered = sorted(intervals, key=lambda item: item.start)
+            if any(a.end > b.start for a, b in zip(ordered, ordered[1:])):
+                raise ValueError("开放区间不能重叠")
+        return self
+
+
+class PlanningAdmission(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    canonical_key: str
+    ticket_price_upper: float | None = None
+    ticket_price_exact: float | None = None
+    duration_min_hours: float | None = None
+    duration_max_hours: float | None = None
+    position: SupplementCoordinate | None = None
+    entrance: SupplementCoordinate | None = None
+    admitted: bool = False
+    issues: list[str] = Field(default_factory=list)
+    allowed_dates: list[Date] = Field(default_factory=list)
+    intervals: dict[str, list[SupplementInterval]] = Field(default_factory=dict)
+    rejected_dates: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class CatalogSnapshot(BaseModel):
+    """内容保存在不可变字符串中；每次读取返回新的模型，禁止跨任务原地修改。"""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    digest: str
+    payload: str
+
+    @model_validator(mode="after")
+    def verified_payload(self) -> "CatalogSnapshot":
+        import hashlib
+        import json
+        if hashlib.sha256(self.payload.encode()).hexdigest() != self.digest:
+            raise ValueError("目录摘要不一致")
+        data = json.loads(self.payload)
+        if data.get("schema_version") != 1 or not data.get("base_digest"):
+            raise ValueError("不支持的目录schema/缺原库摘要")
+        ids, keys = set(), set()
+        for item in data["records"]:
+            record = SupplementRecord.model_validate(item)
+            if (record.internal_id is None or record.internal_id in ids
+                    or record.canonical_key in keys or record.state != "published"):
+                raise ValueError("目录身份重复、缺失或未发布")
+            ids.add(record.internal_id)
+            keys.add(record.canonical_key)
+        return self
+
+    def records(self) -> list[SupplementRecord]:
+        import json
+        return [SupplementRecord.model_validate(item) for item in json.loads(self.payload)["records"]]
+
+    def aliases(self) -> dict[str, tuple[int, ...]]:
+        from .poi_catalog import normalize_alias
+        result: dict[str, set[int]] = {}
+        for record in self.records():
+            for name in [record.name, *record.aliases]:
+                key = normalize_alias(name)
+                if key:
+                    result.setdefault(key, set()).add(record.internal_id)
+        return {key: tuple(sorted(ids)) for key, ids in result.items()}

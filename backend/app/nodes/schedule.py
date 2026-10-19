@@ -1,6 +1,6 @@
 """调度求解（确定性，LLM 不参与排时间——AGENTS.md 规则 5）。
 
-1. 按天分组：KMeans 提供初始方案，再按时长、交通和餐饮比较完整分天方案。
+1. 按天分组：以片区为单位给每天定一个主片区、至多挂一个相邻片区（app/areas.py），再按时长、交通和餐饮比较完整分天方案。
 2. 日内排序：OR-Tools VRPTW（单车辆，起终点为酒店）。
    - 时间窗：景点开放时间（须在关门前游玩完）；整天在该节奏的活动时间窗内。
    - 用餐：各节奏用 break interval 预留午餐与晚餐各 75 分钟（就餐 60 + 绕行 15）。
@@ -14,12 +14,24 @@ import math
 
 import numpy as np
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-from sklearn.cluster import KMeans
 
+from ..areas import area_index, area_transition_cost
 from ..data import load_pois
 from ..experiences import experience_key, keep_walks_together
-from ..rules import DINNER, LUNCH, MEAL_MIN, PACE, activity_window, required_meals
+from ..rules import (
+    DINNER,
+    LUNCH,
+    LOCALITY_PREFERENCE_MIN,
+    MAX_INTERSTOP_RIDE_MIN,
+    MEAL_MIN,
+    PACE,
+    activity_window,
+    interstop_ride_allowed,
+    locality_transition_penalty,
+    required_meals,
+)
 from ..calendar import closed_on
+from ..poi_semantics import evening_only, visit_open_min
 from ..schemas import POI, UserProfile
 
 MEAL_BLOCK = MEAL_MIN + 15
@@ -49,6 +61,11 @@ def _seed_days(ids: list[int], p: UserProfile) -> list[list[int]]:
     D = p.days
     if not ids:
         return [[] for _ in range(D)]
+    evening = [identifier for identifier in ids if evening_only(pois[identifier])]
+    if evening:
+        # 先给白天分主片区，再把晚间项目挂过去，不能让夜市占用一个完整白天。
+        daytime = [identifier for identifier in ids if identifier not in evening]
+        return _attach_evenings(_seed_days(daytime, p), evening, p)
     anchors = [identifier for identifier in ids if pois[identifier].day_anchor]
     if anchors:
         from .retrieve import must_visit_ids
@@ -65,29 +82,122 @@ def _seed_days(ids: list[int], p: UserProfile) -> list[list[int]]:
         return groups
     if D == 1 or len(ids) == 1:
         return [list(ids)] + [[] for _ in range(D - 1)]
-    units: dict[str, list[int]] = {}
+    return _area_days(ids, p)
+
+
+def _attach_evenings(groups: list[list[int]], identifiers: list[int], p: UserProfile) -> list[list[int]]:
+    pois = load_pois()
+    areas = area_index(pois)
+    home = areas.home_areas(p.hotel.lat, p.hotel.lon)
+    groups = [list(group) for group in groups]
+    from .retrieve import must_visit_ids
+    required = must_visit_ids(p)
+    daytime_zones = [areas.areas_of(group) for group in groups]
+    for identifier in identifiers:
+        zone = areas.area_of(identifier)
+
+        def rank(index: int) -> tuple:
+            zones = daytime_zones[index]
+            compatible = any(areas.compatible(zone, other, home) for other in zones)
+            return (closed_on(pois[identifier], p, index + 1),
+                    not bool(zones), zone not in zones, not compatible,
+                    sum(service_min(pois[i], p.pace) for i in groups[index]), index)
+
+        available = [index for index, group in enumerate(groups)
+                     if not any(pois[i].day_anchor for i in group)
+                     and (not daytime_zones[index] or any(areas.compatible(zone, other, home)
+                                                         for other in daytime_zones[index]))]
+        if not available:
+            if identifier not in required:
+                continue  # 不用可选夜游打断整日主项目，也不为夜游拼接不顺路片区。
+            available = list(range(len(groups)))  # 必去冲突仍交统一校验，不能悄悄丢掉。
+        groups[min(available, key=rank)].append(identifier)
+    return groups
+
+
+def day_capacity(p: UserProfile, day: int) -> int:
+    """一天能用于游览的分钟数：活动时段扣掉正餐和约一小时路上时间。"""
+    window = activity_window(p, day)
+    return max(120, window["end"] - window["start"] - len(required_meals(p, day)) * MEAL_BLOCK - 60)
+
+
+def _chunks(members: list[int], p: UserProfile, capacity: int, parts: int | None = None) -> list[list[int]]:
+    """同一片区按体验单元就近串起来再切块：超过一天容量时切开，或指定切成 parts 份。"""
+    pois = load_pois()
+    blocks: dict[str, list[int]] = {}
+    for identifier in members:
+        blocks.setdefault(experience_key(pois[identifier]), []).append(identifier)
+    units = list(blocks.values())
+
+    def centre(block: list[int]) -> tuple[float, float]:
+        return float(np.mean([pois[i].lat for i in block])), float(np.mean([pois[i].lon for i in block]))
+
+    def load(block: list[int]) -> int:
+        return sum(service_min(pois[i], p.pace) for i in block)
+
+    path = [units.pop(0)]
+    while units:
+        last = centre(path[-1])
+        units.sort(key=lambda block: (math.dist(last, centre(block)), min(block)))
+        path.append(units.pop(0))
+    limit = capacity if parts is None else sum(load(block) for block in path) / parts
+    chunks: list[list[int]] = []
+    current: list[int] = []
+    used = 0
+    for block in path:
+        if current and used + load(block) > limit and (parts is None or len(chunks) < parts - 1):
+            chunks.append(current)
+            current, used = [], 0
+        current.extend(block)
+        used += load(block)
+    chunks.append(current)
+    return chunks
+
+
+def _area_days(ids: list[int], p: UserProfile) -> list[list[int]]:
+    """片区为主的初始分天（2026-10-19 用户决定）：每天一个主片区，至多再挂一个相邻片区。
+
+    只决定搜索起点；之后的分天均衡、日内求解和统一校验照常运行，不因片区丢必去点。
+    """
+    pois = load_pois()
+    areas = area_index(pois)
+    home = areas.home_areas(p.hotel.lat, p.hotel.lon)
+    D = p.days
+    capacity = max(day_capacity(p, day) for day in range(1, D + 1))
+
+    def load(unit: tuple[str, list[int]]) -> int:
+        return sum(service_min(pois[i], p.pace) for i in unit[1])
+
+    by_area: dict[str, list[int]] = {}
     for identifier in ids:
-        units.setdefault(experience_key(pois[identifier]), []).append(identifier)
-    members = list(units.values())
-    lat0 = math.radians(p.hotel.lat)
-    X = np.array([[np.mean([pois[identifier].lat for identifier in group]),
-                   np.mean([pois[identifier].lon for identifier in group]) * math.cos(lat0)] for group in members])
-    k = min(D, len(members))
-    km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(X)
-    dist = km.transform(X)
-    cap = math.ceil(len(members) / D)
-    assigned: dict[int, int] = {}
-    counts = [0] * k
-    for d, i, c in sorted((dist[i, c], i, c) for i in range(len(members)) for c in range(k)):
-        if i in assigned or counts[c] >= cap:
-            continue
-        assigned[i] = c
-        counts[c] += 1
-    group_indices = [[index for index in range(len(members)) if assigned[index] == cluster] for cluster in range(k)]
-    hotel = np.array([p.hotel.lat, p.hotel.lon * math.cos(lat0)])
-    group_indices.sort(key=lambda group: float(np.linalg.norm(X[group].mean(axis=0) - hotel)))
-    groups = [[identifier for index in group for identifier in members[index]] for group in group_indices]
-    return groups + [[] for _ in range(D - k)]
+        by_area.setdefault(areas.area_of(identifier), []).append(identifier)
+    units = [(area, chunk) for area, members in by_area.items() for chunk in _chunks(members, p, capacity)]
+    # 片区比天数少时把最大的片区再切开，避免出现空白天
+    while len(units) < D:
+        splittable = [unit for unit in units if len({experience_key(pois[i]) for i in unit[1]}) > 1]
+        if not splittable:
+            break
+        largest = max(splittable, key=lambda unit: (load(unit), -min(unit[1])))
+        units.remove(largest)
+        units.extend((largest[0], chunk) for chunk in _chunks(largest[1], p, capacity, parts=2))
+    units.sort(key=lambda unit: (-load(unit), min(unit[1])))
+    days = [[unit] for unit in units[:D]]
+    for unit in units[D:]:
+        loads = [sum(load(entry) for entry in day) for day in days]
+
+        def rank(index: int) -> tuple:
+            main = days[index][0][0]
+            near = main != unit[0] and areas.compatible(main, unit[0], home)
+            return (not near, len(days[index]) > 1, loads[index] + load(unit) > capacity, loads[index], index)
+        days[min(range(len(days)), key=rank)].append(unit)
+    hotel = (p.hotel.lat, p.hotel.lon)
+
+    def distance(day: list[tuple[str, list[int]]]) -> float:
+        members = [i for unit in day for i in unit[1]]
+        return math.dist(hotel, (float(np.mean([pois[i].lat for i in members])), float(np.mean([pois[i].lon for i in members]))))
+    days.sort(key=distance)
+    groups = [[identifier for unit in day for identifier in unit[1]] for day in days]
+    return groups + [[] for _ in range(D - len(groups))]
 
 
 def split_days(ids: list[int], p: UserProfile, travel=None) -> list[list[int]]:
@@ -105,7 +215,24 @@ def _nodes(day_ids: list[int], p: UserProfile, travel):
     locs = [(p.hotel.lat, p.hotel.lon)] + [(pois[i].lat, pois[i].lon) for i in day_ids]
     T = travel.matrix(locs)  # 打车模式为高德真实矩阵；公交模式为缓存真实值 + 标定兜底
     svc = [0] + [service_min(pois[i], p.pace) for i in day_ids]
-    return pois, T, svc
+    allowed = [[True for _ in locs] for _ in locs]
+    locality = [[0 for _ in locs] for _ in locs]
+    for before in range(1, len(locs)):
+        for after in range(1, len(locs)):
+            if before != after and T[before][after] > LOCALITY_PREFERENCE_MIN:
+                mode = travel.leg(*locs[before], *locs[after], live=False)[1]
+                locality[before][after] = locality_transition_penalty(T[before][after], mode)
+                if T[before][after] > MAX_INTERSTOP_RIDE_MIN:
+                    allowed[before][after] = interstop_ride_allowed(T[before][after], mode)
+    # 片区为主：景点之间跨片区再加成本，不相邻片区更高；与起点相连的首尾段不加
+    areas = area_index(pois)
+    home = areas.home_areas(p.hotel.lat, p.hotel.lon)
+    zones = [areas.area_of(identifier) for identifier in day_ids]
+    for before in range(1, len(locs)):
+        for after in range(1, len(locs)):
+            if before != after:
+                locality[before][after] += area_transition_cost(zones[before - 1], zones[after - 1], areas, home)
+    return pois, T, svc, allowed, locality
 
 
 def route_ortools(day_ids: list[int], p: UserProfile, scores: dict[int, float], travel,
@@ -113,11 +240,15 @@ def route_ortools(day_ids: list[int], p: UserProfile, scores: dict[int, float], 
     """返回 (访问顺序, 被舍弃的景点)；无解返回 None。"""
     if not day_ids:
         return [], []
-    pois, T, svc = _nodes(day_ids, p, travel)
+    pois, T, svc, allowed, locality = _nodes(day_ids, p, travel)
     c = activity_window(p, day)
     n = len(T)
     manager = pywrapcp.RoutingIndexManager(n, 1, 0)
     routing = pywrapcp.RoutingModel(manager)
+    for before in range(1, n):
+        for after in range(1, n):
+            if not allowed[before][after]:
+                routing.NextVar(manager.NodeToIndex(before)).RemoveValue(manager.NodeToIndex(after))
 
     def transit(fi: int, ti: int) -> int:
         i, j = manager.IndexToNode(fi), manager.IndexToNode(ti)
@@ -126,19 +257,22 @@ def route_ortools(day_ids: list[int], p: UserProfile, scores: dict[int, float], 
     cb = routing.RegisterTransitCallback(transit)
     comfort_weight = 3 if p.companions in {"elderly", "family_kids"} or p.pace == "relaxed" else 2
     cost_callback = routing.RegisterTransitCallback(
-        lambda before, after: T[manager.IndexToNode(before)][manager.IndexToNode(after)] * comfort_weight)
+        lambda before, after: (
+            T[manager.IndexToNode(before)][manager.IndexToNode(after)] * comfort_weight
+            + locality[manager.IndexToNode(before)][manager.IndexToNode(after)]
+        ))
     routing.SetArcCostEvaluatorOfAllVehicles(cost_callback)
     routing.AddDimension(cb, 24 * 60, 24 * 60, False, "Time")
     tdim = routing.GetDimensionOrDie("Time")
     tdim.CumulVar(routing.Start(0)).SetRange(c["start"], c["start"] + 120)
     tdim.CumulVar(routing.End(0)).SetRange(c["start"], c["end"])
     tdim.SetSpanCostCoefficientForVehicle(1, 0)
-    core = max(day_ids, key=lambda identifier: (scores.get(identifier, 0.0),
+    core = max([identifier for identifier in day_ids if not evening_only(pois[identifier])] or day_ids, key=lambda identifier: (scores.get(identifier, 0.0),
                                                service_min(pois[identifier], p.pace), -identifier))
     for k, pid in enumerate(day_ids, start=1):
         idx = manager.NodeToIndex(k)
         poi = pois[pid]
-        lo, hi = max(poi.open_min, c["start"]), min(poi.close_min, c["end"]) - svc[k]
+        lo, hi = max(visit_open_min(poi), c["start"]), min(poi.close_min, c["end"]) - svc[k]
         if poi.opening_rules and poi.opening_rules.last_entry is not None:
             hi = min(hi, poi.opening_rules.last_entry)
         if hi < lo or closed_on(poi, p, day):
@@ -189,31 +323,47 @@ def route_ortools(day_ids: list[int], p: UserProfile, scores: dict[int, float], 
     return order, dropped
 
 
-def route_greedy(day_ids: list[int], p: UserProfile, travel) -> list[int]:
+def route_greedy(day_ids: list[int], p: UserProfile, travel, must: set[int] | None = None, day: int = 1) -> list[int]:
     """兜底：最近邻 + 2-opt（只优化路程，不保证时间窗，交给校验/修复）。"""
     if len(day_ids) <= 1:
         return list(day_ids)
-    _, T, _ = _nodes(day_ids, p, travel)
-    rest, route, cur = list(range(1, len(T))), [], 0
-    while rest:
-        nxt = min(rest, key=lambda j: T[cur][j])
-        route.append(nxt)
-        rest.remove(nxt)
-        cur = nxt
+    pois, T, _, allowed, locality = _nodes(day_ids, p, travel)
+
+    def nearest_route(first: int) -> list[int]:
+        remaining = [node for node in range(1, len(T)) if node != first]
+        ordered = [first]
+        while remaining:
+            reachable = [node for node in remaining if allowed[ordered[-1]][node]]
+            if not reachable:
+                break
+            following = min(reachable, key=lambda node: (
+                evening_only(pois[day_ids[node - 1]]), T[ordered[-1]][node] + locality[ordered[-1]][node], node))
+            ordered.append(following)
+            remaining.remove(following)
+        return ordered
 
     def length(r: list[int]) -> int:
         path = [0] + r + [0]
-        return sum(T[a][b] for a, b in zip(path, path[1:]))
+        # 夜间型移到白天项目之后，避免兜底顺序先等到17:00、再把白天项目挤闭馆。
+        late_first = sum(evening_only(pois[day_ids[a - 1]]) and not evening_only(pois[day_ids[b - 1]])
+                         for a, b in zip(r, r[1:]))
+        return sum(T[a][b] + locality[a][b] for a, b in zip(path, path[1:])) + late_first * 10000
 
+    route = max((nearest_route(first) for first in range(1, len(T))),
+                key=lambda candidate: (sum(day_ids[node - 1] in (must or set()) for node in candidate),
+                                       len(candidate), -length(candidate)))
     improved = True
     while improved:
         improved = False
         for i in range(len(route) - 1):
             for j in range(i + 1, len(route)):
                 cand = route[:i] + route[i:j + 1][::-1] + route[j + 1:]
-                if length(cand) < length(route):
+                if all(allowed[before][after] for before, after in zip(cand, cand[1:])) and length(cand) < length(route):
                     route, improved = cand, True
-    return keep_walks_together([day_ids[k - 1] for k in route], load_pois())
+    identifiers = [day_ids[node - 1] for node in route]
+    grouped = keep_walks_together(identifiers, load_pois())
+    indices = {identifier: index + 1 for index, identifier in enumerate(day_ids)}
+    return grouped if all(allowed[indices[before]][indices[after]] for before, after in zip(grouped, grouped[1:])) else identifiers
 
 
 def schedule(selected_ids: list[int], p: UserProfile, scores: dict[int, float], travel,
@@ -249,7 +399,7 @@ def _schedule_groups(groups: list[list[int]], selected_ids: list[int], p: UserPr
     assigned = {identifier for group in groups for identifier in group}
     orders, dropped, log = [], [identifier for identifier in selected_ids if identifier not in assigned], []
     if dropped:
-        log.append("大型园区单独安排一天，取消跨区拼接：" + "、".join(load_pois()[identifier].name for identifier in dropped))
+        log.append("按片区与主项目分天后，取消不顺路的可选地点：" + "、".join(load_pois()[identifier].name for identifier in dropped))
     unavailable = []
     for day_index, group in enumerate(groups):
         for place_id in list(group):
@@ -266,9 +416,11 @@ def _schedule_groups(groups: list[list[int]], selected_ids: list[int], p: UserPr
         travel.set_day(p, d)
         res = route_ortools(g, p, scores, travel, must=must, day=d) if use_solver else None
         if res is None:
-            orders.append(route_greedy(g, p, travel))
+            order = route_greedy(g, p, travel, must=must, day=d + 1)
+            orders.append(order)
+            dropped.extend(identifier for identifier in g if identifier not in order)
             if g:
-                log.append(f"第 {d} 天：OR-Tools 无解或未启用，退回贪心 + 2-opt")
+                log.append(f"第 {d} 天：OR-Tools 无解或未启用，退回遵守单段乘车上限的贪心 + 2-opt")
         else:
             order, drop = res
             orders.append(order)
@@ -285,5 +437,10 @@ def schedule_node(state: dict) -> dict:
     ids = [s.poi_id for s in state["selected"]]
     must = {c.poi_id for c in state["candidates"] if c.breakdown.get("must_visit")}
     orders, dropped, log = schedule(ids, p, scores, state["travel"], use_solver=state.get("use_solver", True), must=must)
+    scheduled_ids = [identifier for order in orders for identifier in order]
+    absent = sorted(set(ids) - set(scheduled_ids))
     return {"day_orders": orders, "dropped": dropped,
+            "schedule_attempts": [{"repair_round": state.get("repair_round", 0), "selected_ids": ids,
+                "scheduled_ids": scheduled_ids, "dropped_ids": absent,
+                "drop_rate": len(absent) / len(set(ids)) if ids else None}],
             "log": [f"调度：{len(ids)} 个景点按时长、交通与用餐余量分到 {p.days} 天，日内用 OR-Tools VRPTW 排序"] + log}

@@ -7,6 +7,13 @@ const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: numb
 const emit = defineEmits<{ focus: [index: number]; details: [index: number]; focusAlternative: [index: number, alternative: MealAlternative]; detailsAlternative: [index: number, alternative: MealAlternative]; alternativesToggle: [index: number, open: boolean] }>()
 const startsGroup = (index: number) => props.day.items[index]?.visit_group && !props.day.items.slice(0, index).some(item => item.visit_group === props.day.items[index]?.visit_group)
 
+// 片区为主：首次进入某片区时在路段上标出
+const enters = (index: number) => {
+  const item = props.day.items[index]
+  if (item?.kind !== 'poi' || !item.area) return ''
+  const previous = props.day.items.slice(0, index).filter(entry => entry.kind === 'poi' && entry.area).at(-1)
+  return !previous || previous.area !== item.area ? item.area : ''
+}
 const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 const dur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} 小时${m % 60 ? ` ${m % 60} 分` : ''}` : `${m} 分钟`)
 const gapBefore = (i: number) => i > 0 ? props.day.items[i]!.start - props.day.items[i - 1]!.end - props.day.items[i]!.travel_min - (props.day.reserved_meals || []).filter(slot => slot.start >= props.day.items[i - 1]!.end && slot.end <= props.day.items[i]!.start).reduce((sum, slot) => sum + slot.end - slot.start, 0) : 0
@@ -31,6 +38,7 @@ const labels = computed(() => {
         <component :is="item.travel_mode === '步行' ? PhPersonSimpleWalk : item.travel_mode === '打车' ? PhCar : PhBus" :size="13" />
         {{ item.travel_mode || '步行' }} {{ item.travel_min }} 分钟
         <span v-if="item.travel_evidence?.source === 'estimate'" class="source-note">估算</span>
+        <span v-if="enters(i)" class="area-change">· 前往{{ enters(i) }}</span>
         <em v-if="gapBefore(i) >= 30">· 空档 {{ dur(gapBefore(i)) }}</em>
       </li>
       <li :id="`stop-${day.day}-${i}`" class="stop" :class="[item.kind, { on: selectedIndex === i }]"
@@ -60,7 +68,7 @@ const labels = computed(() => {
                 <button type="button" :aria-label="`查看备选餐厅${alternative.name}详情`" @click.stop="emit('detailsAlternative', i, alternative)">查看详情 <span aria-hidden="true">↗</span></button>
               </div>
             </div>
-            <p class="field-help">换成备选后会按真实路线重新核对当天时间，其他日期不变，可撤销。</p>
+            <p class="field-help">换成备选前先重算当天路线与时间，确认后才更新，其他日期不变，可撤销。</p>
           </details>
         </div>
       </li>
@@ -75,7 +83,7 @@ const labels = computed(() => {
   <p v-else class="notice">当前条件下这一天没有排出景点，可以放宽预算或减少必去地点后重试。</p>
   <p v-for="note in day.notes" :key="note" class="notice warn">{{ note }}</p>
   <div v-for="slot in (day.reserved_meals || []).filter(slot => slot.inside_poi_id == null)" :key="slot.meal" class="notice warn">
-    {{ clock(slot.start) }}–{{ clock(slot.end) }} · 预留{{ slot.meal === 'lunch' ? '午餐' : '晚餐' }}时间<br>{{ slot.reason }}；费用尚未计入。
+    {{ clock(slot.start) }}–{{ clock(slot.end) }} · {{ slot.status === 'self_arranged' ? '已确认自行安排' : '预留' }}{{ slot.meal === 'lunch' ? '午餐' : '晚餐' }}<br>{{ slot.reason }}<br><template v-if="slot.status === 'self_arranged'">预留预算 ¥{{ slot.estimated_cost?.toFixed(0) }} / 人，已计入合计。</template><template v-else>费用尚未计入。</template>
   </div>
   <p v-if="day.walking_m != null" class="aside-note">已知步行约 {{ (day.walking_m / 1000).toFixed(1) }} 公里，场所内部步行可能未完整计入。</p>
 </template>

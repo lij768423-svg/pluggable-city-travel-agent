@@ -11,9 +11,9 @@ import pandas as pd
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from . import config
@@ -24,13 +24,17 @@ from .geo import bd09_to_gcj02, hm
 from .graph import run_plan
 from .places import PlaceSearchError, search_places
 from .navigation import NavigationRequest, get_navigation
-from .place_details import PlaceDetailsRequest, describe_place, get_place_details, remember_restaurants
-from .schemas import AUDIENCES, DIETARY, INTERESTS, UserProfile
-from .sessions import SESSIONS, SessionNotFound, StaleRevision
+from .place_details import PlaceDetailsRequest, get_place_details
+from .schemas import AUDIENCES, DIETARY, INTERESTS, UserProfile, MealEditPreviewRequest, MealEditCommitRequest
+from .sessions import SESSIONS, SessionNotFound, StaleRevision, PreviewNotFound
+from .mcp_login import router as mcp_login_router
 from .progress import stream_plan_events
+from .presentation import serialize_plan
+from .poi_catalog import current_catalog, result_catalog, use_catalog
 
 app = FastAPI(title="杭州个性化行程规划 Agent", version="0.1.0")
 app.include_router(accounts.router)
+app.include_router(mcp_login_router)
 app.include_router(stay_audit.router)
 
 
@@ -39,7 +43,7 @@ async def private_responses(request: Request, call_next):
     if access.blocked(request):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
     response = await call_next(request)
-    if request.url.path.startswith(("/api/auth", "/api/history", "/api/plan")):
+    if request.url.path.startswith(("/api/auth", "/api/history", "/api/plan", "/api/trips")):
         response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -171,9 +175,22 @@ def deliver_plan(result, session, revision, change=None):
         try:
             payload["history_id"] = accounts.STORE.save(session.owner[5:], session.plan_id,
                                                        session.request.get("input", {}), payload)
+            SESSIONS.bind_history(session.plan_id, payload["history_id"])
         except (OSError, accounts.sqlite3.Error):
             payload["history_error"] = "行程已生成，但历史记录暂未保存，请点击保存重试。"
     return payload
+
+
+@app.get("/api/trips/{history_id}")
+def linked_trip(history_id: str, request: Request):
+    user = accounts.current_user(request, True)
+    saved = accounts.STORE.get(user["id"], history_id)
+    session = SESSIONS.find_history(f"user:{user['id']}", history_id)
+    if session is not None:
+        result, meta, revision, owner = SESSIONS.snapshot(session.plan_id)
+        saved["plan"] = {**serialize_plan(result, meta, session.plan_id, revision),
+                         "history_id": history_id, "history_readonly": False}
+    return saved
 
 
 @app.post("/api/plans/{plan_id}/save")
@@ -190,61 +207,6 @@ def save_current_plan(plan_id: str, request: Request):
     except PermissionError:
         raise HTTPException(404, "这份行程不存在或不属于当前账号。") from None
     return deliver_plan(session.result(), session, session.current)
-
-
-def serialize_plan(r: dict[str, Any], request_meta: dict[str, Any], plan_id: str | None = None,
-                   revision: int | None = None, change: dict[str, Any] | None = None) -> dict[str, Any]:
-    """把规划结果转成前端格式（新规划、换餐厅、撤销共用）。"""
-    P, R = load_pois(), r.get("restaurants", load_restaurants())
-    restaurant_ids = {reference for day in r["itinerary"].days for item in day.items if item.kind == "meal"
-                      for reference in [item.ref_id, *(alternative.ref_id for alternative in item.alternatives)]}
-    remember_restaurants(R[reference] for reference in restaurant_ids if reference in R)
-    cand = {c.poi_id: c for c in r["candidates"]}
-    src = {s.poi_id: s.source for s in r["selected"]}
-    cited = {selection.poi_id: set(selection.guide_ids) for selection in r["selected"]}
-    days = []
-    for d in r["itinerary"].days:
-        items = []
-        for i in d.items:
-            place = P.get(i.ref_id) if i.kind == "poi" else R.get(i.ref_id)
-            alternatives = []
-            for alternative in i.alternatives:
-                restaurant = R.get(alternative.ref_id)
-                alternatives.append({**alternative.model_dump(),
-                                     **(gcj(restaurant.lat, restaurant.lon) if restaurant else {}),
-                                     "detail": describe_place(restaurant, "meal") if restaurant else None})
-            items.append({**i.model_dump(), "start_hm": hm(i.start), "end_hm": hm(i.end),
-                          "alternatives": alternatives,
-                          **(gcj(place.lat, place.lon) if place else {}),
-                          "type": getattr(place, "type", getattr(place, "cuisine", "")),
-                          "visit_group": getattr(place, "visit_group", ""),
-                          "visit_group_label": getattr(place, "visit_group_label", ""),
-                          "visit_role": getattr(place, "visit_role", "attraction"),
-                          "source": "rule" if i.evening else src.get(i.ref_id) if i.kind == "poi" else None,
-                          "detail": describe_place(place, i.kind) if place else None,
-                          "guide_evidence": [entry for entry in r.get("guide_evidence", []) if not i.evening and i.kind == "poi" and entry["id"] in cited.get(i.ref_id, set())],
-                          "price_verified": getattr(place, "price_verified", False),
-                          "restaurant": place.model_dump(include={"provider", "external_id", "address", "rating", "fetched_at", "hours_known", "opening_text", "price_known"}) if i.kind == "meal" and place else None,
-                          "score": cand[i.ref_id].breakdown | {"score": cand[i.ref_id].score} if i.kind == "poi" and i.ref_id in cand else None})
-        days.append({**d.model_dump(exclude={"items"}), "items": items})
-    prof = r["profile"]
-    from .guides import corpus_status
-    return jsonable_encoder({
-        "profile": prof.model_dump() | {"hotel_gcj": gcj(prof.hotel.lat, prof.hotel.lon)},
-        "days": days,
-        "report": r["report"].model_dump(),
-        "candidates": [{"id": c.poi_id, "name": P[c.poi_id].name, "score": c.score, **c.breakdown,
-                        "selected": c.poi_id in src, **gcj(P[c.poi_id].lat, P[c.poi_id].lon)} for c in r["candidates"]],
-        "dropped": [P[x].name for x in r.get("dropped", [])],
-        "log": r["log"], "usage": r["usage"], "seconds": r["seconds"],
-        "plan_id": plan_id, "revision": revision, "change": change,
-        "meta": {"travel": r.get("travel_stats", {}), "restaurants": r.get("restaurant_stats", {}), "select_mode": request_meta["select_mode"], "enable_repair": request_meta["enable_repair"], "repair_rounds": r.get("repair_round", 0),
-                 "operation": r.get("operation", "plan"),
-                 "llm_model": config.LLM_MODEL, "llm_thinking": config.LLM_THINKING, "tag_source": tag_source(),
-                 "selection": r.get("selection_stats", {}),
-                 "guide_mode": request_meta["guide_mode"], "guide_snapshot": corpus_status() if request_meta["guide_mode"] == "pilot" else None,
-                 "guide_status": "experimental_pending_human_evaluation" if request_meta["guide_mode"] == "pilot" else "off"},
-    })
 
 
 class SwapMealRequest(BaseModel):
@@ -264,28 +226,104 @@ EXPIRED = "这份行程已过期（服务重启或超过 6 小时未操作），
 
 @app.post("/api/plans/{plan_id}/swap-meal")
 def swap_meal_endpoint(plan_id: str, req: SwapMealRequest, request: Request) -> dict[str, Any]:
-    """把某一餐换成备选餐厅，并只重新规划这一天（设计原则"可编辑"）。"""
-    from .replan import ReplanError, swap_meal
+    """旧入口保留版本及所有权检查，禁止跳过预览直接提交。"""
+    accounts.same_origin(request)
+    try:
+        session = SESSIONS.get(plan_id)
+        accounts.authorize_session(session, request)
+        if session.request.get("source") == "mcp":
+            raise HTTPException(409, "MCP行程换餐需要先预览并确认。")
+        if req.revision != session.current:
+            raise StaleRevision
+    except SessionNotFound:
+        raise HTTPException(status_code=410, detail=EXPIRED) from None
+    except StaleRevision:
+        raise HTTPException(status_code=409, detail="行程刚刚被修改过，请刷新后再操作。") from None
+    raise HTTPException(status_code=428, detail="请先查看更换预览，再确认提交；原行程保持不变。")
+
+
+@app.post("/api/plans/{plan_id}/meal-preview")
+def preview_meal_endpoint(plan_id: str, req: MealEditPreviewRequest, request: Request) -> dict[str, Any]:
+    from copy import deepcopy
+    from .meal_edits import build_preview
+    from .replan import ReplanError
     accounts.same_origin(request)
     access.rate_limit(request, "swap")
     try:
         session = SESSIONS.get(plan_id)
         accounts.authorize_session(session, request)
         if req.revision != session.current:
-            raise StaleRevision
-        updated, change = swap_meal(session.result(), req.day, req.item_index, req.restaurant_id)
-        revision = SESSIONS.append(plan_id, req.revision, updated)
-    except HTTPException:
-        raise
+            raise StaleRevision()
+        updated, change = build_preview(deepcopy(session.result(req.revision)), req)
+        if session.request.get("source") == "mcp":
+            from .mcp_domain import delivery_status
+            if delivery_status(updated, allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"] not in {"ready", "draft"}:
+                raise HTTPException(422, "预览未达到MCP真实路线与证据门槛，原行程保持不变。")
+        payload = serialize_plan(updated, session.request, plan_id, req.revision, change)
+        if session.request.get("source") == "mcp":
+            updated["delivery_status"] = delivery_status(updated, allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"]
+        preview = SESSIONS.add_preview(plan_id, req.revision, updated, change)
     except SessionNotFound:
-        raise HTTPException(status_code=410, detail=EXPIRED) from None
+        raise HTTPException(410, EXPIRED) from None
     except StaleRevision:
-        raise HTTPException(status_code=409, detail="行程刚刚被修改过，请刷新后再操作。") from None
+        raise HTTPException(409, "行程已经变化，请基于当前版本重新计算预览。") from None
     except ReplanError as error:
         raise HTTPException(status_code=error.status, detail=error.message) from None
+    except HTTPException:
+        raise
     except Exception:
-        raise HTTPException(status_code=502, detail="重新规划暂未完成，原行程保持不变，请稍后重试。") from None
+        raise HTTPException(502, "预览暂未完成，原行程保持不变，请稍后重试。") from None
+    return {"preview_id": preview.preview_id, "base_revision": preview.base_revision, "expires_at": preview.expires_at,
+            "can_commit": updated["report"].passed, "change": change, "plan": payload}
+
+
+@app.post("/api/plans/{plan_id}/meal-commit")
+def commit_meal_endpoint(plan_id: str, req: MealEditCommitRequest, request: Request) -> dict[str, Any]:
+    from .meal_edits import validate_preview
+    from .replan import ReplanError
+    accounts.same_origin(request)
+    access.rate_limit(request, "swap")
+    try:
+        session = SESSIONS.get(plan_id)
+        accounts.authorize_session(session, request)
+        preview = SESSIONS.get_preview(plan_id, req.revision, req.preview_id)
+        if not preview.result["report"].passed or preview.result["report"].hard:
+            raise HTTPException(422, "这份预览含有硬约束冲突，原行程保持不变，请重新计算预览。")
+        report = validate_preview(preview.result)
+        if not report.passed or report.hard:
+            raise HTTPException(422, "新方案未通过校验，原行程保持不变：" + "；".join(issue.message for issue in report.hard))
+        if any(abs(report.totals.get(key, 0) - preview.result["report"].totals.get(key, 0)) > 0.01
+               for key in ("tickets", "meals", "transport", "total")):
+            raise HTTPException(422, "费用依据已变化，请重新计算预览后再确认；原行程保持不变。")
+        if session.request.get("source") == "mcp":
+            from .mcp_domain import delivery_status
+            checked = {**preview.result, "report": report}
+            if delivery_status(checked, allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"] not in {"ready", "draft"}:
+                raise HTTPException(422, "预览证据已过期或不完整，请重新预览。")
+        updated, change, revision = SESSIONS.commit_preview(plan_id, req.revision, req.preview_id, report)
+    except SessionNotFound:
+        raise HTTPException(410, EXPIRED) from None
+    except PreviewNotFound:
+        raise HTTPException(410, "这份预览已过期，请重新计算；原行程保持不变。") from None
+    except StaleRevision:
+        raise HTTPException(409, "行程已经变化，请重新计算预览后再确认。") from None
+    except ReplanError as error:
+        raise HTTPException(error.status, error.message) from None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "提交暂未完成，原行程保持不变，请稍后重试。") from None
     return deliver_plan(updated, session, revision, change)
+
+
+@app.get("/api/plans/{plan_id}")
+def current_plan_endpoint(plan_id: str, request: Request) -> dict[str, Any]:
+    try:
+        session = SESSIONS.get(plan_id)
+        accounts.authorize_session(session, request)
+        return serialize_plan(session.result(), session.request, plan_id, session.current)
+    except SessionNotFound:
+        raise HTTPException(410, EXPIRED) from None
 
 
 @app.post("/api/plans/{plan_id}/revert")
@@ -295,6 +333,10 @@ def revert_endpoint(plan_id: str, req: RevertRequest, request: Request) -> dict[
     try:
         session = SESSIONS.get(plan_id)
         accounts.authorize_session(session, request)
+        if session.request.get("source") == "mcp":
+            from .mcp_domain import delivery_status
+            if delivery_status(session.result(req.revision), allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"] not in {"ready", "draft"}:
+                raise HTTPException(422, "旧版本未达到MCP证据门槛，不能恢复。")
         result, revision = SESSIONS.revert(plan_id, req.revision, req.base_revision)
     except SessionNotFound:
         raise HTTPException(status_code=410, detail=EXPIRED) from None
@@ -303,12 +345,26 @@ def revert_endpoint(plan_id: str, req: RevertRequest, request: Request) -> dict[
     return deliver_plan(result, session, revision)
 
 
+def plan_catalog(plan_id: str | None, request: Request):
+    """详情/图片按所属行程的目录版本解析；行程过期或不属于当前访问者时读当前发布版。"""
+    if plan_id:
+        try:
+            session = SESSIONS.get(plan_id)
+            accounts.authorize_session(session, request)
+            return result_catalog(session.result())
+        except (SessionNotFound, HTTPException):
+            pass
+    return use_catalog(current_catalog())
+
+
 @app.get("/api/place-media")
-def place_media(kind: Literal["poi", "meal"], id: int, http: Request) -> dict[str, Any]:  # noqa: A002 — 与前端字段名一致
+def place_media(kind: Literal["poi", "meal"], id: int, http: Request,  # noqa: A002 — 与前端字段名一致
+                plan_id: str | None = Query(None, max_length=64)) -> dict[str, Any]:
     """地点图片（最多 5 张），来源与留存规范见 app/media.py、docs/图片资源规范.md。"""
     access.rate_limit(http, "media")
     from .media import get_place_media
-    result = get_place_media(kind, id)
+    with plan_catalog(plan_id, http):
+        result = get_place_media(kind, id)
     if result is None:
         raise HTTPException(status_code=404, detail="找不到这个地点")
     return result.model_dump()
@@ -327,7 +383,8 @@ def navigation(request: NavigationRequest, http: Request) -> dict[str, Any]:
 @app.post("/api/place-details")
 def place_details(request: PlaceDetailsRequest, http: Request) -> dict[str, Any]:
     access.rate_limit(http, "details")
-    return get_place_details(request)
+    with plan_catalog(request.plan_id, http):
+        return get_place_details(request)
 
 
 # 高德 JS API 安全密钥代理（官方推荐的 serviceHost 方式）：前端只设置 serviceHost，jscode 由后端附加
@@ -355,6 +412,22 @@ from .media import FILES_DIR as _MEDIA_FILES  # noqa: E402
 _MEDIA_FILES.mkdir(parents=True, exist_ok=True)
 app.mount("/media/files", StaticFiles(directory=_MEDIA_FILES), name="media-files")  # 人工补充的图片（随仓库管理）
 
-_dist = config.REPO_DIR / "frontend" / "dist"
+class FrontendFiles(StaticFiles):
+    """前端构建产物：文件名带哈希的 assets/ 长期缓存，index.html 等每次校验。"""
+
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
+        if path.startswith("assets/") and response.status_code in (200, 304):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+def frontend_app(directory) -> GZipMiddleware:
+    # 只压缩前端静态文件；规划进度流不经过这里，避免压缩缓冲拖慢逐条推送。
+    # 无网关直连（如经 SSH 隧道访问测试实例）时，脚本和样式约缩小七成
+    return GZipMiddleware(FrontendFiles(directory=directory, html=True), minimum_size=1024)
+
+
+_dist = config.FRONTEND_DIST
 if _dist.exists():
-    app.mount("/", StaticFiles(directory=_dist, html=True), name="frontend")
+    app.mount("/", frontend_app(_dist), name="frontend")

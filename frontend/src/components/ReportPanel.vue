@@ -12,6 +12,7 @@ const CODE: Record<string, string> = {
   short_visit: '游玩时间偏短', early_finish: '下午安排偏少', long_idle: '空档过长',
   date_closed: '日期闭馆', walking_limit: '步行超限', transport_unavailable: '交通不可用', empty_day: '当日无景点',
   excessive_transport: '交通时间偏长', anchor_mixed: '大型园区混排', audience_mismatch: '人群不匹配', onsite_meal_unconfirmed: '园内用餐待确认',
+  interstop_ride_limit: '单段乘车超过45分钟', interstop_ride_long: '单段乘车超过25分钟',
 }
 const paces: Record<string, string> = { relaxed: '舒缓', normal: '均衡', intense: '充实' }
 const rows = computed(() => [
@@ -63,7 +64,7 @@ const rows = computed(() => [
       <template v-else> · {{ plan.meta.selection.cached ? '缓存命中' : '实时评分' }} · {{ plan.meta.selection.confident_candidates }}/{{ plan.meta.selection.candidates }} 个候选采用模型评分，其余沿用规则</template>
     </p>
     <p v-if="isMealSwap" class="muted tiny">
-      本次换餐局部重排 · {{ plan.seconds }} 秒 · 调度算法重新核对路线与时间，无需调用大模型。
+      本次用餐安排更新 · {{ plan.seconds }} 秒 · 已重新核对完整行程，无需调用大模型。
       原行程的模型选点与修复记录见上方执行过程。
     </p>
     <p v-else class="muted tiny">

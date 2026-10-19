@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "scope": "仅新增补充目录持久化，不改变现有生产存量和在线接口",
+  "reviewed_at": "2026-10-18",
+  "provider": "amap",
+  "additional_contract_verified": false,
+  "persist_provider_fields": false,
+  "export_provider_fields": false,
+  "prohibited_origins": [
+    "amap"
+  ],
+  "prohibited_reference_domains": [
+    "amap.com",
+    "gaode.com"
+  ],
+  "terms_url": "https://lbs.amap.com/pages/terms/",
+  "terms_page_updated": "2025-12-03",
+  "note": "未取得额外可再利用依据，发现结果不得通过人工改标签变为自有资料。此策略拒绝持久化高德字段；不是对既有账号合同的完整法律审核。"
+}

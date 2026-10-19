@@ -36,7 +36,16 @@ ONLINE_RESTAURANTS = os.environ.get("TTA_ONLINE_RESTAURANTS", "1") == "1"
 # ── 公网部署（docs/公网部署.md）：由 systemd 的 EnvironmentFile 提供，不写进仓库；默认全部关闭 ──
 REQUIRE_LOGIN_TO_PLAN = os.environ.get("TTA_REQUIRE_LOGIN", "0") == "1"
 PLAN_LIMIT_USER = int(os.environ.get("TTA_PLAN_LIMIT_USER", "0") or 0)   # 每个账号每天可生成次数，0 = 不限
+# 不受每日次数限制的账号（用户名，逗号分隔），如站长自己的账号；仍然要求登录，也不占所在 IP 的额度
+UNLIMITED_USERS = frozenset(name.strip() for name in os.environ.get("TTA_UNLIMITED_USERS", "").split(",") if name.strip())
 PLAN_LIMIT_IP = int(os.environ.get("TTA_PLAN_LIMIT_IP", "0") or 0)       # 每个 IP 每天可生成次数，0 = 不限
 RATE_LIMIT = os.environ.get("TTA_RATE_LIMIT", "0") == "1"                # 外部数据接口按 IP 限频
 INVITE_CODES = frozenset(code.strip() for code in os.environ.get("TTA_INVITE_CODES", "").split(",") if code.strip())
 PUBLIC_HOSTS = frozenset(host.strip().lower() for host in os.environ.get("TTA_PUBLIC_HOSTS", "").split(",") if host.strip())
+
+# 景点目录：base_only（缺省，只读原库）| with_supplement（隔离实例显式开启，叠加已发布补充目录）
+POI_CATALOG_MODE = os.environ.get("TTA_POI_CATALOG", "base_only")
+POI_SUPPLEMENT_DIR = Path(os.environ.get("TTA_POI_SUPPLEMENT_DIR", DATA_DIR / "poi_supplement"))
+
+# 隔离验证可指定独立静态目录；默认保持既有网页构建产物。
+FRONTEND_DIST = Path(os.environ.get("TTA_FRONTEND_DIST", REPO_DIR / "frontend" / "dist"))

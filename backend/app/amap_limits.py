@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextvars import ContextVar
 import threading
 import time
 from dataclasses import dataclass, field
@@ -15,9 +16,12 @@ class RequestBudget:
     used: int = 0
     ceiling: int | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+    cancelled: threading.Event | None = None
 
     def consume(self) -> None:
         with self.lock:
+            if self.cancelled is not None and self.cancelled.is_set():
+                raise RequestBudgetExceeded("任务已取消")
             limit = min(value for value in (self.limit, self.ceiling) if value is not None) if any(value is not None for value in (self.limit, self.ceiling)) else None
             if limit is not None and self.used >= limit:
                 raise RequestBudgetExceeded("本次规划的数据查询额度已用完")
@@ -39,3 +43,7 @@ class SharedRateLimiter:
 
 
 amap_limiter = SharedRateLimiter()
+
+
+# MCP 一次逻辑操作内的全部高德请求共用；网页默认保持原行为。
+operation_budget: ContextVar[RequestBudget | None] = ContextVar("operation_budget", default=None)

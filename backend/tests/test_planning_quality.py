@@ -112,6 +112,9 @@ def test_solver_can_drop_remote_optional_stop_but_retains_required(monkeypatch):
         def matrix(self, locations):
             return [[0, 5, 100], [5, 0, 100], [100, 100, 0]]
 
+        def leg(self, *coordinates, live=False):
+            return 100, "公交/地铁", 2
+
     profile = UserProfile(days=1, include_evening=False, day_start=480, day_end=1200)
     optional = route_ortools([1, 2], profile, {1: 1, 2: 0}, MatrixRoute())
     required = route_ortools([1, 2], profile, {1: 1, 2: 0}, MatrixRoute(), must={2})

@@ -4,11 +4,13 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 import time
 
+from ..areas import area_index
 from ..data import load_pois
 from ..llm import LLM, chat_json, evaluate_jev
 from ..guides import guide_context, retrieve_guides
 from ..experiences import experience_key
 from ..geo import haversine_km
+from ..poi_semantics import safe_reason, evening_only
 from ..prompts import SELECT_SYSTEM, profile_to_text
 from ..rules import PACE, activity_window
 from ..schemas import Candidate, Selection, UserProfile
@@ -48,14 +50,27 @@ def select_rule(cands: list[Candidate], p: UserProfile, n: int) -> list[Selectio
 
 def candidate_lines(cands: list[Candidate]) -> str:
     pois = load_pois()
-    lines = []
+    areas = area_index(pois)
+    groups: dict[str, list[Candidate]] = {}
     for c in cands:
-        x = pois[c.poi_id]
-        lines.append(f"id={x.id} | {x.name} | {x.type} | 标签:{'、'.join(x.interests)} | 体力:{x.stamina} | "
+        groups.setdefault(c.area_id or areas.area_of(c.poi_id), []).append(c)
+    lines = []
+    for area, members in groups.items():
+        near = [areas.label(other) for other in groups if other != area and areas.adjacent(area, other)]
+        nearest = min(c.breakdown.get("distance_km", 0) for c in members)
+        lines.append(f"【片区：{areas.label(area)}｜相邻片区：{'、'.join(near) or '无'}｜距起点最近约 {nearest} km】")
+        lines.extend(_candidate_line(c, pois, areas.label(area)) for c in members)
+    return "\n".join(lines)
+
+
+def _candidate_line(c: Candidate, pois, area_label: str) -> str:
+    x = pois[c.poi_id]
+    return (f"id={x.id} | {x.name} | {x.type} | 标签:{'、'.join(x.interests)} | 体力:{x.stamina} | "
                      f"门票参考:{x.price:.0f}元(免费已核验:{x.price == 0 and x.price_verified}) | 建议:{x.min_hours}-{x.max_hours}h | 距起点:{c.breakdown['distance_km']}km | "
                      f"开放:{x.open_min // 60:02d}:{x.open_min % 60:02d}-{x.close_min // 60:02d}:{x.close_min % 60:02d} | {x.summary} | "
-                     f"同段游览:{x.visit_group_label or '独立地点'} | 季节限制:{x.seasonal_note or '未提供，不推断当日花期或天气'}")
-    return "\n".join(lines)
+                     f"同段游览:{x.visit_group_label or '独立地点'} | 体验粒度:{x.experience_kind} | 园内用餐:{x.onsite_dining} | "
+                     f"安排:{'晚间型，仅17:00以后，不作白天主项目' if evening_only(x) else '白天可安排'} | 片区:{area_label} | 适合人群:{'、'.join(x.audience)} | 可安排天:{c.available_days} | "
+                     f"停留依据:{x.duration_source} | 季节限制:{x.seasonal_note or '未提供，不推断当日花期或天气'} | {'；'.join(c.notices)}")
 
 
 def select_llm(cands: list[Candidate], p: UserProfile, n: int, llm: LLM, evidence: list[dict] | None = None) -> list[Selection]:
@@ -130,7 +145,7 @@ def complete_experiences(selected: list[Selection], candidates: list[Candidate],
     target = sum((3 if profile.pace == "intense" else 2)
                  if activity_window(profile, day)["end"] - activity_window(profile, day)["start"] >= 480 else 1
                  for day in range(1, profile.days + 1))
-    groups = {experience_key(places[item.poi_id]) for item in result if places[item.poi_id].visit_role != "viewpoint"}
+    groups = {experience_key(places[item.poi_id]) for item in result if places[item.poi_id].visit_role != "viewpoint" and not evening_only(places[item.poi_id])}
     walking_day = any(places[item.poi_id].visit_group for item in result)
     anchor_days = min(profile.days, sum(places[item.poi_id].day_anchor for item in result))
     target = max(anchor_days, target - anchor_days * (2 if profile.pace == "intense" else 1))
@@ -145,6 +160,7 @@ def complete_experiences(selected: list[Selection], candidates: list[Candidate],
         alternatives = [candidate for candidate in candidates
                         if experience_key(places[candidate.poi_id]) not in groups
                         and places[candidate.poi_id].visit_role != "viewpoint"
+                        and not evening_only(places[candidate.poi_id])
                         and places[candidate.poi_id].stamina <= PACE[profile.pace]["max_stamina"]]
         if not alternatives:
             break
@@ -152,7 +168,9 @@ def complete_experiences(selected: list[Selection], candidates: list[Candidate],
             place = places[candidate.poi_id]
             distance = min((haversine_km(place.lat, place.lon, places[item.poi_id].lat, places[item.poi_id].lon)
                             for item in result), default=0)
-            return candidate.score - distance * 0.1
+            covered = {interest for item in result for interest in places[item.poi_id].interests}
+            missing = set(profile.interests) - covered
+            return candidate.score - distance * 0.1 + 0.12 * len(missing & set(place.interests))
         addition = max(alternatives, key=priority)
         result.append(Selection(poi_id=addition.poi_id, source="rule",
                                 reason=rule_reason(addition, profile)))
@@ -179,8 +197,12 @@ def select_node(state: dict) -> dict:
     else:
         sel = select_llm(cands, p, n, state["llm"], evidence) if mode == "llm" else select_rule(cands, p, n)
     sel = complete_experiences(sel, cands, p)
+    places = load_pois()
+    for selection in sel:
+        selection.reason = safe_reason(selection.reason, places[selection.poi_id], p)
     n_llm = sum(1 for s in sel if s.source == "llm")
     n_jev = sum(item.source == "jev" for item in sel)
     detail = f"；Jev {stats['seconds']}秒，{'回退原模型' if stats['status'] == 'fallback' else '缓存命中' if stats.get('cached') else '结构化评分'}" if stats else ""
-    return {"selected": sel, "guide_evidence": evidence, "selection_stats": stats,
+    return {"selected": sel, "initial_selected_ids": [selection.poi_id for selection in sel],
+            "guide_evidence": evidence, "selection_stats": stats,
             "log": [f"选点（{mode}）：目标 {n} 个，选中 {len(sel)} 个（LLM {n_llm} / Jev {n_jev} / 规则 {len(sel) - n_llm - n_jev}）{detail}"]}

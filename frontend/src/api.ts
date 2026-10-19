@@ -12,6 +12,7 @@ export interface Meta {
 }
 
 export interface PlanItem {
+  area?: string
   is_alternative?: boolean
   guide_evidence?: { id: string; title: string; facts: string; url: string; publisher: string; source_date: string | null; attribution: string; permission: string; duration_scope: string | null; queue_note: string | null; season_note: string | null; caveats: string[] }[]
   evening?: boolean
@@ -35,7 +36,7 @@ export interface PlanItem {
   visit_role?: 'attraction' | 'walk_segment' | 'viewpoint'
   lat?: number
   lon?: number
-  source: 'llm' | 'rule' | 'repair' | null
+  source: 'llm' | 'rule' | 'repair' | 'jev' | 'external_ai' | null
   score: Record<string, number> | null
   travel_evidence?: LegEvidence | null
   notices?: string[]
@@ -55,6 +56,19 @@ export interface PlacePhoto { url: string; thumb_url: string; caption: string; s
 export interface PlaceMedia { kind: 'poi' | 'meal'; id: number; name: string; photos: PlacePhoto[]; status: 'ready' | 'partial' | 'empty' | 'unavailable'; fetched_at: string | null; policy: string }
 export interface PlanChange { day: number; meal: 'lunch' | 'dinner'; from: string; to: string; shift_min: number | null; removed: string[]; reordered: boolean; passed: boolean; conflicts: string[]; seconds: number; live_calls: number }
 
+export interface MealEditPreview {
+  preview_id: string; base_revision: number; expires_at: number; can_commit: boolean; plan: PlanResponse
+  change: PlanChange & { action: 'replace' | 'self_arranged'; budget_before: number; budget_after: number; budget_delta: number;
+    travel_delta_min: number; ride_delta_min: number; end_before: number | null; end_after: number | null; route_source: 'amap' | 'estimate';
+    affected_stops: { name: string; before_start: number; before_end: number; after_start: number | null; after_end: number | null }[] }
+}
+export interface MealEditInput { revision: number; day: number; action?: 'replace' | 'self_arranged'; item_index?: number; restaurant_id?: number; meal?: 'lunch' | 'dinner'; estimated_cost?: number }
+export const previewMeal = (planId: string, body: MealEditInput, signal?: AbortSignal) =>
+  fetch(`/api/plans/${encodeURIComponent(planId)}/meal-preview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal }).then(response => j<MealEditPreview>(response))
+export const commitMeal = (planId: string, revision: number, previewId: string) =>
+  fetch(`/api/plans/${encodeURIComponent(planId)}/meal-commit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, preview_id: previewId }) }).then(response => j<PlanResponse>(response))
+export const getCurrentPlan = (planId: string) => fetch(`/api/plans/${encodeURIComponent(planId)}`, { cache: 'no-store' }).then(response => j<PlanResponse>(response))
+
 export interface LegEvidence { minutes: number; mode: string; source: 'amap' | 'estimate' | 'same_place'; walking_m: number; available: boolean; fallback_reason: string | null }
 export interface PlaceDetail {
   kind: 'poi' | 'meal'; id: number; name: string; introduction: string; highlights: string[]; audiences: string[]; tags: string[]
@@ -68,13 +82,15 @@ export interface NavigationResult {
 }
 export interface NavigationResponse { legs: NavigationResult[]; queries: number; coordinate_system: string }
 export interface NavigationLeg { origin: { lat: number; lon: number }; destination: { lat: number; lon: number }; mode: string; departure: number }
-export interface DayPlan { day: number; date?: string | null; items: PlanItem[]; return_travel_min: number; return_leg?: LegEvidence | null; walking_m?: number; notes: string[]; reserved_meals?: { meal: 'lunch' | 'dinner'; start: number; end: number; reason: string; inside_poi_id?: number | null; estimated_cost?: number }[] }
+export interface DayPlan { day: number; date?: string | null; items: PlanItem[]; return_travel_min: number; return_leg?: LegEvidence | null; walking_m?: number; areas?: string[]; notes: string[]; reserved_meals?: { meal: 'lunch' | 'dinner'; start: number; end: number; reason: string; inside_poi_id?: number | null; estimated_cost?: number; status?: 'pending' | 'self_arranged' }[] }
 
 export interface Violation { code: string; severity: 'hard' | 'soft'; day: number | null; item: string | null; message: string }
 
 export interface PlanResponse {
   history_id?: string
   history_error?: string
+  delivery_status?: 'ready' | 'draft'
+  verification_notice?: string | null
   history_readonly?: boolean
   profile: {
     days: number; budget: number; pace: string; interests: string[]; dietary: string[]; companions: string; transport: 'taxi' | 'transit'
@@ -92,7 +108,7 @@ export interface PlanResponse {
   log: string[]
   usage: { calls: number; cached_calls: number; total_tokens: number; seconds: number }
   seconds: number
-  meta: { operation?: 'plan' | 'meal_swap'; travel: { source: string; mode_name?: string; live_calls?: number; approx_legs?: number; approx_planning?: number; final_legs?: number; errors?: string[] }; select_mode: string; enable_repair: boolean; repair_rounds: number; llm_model: string; llm_thinking: string; tag_source: string; selection?: { provider?: string; model?: string; status?: string; cached?: boolean; seconds?: number; confident_candidates?: number; candidates?: number; error?: string } }
+  meta: { operation?: 'plan' | 'meal_swap' | 'meal_self_arranged'; travel: { source: string; mode_name?: string; live_calls?: number; approx_legs?: number; approx_planning?: number; final_legs?: number; errors?: string[] }; select_mode: string; enable_repair: boolean; repair_rounds: number; llm_model: string; llm_thinking: string | null; tag_source: string; selection?: { provider?: string; model?: string; status?: string; cached?: boolean; seconds?: number; confident_candidates?: number; candidates?: number; error?: string } }
 }
 
 export interface PlanRequest {
@@ -174,12 +190,12 @@ export async function postPlan(req: PlanRequest, onProgress: (event: import('./p
 export const getNavigation = (date: string | null, legs: NavigationLeg[], signal?: AbortSignal) =>
   fetch('/api/navigation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, legs }), signal })
     .then(response => j<NavigationResponse>(response))
-export const getPlaceDetails = (places: { kind: 'poi' | 'meal'; id: number }[], signal?: AbortSignal) =>
-  fetch('/api/place-details', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ places }), signal })
+export const getPlaceDetails = (places: { kind: 'poi' | 'meal'; id: number }[], signal?: AbortSignal, planId?: string | null) =>
+  fetch('/api/place-details', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ places, plan_id: planId || null }), signal })
     .then(response => j<{ places: PlaceDetail[]; queries: number }>(response))
 
-export const getPlaceMedia = (kind: 'poi' | 'meal', id: number, signal?: AbortSignal) =>
-  fetch(`/api/place-media?kind=${kind}&id=${id}`, { signal }).then(response => j<PlaceMedia>(response))
+export const getPlaceMedia = (kind: 'poi' | 'meal', id: number, signal?: AbortSignal, planId?: string | null) =>
+  fetch(`/api/place-media?kind=${kind}&id=${id}${planId ? `&plan_id=${encodeURIComponent(planId)}` : ''}`, { signal }).then(response => j<PlaceMedia>(response))
 export const swapMeal = (planId: string, body: { revision: number; day: number; item_index: number; restaurant_id: number }) =>
   fetch(`/api/plans/${encodeURIComponent(planId)}/swap-meal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then(response => j<PlanResponse>(response))
@@ -194,3 +210,6 @@ export const localQueryDate = (value: string) => {
   if (Number.isNaN(date.getTime())) return value.slice(0, 10)
   return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
 }
+
+// MCP 保存的同账号深链；活跃时返回共享会话，否则返回只读历史。
+export const getLinkedTrip = async (id: string) => j<HistoryDetail>(await fetch(`/api/trips/${encodeURIComponent(id)}`, { cache: 'no-store' }))

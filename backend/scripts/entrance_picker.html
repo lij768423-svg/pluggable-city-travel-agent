@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- 补充地点入口标注页：放进私网测试实例的静态目录使用（不进生产）。
+     点选位置由用户确定，坐标为 GCJ-02；页面不调用地点搜索，也不保存任何高德地点资料。
+     结果只显示在页面上并存在本浏览器，由用户复制后交给维护者登记。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>入口标注</title>
+<style>
+  :root { --bg: #f7f6f2; --panel: #fff; --text: #1f2328; --muted: #5f6670; --line: #d9d6cf; --accent: #2f6f5e; --warn: #9a5b00; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #16181b; --panel: #1f2226; --text: #e8e6e1; --muted: #a3a8ae; --line: #343840; --accent: #6fbfa6; --warn: #e0a54a; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { display: grid; grid-template-columns: 360px 1fr; height: 100vh; }
+  aside { padding: 16px; overflow: auto; border-right: 1px solid var(--line); background: var(--panel); }
+  #map { width: 100%; height: 100%; min-height: 360px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p.note { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; }
+  legend { padding: 0 4px; font-weight: 600; }
+  label { display: block; margin: 4px 0; cursor: pointer; }
+  .boundary { color: var(--muted); font-size: 12px; margin: 2px 0 6px 22px; }
+  input[type=text] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); }
+  .coords { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  textarea { width: 100%; height: 170px; font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); padding: 6px; }
+  button { padding: 7px 12px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; margin-right: 6px; }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  #status { color: var(--warn); font-size: 13px; min-height: 20px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--line); } #map { height: 60vh; } }
+</style>
+</head>
+<body>
+<main>
+<aside>
+  <h1>补充地点入口标注</h1>
+  <p class="note">先选地点和要标的点，再在右侧地图上点击。位置由你确定，坐标为 GCJ-02；本页不搜索也不保存高德地点资料。标完后点“复制结果”，把内容发给 Claude。</p>
+  <fieldset>
+    <legend>地点</legend>
+    <div id="places"></div>
+  </fieldset>
+  <fieldset>
+    <legend>要标的点</legend>
+    <label><input type="radio" name="kind" value="entrance" checked> 主要入口（导航终点）</label>
+    <label><input type="radio" name="kind" value="position"> 地图位置（园区代表点，可与入口相同）</label>
+    <div class="coords" id="current"></div>
+  </fieldset>
+  <fieldset>
+    <legend>入口说明（可选）</legend>
+    <input type="text" id="desc" maxlength="80" placeholder="如：金沙大道一侧北入口">
+  </fieldset>
+  <div id="status"></div>
+  <textarea id="out" readonly></textarea>
+  <p><button id="copy">复制结果</button><button class="secondary" id="clear">清空当前地点</button></p>
+</aside>
+<div id="map"></div>
+</main>
+<script>
+// 中心点仅用于定位视野（OSM 边界或四至道路换算的近似 GCJ-02），不作为坐标资料；四至来自《杭州市城市公园名录（2026年版）》
+const PLACES = [
+  { key: "hz:qiantang:jinshahu-park", name: "金沙湖公园", center: [120.318424, 30.307349], boundary: "北金沙大道、南天城东路、西乔下路、东海达南路（已标注）" },
+  { key: "hz:qiantang:baiyang-youth-park", name: "高教西公园（白杨青年公园）", center: [120.351876, 30.317209], boundary: "北学源街、南学林街、西文泽路、东浙江理工大学" },
+  { key: "hz:qiantang:baiyang-eco-park", name: "白杨生态公园", center: [120.36458, 30.3117], boundary: "北德胜东路、南6号路、西11号渠、东绕城公路南线（位置为估计，请拖动地图）" },
+  { key: "hz:qiantang:riverside-east-park", name: "沿江景观东公园", center: [120.36658, 30.2657], boundary: "之江东路以南、绕城高速以东（钱塘江边，位置为估计）" },
+  { key: "hz:qiantang:riverside-west-park", name: "沿江景观西公园", center: [120.36658, 30.2657], boundary: "之江东路以南、绕城高速以西（钱塘江边，位置为估计）" },
+];
+const CENTERS = Object.fromEntries(PLACES.map(p => [p.key, p.center]));
+const NAMES = Object.fromEntries(PLACES.map(p => [p.key, p.name.replace(/（.*）/, "")]));
+document.getElementById("places").innerHTML = PLACES.map((p, i) =>
+  `<label><input type="radio" name="place" value="${p.key}"${i === 1 ? " checked" : ""}> ${p.name}</label><div class="boundary">名录四至：${p.boundary}</div>`).join("");
+const KEY = "entrance-picker-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { state = {}; }
+const $ = id => document.getElementById(id);
+const place = () => document.querySelector("input[name=place]:checked").value;
+const kind = () => document.querySelector("input[name=kind]:checked").value;
+let map, markers = {};
+
+function pick(lat, lon) {
+  const entry = (state[place()] ||= {});
+  entry[kind()] = { lat: +lat.toFixed(6), lon: +lon.toFixed(6) };
+  entry.picked_at = new Date().toISOString();
+  save();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} render(); }
+function render() {
+  const entry = state[place()] || {};
+  $("desc").value = entry.note || "";
+  const point = entry[kind()];
+  $("current").textContent = point ? `已标：${point.lat}, ${point.lon}（GCJ-02）` : "尚未标注";
+  const result = Object.entries(state).map(([key, value]) => ({ canonical_key: key, name: NAMES[key], ...value }));
+  $("out").value = JSON.stringify({ picked_by: "user", crs: "GCJ02", places: result }, null, 1);
+  if (!map) return;
+  for (const m of Object.values(markers)) m.setMap(null);
+  markers = {};
+  for (const [key, value] of Object.entries(state)) for (const k of ["entrance", "position"]) if (value[k]) {
+    markers[key + k] = new AMap.Marker({ position: [value[k].lon, value[k].lat], map,
+      label: { content: `${NAMES[key]}·${k === "entrance" ? "入口" : "位置"}`, direction: "top" } });
+  }
+}
+document.querySelectorAll("input[name=place]").forEach(r => r.addEventListener("change", () => { render(); map && map.setCenter(CENTERS[place()]); }));
+document.querySelectorAll("input[name=kind]").forEach(r => r.addEventListener("change", render));
+$("desc").addEventListener("input", () => { (state[place()] ||= {}).note = $("desc").value.trim(); save(); });
+$("clear").addEventListener("click", () => { delete state[place()]; save(); });
+$("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("out").value); $("status").textContent = "已复制，发给 Claude 即可。"; }
+  catch { $("out").select(); $("status").textContent = "浏览器不允许自动复制，请手动复制文本框内容。"; }
+});
+
+fetch("/api/meta").then(r => r.json()).then(meta => {
+  const key = meta.map && meta.map.amap_js_key;
+  if (!key) { $("status").textContent = "该实例没有配置地图，无法标注。"; return; }
+  window._AMapSecurityConfig = { serviceHost: `${location.origin}/_AMapService` };
+  const s = document.createElement("script");
+  s.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&plugin=AMap.ToolBar,AMap.Scale`;
+  s.onload = () => {
+    map = new AMap.Map("map", { zoom: 16, center: CENTERS[place()] });
+    map.addControl(new AMap.ToolBar()); map.addControl(new AMap.Scale());
+    map.on("click", e => pick(e.lnglat.getLat(), e.lnglat.getLng()));
+    render();
+  };
+  s.onerror = () => { $("status").textContent = "地图脚本加载失败，请检查网络后刷新。"; };
+  document.head.appendChild(s);
+}).catch(() => { $("status").textContent = "读取实例配置失败，请确认测试实例可访问。"; });
+render();
+</script>
+</body>
+</html>

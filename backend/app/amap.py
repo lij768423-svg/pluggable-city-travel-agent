@@ -101,13 +101,13 @@ class AmapRouter:
         if self.offline:
             raise MissingSnapshotError(f"离线快照缺少 {path}，已禁止联网")
         for attempt in range(3):
+            if self.interval >= 1 / 3:
+                amap_limiter.wait()
             try:
                 if self.budget:
                     self.budget.consume()
             except RequestBudgetExceeded as error:
                 raise AmapBudgetExceeded(str(error)) from None
-            if self.interval >= 1 / 3:
-                amap_limiter.wait()
             self.calls += 1
             try:
                 response = self._client.get(f"{BASE}/{path}", params={**params, "key": self.key})

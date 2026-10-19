@@ -1,12 +1,28 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import math
 
 from .schemas import POI
 
 
+LOCALITY_CELL_DEGREES = 0.02
+
+
 def experience_key(place: POI) -> str:
     return f"walk:{place.visit_group}" if place.visit_group else f"poi:{place.id}"
+
+
+def locality_key(place: POI) -> str:
+    """Return a deterministic soft locality used only for initial day grouping.
+
+    A declared walk group stays atomic. Other places use a small geographic
+    cell so the scheduler starts from nearby clusters without making a hard
+    district constraint.
+    """
+    if place.visit_group:
+        return f"experience:{place.visit_group}"
+    return f"grid:{math.floor(place.lat / LOCALITY_CELL_DEGREES)}:{math.floor(place.lon / LOCALITY_CELL_DEGREES)}"
 
 
 def experience_count(place_ids: Iterable[int], places: dict[int, POI]) -> int:

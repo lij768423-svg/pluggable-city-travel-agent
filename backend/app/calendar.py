@@ -12,15 +12,23 @@ def trip_date(profile: UserProfile, day: int):
 def closed_on(poi: POI, profile: UserProfile, day: int) -> bool:
     date = trip_date(profile, day)
     rules = poi.opening_rules
-    if date is None or rules is None:
+    if rules is None:
         return False
+    if date is None:
+        return rules.dates_listed_only
     if date in rules.open_dates:
         return False
+    if rules.dates_listed_only:
+        return True
+    if rules.open_months and date.month not in rules.open_months:
+        return True
     return date in rules.closed_dates or date.weekday() in rules.closed_weekdays
 
 
 def date_notices(poi: POI, profile: UserProfile, day: int) -> list[str]:
+    from .poi_semantics import experience_notices
     review = [text for text in (poi.review_note, poi.seasonal_note) if text]
+    review.extend(experience_notices(poi, profile, day))
     if profile.start_date is None:
         return review + ["未填写出游日期，尚未核验当天开放情况"]
     if poi.opening_rules is None:

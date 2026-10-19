@@ -106,7 +106,8 @@ def test_transport_quality_uses_recomputed_legs_and_repairs_optional_detour():
         Item(kind="poi", ref_id=117, name="少年儿童公园", start=800, end=920),
     ])])
     report = validate_itinerary(itinerary, profile, travel_fn=lambda *coords: (80, "公交/地铁", 2), restaurants={})
-    assert "excessive_transport" in {violation.code for violation in report.violations}
+    assert "interstop_ride_limit" in {violation.code for violation in report.violations}
+    assert "excessive_transport" not in {violation.code for violation in report.violations}
     assert report.experience_status == "needs_attention"
     state = {"profile":profile, "report":report, "itinerary":itinerary,
              "selected":[Selection(poi_id=identifier, source="rule", reason="") for identifier in (20, 117)],
@@ -125,4 +126,4 @@ def test_explicit_far_must_visits_are_not_silently_removed():
         "candidates":[Candidate(poi_id=identifier, score=1, breakdown={"must_visit":1}) for identifier in (1, 20)]}
     selected, _, _, _ = repair(state)
     assert {selection.poi_id for selection in selected} == {1, 20}
-    assert {violation.code for violation in report.violations} >= {"anchor_mixed", "excessive_transport"}
+    assert {violation.code for violation in report.violations} >= {"anchor_mixed", "interstop_ride_limit"}

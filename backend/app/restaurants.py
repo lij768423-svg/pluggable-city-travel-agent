@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from datetime import datetime, timezone
 
@@ -17,6 +18,10 @@ from .schemas import Restaurant, UserProfile
 STRICT_DIET = {"清真"}
 # 放宽时优先给菜系上可能合规的，再退到任意餐厅；两种情况的提示写法不同
 DIET_HINT = {"清真": {"新疆菜", "西北菜", "清真", "中东菜", "土耳其菜"}}
+
+
+def valid_location(restaurant: Restaurant) -> bool:
+    return math.isfinite(restaurant.lat) and math.isfinite(restaurant.lon) and 29 <= restaurant.lat <= 31 and 118 <= restaurant.lon <= 121
 
 
 def brand_name(restaurant: Restaurant) -> str:

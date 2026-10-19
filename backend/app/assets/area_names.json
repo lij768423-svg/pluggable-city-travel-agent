@@ -1,0 +1,26 @@
+{
+  "version": "2026-10-19-v1",
+  "scope": "片区展示名称，项目整理（Claude 起草，用户 2026-10-19 看过表示“感觉还可以”）；只影响名称，不影响片区划分。anchor_id 所在片区使用该名称，同一片区以先出现的条目为准。",
+  "areas": [
+    {"anchor_id": 36, "name": "湖滨·北山街·断桥"},
+    {"anchor_id": 20, "name": "南宋御街·清河坊·吴山"},
+    {"anchor_id": 9, "name": "西湖南线·雷峰塔·苏堤"},
+    {"anchor_id": 13, "name": "岳王庙·杨公堤·植物园"},
+    {"anchor_id": 0, "name": "灵隐·天竺"},
+    {"anchor_id": 2, "name": "龙井·九溪·虎跑"},
+    {"anchor_id": 71, "name": "万松书院·玉皇山·南宋皇城"},
+    {"anchor_id": 15, "name": "武林广场·运河南段"},
+    {"anchor_id": 46, "name": "拱宸桥·小河直街"},
+    {"anchor_id": 5, "name": "西溪湿地"},
+    {"anchor_id": 162, "name": "钱江新城"},
+    {"anchor_id": 94, "name": "奥体·钱江世纪城"},
+    {"anchor_id": 11, "name": "滨江江边·低碳科技馆"},
+    {"anchor_id": 1, "name": "宋城·之江"},
+    {"anchor_id": 17, "name": "湘湖·极地海洋公园"},
+    {"anchor_id": 58, "name": "良渚"},
+    {"anchor_id": 12, "name": "千岛湖中心湖区"},
+    {"anchor_id": 1000000, "name": "下沙·金沙湖"},
+    {"anchor_id": 1000001, "name": "下沙·高教园区"},
+    {"anchor_id": 1000003, "name": "下沙·沿江"}
+  ]
+}

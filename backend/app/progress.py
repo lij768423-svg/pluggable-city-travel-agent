@@ -82,6 +82,9 @@ def stage_event(stage: str, status: str, state: dict[str, Any]) -> dict[str, Any
             detail = f"已确认 {state['profile'].days} 天行程与出行条件"
         elif stage == "retrieve":
             detail = f"已找到 {len(state.get('candidates', []))} 个候选地点"
+            coverage = state.get("retrieval_report", {}).get("interest_coverage", [])
+            if coverage:
+                detail += f" · 兴趣覆盖 {sum(entry['status'] == 'covered' for entry in coverage)}/{len(coverage)} 项"
         elif stage == "select":
             detail = f"已选出 {len(state.get('selected', []))} 个地点"
             selection = state.get("selection_stats", {})

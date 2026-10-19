@@ -21,7 +21,7 @@ PROFILES = [
 def test_rule_pipeline_is_always_feasible(form, mock_llm):
     """性质测试：规则选点 + 调度 + 时间线，在多种画像下都不应出现可行性违例。"""
     r = run_plan("", form, llm=mock_llm, select_mode="rule")
-    feas = [v for v in r["report"].violations if v.code in FEASIBILITY]
+    feas = [v for v in r["report"].violations if v.code in FEASIBILITY or v.code == "interstop_ride_limit"]
     assert not feas, [v.message for v in feas]
     assert len(r["itinerary"].days) == form["days"]
     assert mock_llm.usage.calls == 0  # 只有表单、规则选点：不调用 LLM

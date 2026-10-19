@@ -30,6 +30,10 @@ def test_plan_endpoint_with_mock(monkeypatch, mock_llm):
     poi = next(i for d in body["days"] for i in d["items"] if i["kind"] == "poi")
     assert poi["lat"] and poi["start_hm"] and poi["score"]["score"] is not None
     assert body["profile"]["hotel_gcj"]["lat"]
+    assert body["meta"]["retrieval"]["strategy"] == "coverage_v1"
+    assert body["meta"]["candidate_metrics"]["schedule_attempts"]
+    assert body["candidates"][0]["available_days"]
+    assert poi["detail"]["field_evidence"]["duration"]["basis"]
 
 
 def test_meta_exposes_map_provider_without_security_code():

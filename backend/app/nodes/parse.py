@@ -17,6 +17,7 @@ class _Parsed(BaseModel):
     budget: float | None = None
     pace: str | None = None
     interests: list[str] = Field(default_factory=list)
+    preferred_regions: list[str] = Field(default_factory=list)
     dietary: list[str] = Field(default_factory=list)
     companions: str | None = None
     transport: str | None = None

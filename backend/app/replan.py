@@ -63,6 +63,9 @@ def swap_meal(result: dict[str, Any], day: int, item_index: int, restaurant_id: 
         target = resolve_place(PlaceReference(kind="meal", id=restaurant_id))
     if target is None:
         raise ReplanError(404, "找不到这家餐厅的资料，请重新生成行程后再试")
+    from .restaurants import valid_location
+    if not valid_location(target):
+        raise ReplanError(422, "餐厅坐标无效，不能计算新路线")
     restaurants[target.id] = target
 
     pins = {(d.day, i.meal): i.ref_id for d in itinerary.days for i in d.items
@@ -95,6 +98,8 @@ def swap_meal(result: dict[str, Any], day: int, item_index: int, restaurant_id: 
                                   catalog=catalog, pins=pins, user_meals=user_meals, only_day=day)
         rebuilt = itinerary.model_copy(deep=True)
         rebuilt.days[day - 1] = partial.days[0]
+        from .meal_edits import preserve_self_arranged
+        preserve_self_arranged(result, rebuilt)
         rebuilt.transport_cost = round(itinerary.transport_cost - old_transport + partial.transport_cost, 1)
         rebuilt, _ = add_evening_visits(rebuilt, profile, route, catalog, only_day=day)
         route.finalize(Itinerary(days=[rebuilt.days[day - 1]]), profile, catalog.restaurants)

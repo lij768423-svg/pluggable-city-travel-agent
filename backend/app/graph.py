@@ -14,6 +14,7 @@ from .llm import LLM, Usage, get_llm
 from .nodes.meals import meals_node
 from .nodes.parse import parse_node
 from .nodes.repair import MAX_ROUNDS, repair_node
+from .poi_catalog import current_catalog, use_catalog
 from .refine import refine_node
 from .nodes.retrieve import retrieve_node
 from .nodes.schedule import schedule_node
@@ -32,6 +33,9 @@ class PlanState(TypedDict, total=False):
     guide_mode: str
     guide_evidence: list[dict]
     selection_stats: dict
+    retrieval_report: dict
+    initial_selected_ids: list[int]
+    schedule_attempts: Annotated[list[dict], operator.add]
     enable_repair: bool
     enable_refine: bool
     refined: bool
@@ -40,7 +44,10 @@ class PlanState(TypedDict, total=False):
     travel_source: str | None  # "amap" | "estimate" | None（有 Web服务 key 就用高德）
     travel: Any  # app.travel.Travel（本次规划的路程来源）
     catalog: Any
+    frozen_candidates: bool
     repair_fingerprints: list[str]
+    repair_removed_ids: list[int]
+    repair_pending_additions: list[int]  # 体验补点试排后，由 meals 检查实际片区顺序才采纳
     best_candidate: Any
     # 中间结果
     profile: UserProfile
@@ -70,11 +77,13 @@ def _after_repair(state: PlanState) -> str:
     return "schedule" if state.get("repair_changed") else _finish(state)
 
 
-def build_graph(progress=None):
+def build_graph(progress=None, *, external_selection: bool = False):
     g = StateGraph(PlanState)
     for name, fn in [("parse", parse_node), ("retrieve", retrieve_node), ("select", select_node),
                      ("schedule", schedule_node), ("meals", meals_node), ("validate", validate_node),
                      ("repair", repair_node), ("refine", refine_node)]:
+        if external_selection and name in {"parse", "retrieve", "select"}:
+            continue
         if progress is None:
             g.add_node(name, fn)
         else:
@@ -90,10 +99,13 @@ def build_graph(progress=None):
                 progress(stage_event(stage, "completed", {**state, **update}))
                 return update
             g.add_node(name, observed)
-    g.add_edge(START, "parse")
-    g.add_edge("parse", "retrieve")
-    g.add_edge("retrieve", "select")
-    g.add_edge("select", "schedule")
+    if external_selection:
+        g.add_edge(START, "schedule")
+    else:
+        g.add_edge(START, "parse")
+        g.add_edge("parse", "retrieve")
+        g.add_edge("retrieve", "select")
+        g.add_edge("select", "schedule")
     g.add_edge("schedule", "meals")
     g.add_edge("meals", "validate")
     g.add_conditional_edges("validate", _after_validate, {"repair": "repair", "refine": "refine", END: END})
@@ -126,22 +138,35 @@ def run_plan(query: str = "", form: dict[str, Any] | None = None, *, llm: LLM | 
     before.add(llm.usage)
     t0 = time.time()
     graph = build_graph(progress) if progress is not None else _GRAPH
-    out = graph.invoke({"query": query, "form": form or {}, "llm": llm, "select_mode": select_mode,
-                         "enable_repair": enable_repair, "enable_refine": enable_refine, "use_solver": use_solver, "meal_factor": 1.0,
-                         "travel_source": travel_source, "guide_mode": guide_mode,
-                         "repair_round": 0, "log": []}, {"recursion_limit": 50})
-    if progress is not None:
-        progress(stage_event("finalize", "running", out))
-    used = Usage()
-    used.add(llm.usage)
-    delta = {k: (v - getattr(before, k) if isinstance(v, (int, float)) else v)
-             for k, v in vars(used).items() if k != "by_tag"}
-    out["usage"] = {**delta, "total_tokens": delta["prompt_tokens"] + delta["completion_tokens"]}
-    out["seconds"] = round(time.time() - t0, 2)
+    # 整个任务固定同一目录版本；中途发布新版只影响下一次规划
+    catalog = current_catalog()
+    with use_catalog(catalog):
+        out = graph.invoke({"query": query, "form": form or {}, "llm": llm, "select_mode": select_mode,
+                             "enable_repair": enable_repair, "enable_refine": enable_refine, "use_solver": use_solver, "meal_factor": 1.0,
+                             "travel_source": travel_source, "guide_mode": guide_mode,
+                             "repair_round": 0, "log": []}, {"recursion_limit": 50})
+        if progress is not None:
+            progress(stage_event("finalize", "running", out))
+        used = Usage()
+        used.add(llm.usage)
+        delta = {k: (v - getattr(before, k) if isinstance(v, (int, float)) else v)
+                 for k, v in vars(used).items() if k != "by_tag"}
+        out["usage"] = {**delta, "total_tokens": delta["prompt_tokens"] + delta["completion_tokens"]}
+        out["seconds"] = round(time.time() - t0, 2)
+        out["poi_catalog"] = catalog.reference()
+        return finish_result(out, progress)
+
+
+def finish_result(out: dict, progress=None) -> dict:
+    """网页与外部选点入口共用的定稿及统计；不调用模型。"""
     best = out.pop("best_candidate", None)
     if best is not None:
         for field in ("itinerary", "report", "selected", "day_orders", "dropped"):
             out[field] = best[field]
+    from .candidate_metrics import candidate_metrics
+    out["candidate_metrics"] = candidate_metrics(out)
+    from .meal_edits import meal_metrics
+    out["meal_metrics"] = meal_metrics(out)
     out.pop("llm", None)
     route = out.pop("travel", None)
     catalog = out.pop("catalog", None)

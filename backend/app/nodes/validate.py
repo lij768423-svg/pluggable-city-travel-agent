@@ -4,19 +4,32 @@ from collections.abc import Callable
 from contextlib import nullcontext
 from copy import deepcopy
 
+from ..areas import area_index
 from ..calendar import closed_on, date_notices
 from ..data import load_pois, load_restaurants
 from ..geo import hm, travel
 from ..matching import norm
+from ..poi_semantics import evening_only, visit_open_min
 from ..progress import tick_add
 from ..restaurants import STRICT_DIET, dietary_status, meal_start
-from ..rules import DINNER, LUNCH, TOL, activity_window, required_meals, walking_limit
+from ..rules import (
+    DINNER,
+    LUNCH,
+    HARD_INTERSTOP_RIDE_MIN,
+    MAX_INTERSTOP_RIDE_MIN,
+    TOL,
+    activity_window,
+    interstop_ride_allowed,
+    interstop_ride_long,
+    required_meals,
+    walking_limit,
+)
 from ..schemas import Itinerary, Restaurant, UserProfile, ValidationReport, Violation
 
 TravelFn = Callable[[float, float, float, float], tuple[int, str, float]]
 FEASIBILITY = {"unknown_place", "opening_hours", "date_closed", "travel_time", "time_order", "duplicate_poi", "transport_unavailable"}
-CONSTRAINT = {"over_budget", "diet_conflict", "day_overlong", "avoid_visited", "must_visit_missing", "walking_limit"}
-QUALITY_CODES = {"missing_lunch", "missing_dinner", "early_finish", "long_idle", "short_visit", "empty_day", "excessive_transport", "anchor_mixed", "audience_mismatch", "onsite_meal_unconfirmed"}
+CONSTRAINT = {"over_budget", "diet_conflict", "day_overlong", "avoid_visited", "must_visit_missing", "walking_limit", "interstop_ride_limit"}
+QUALITY_CODES = {"missing_lunch", "missing_dinner", "early_finish", "long_idle", "short_visit", "empty_day", "excessive_transport", "anchor_mixed", "audience_mismatch", "onsite_meal_unconfirmed", "interstop_ride_long", "area_scattered"}
 
 
 def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn | None = None,
@@ -24,6 +37,8 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
     travel_function = travel_fn or travel
     route = getattr(travel_fn, "__self__", None)
     pois = load_pois()
+    areas = area_index(pois)
+    home = areas.home_areas(profile.hotel.lat, profile.hotel.lon)
     restaurants = restaurants if restaurants is not None else load_restaurants()
     violations: list[Violation] = []
     unknowns: set[str] = set()
@@ -31,6 +46,8 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
     visited_names: list[str] = []
     tickets = meals = transport = walking = idle_total = 0.0
     unknown_items = expected_meals = covered_meals = 0
+    missing_meals = meal_confirmations = 0
+    self_arranged_meals = 0
 
     def add(code: str, message: str, day: int | None = None, item: str | None = None, hard: bool = False) -> None:
         violations.append(Violation(code=code, severity="hard" if hard else "soft", message=message, day=day, item=item))
@@ -73,7 +90,8 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                     previous_end = item.end
                     continue
                 needed, mode, cost = travel_function(*position, place.lat, place.lon)
-                transit_minutes += needed
+                if previous_end is not None and mode not in {"步行", "原地"}:
+                    transit_minutes += needed
                 transport += cost
                 detail = route.detail(*position, place.lat, place.lon) if hasattr(route, "detail") else item.travel_evidence
                 if detail:
@@ -86,6 +104,10 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                     day_walking += round(needed * 75) if mode == "步行" else 0
                     unknowns.add("交通含估算或缺少逐段来源")
                 if previous_end is not None:
+                    if not interstop_ride_allowed(needed, mode):
+                        add("interstop_ride_limit", f"到「{item.name}」的{mode}约{needed}分钟，超过单段{HARD_INTERSTOP_RIDE_MIN}分钟上限；仅每天出发和返程豁免，需调整顺序、换到附近地点或分天安排", day.day, item.name, True)
+                    elif interstop_ride_long(needed, mode):
+                        add("interstop_ride_long", f"到「{item.name}」的{mode}约{needed}分钟，超过单段{MAX_INTERSTOP_RIDE_MIN}分钟舒适度建议；路上时间较长", day.day, item.name)
                     gap = item.start - previous_end - needed
                     gap -= sum(slot.end - slot.start for slot in day.reserved_meals
                                if slot.start >= previous_end and slot.end <= item.start)
@@ -106,10 +128,13 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                     if place.id in seen:
                         add("duplicate_poi", "景点重复", day.day, item.name, True)
                     seen.add(place.id)
-                    if item.start < place.open_min or item.end > place.close_min:
-                        add("opening_hours", f"安排超出已知开放时段 {hm(place.open_min)}–{hm(place.close_min)}", day.day, item.name, True)
+                    if item.start < visit_open_min(place) or item.end > place.close_min:
+                        add("opening_hours", f"安排超出可安排时段 {hm(visit_open_min(place))}–{hm(place.close_min)}" + ("；晚间地点最早17:00安排" if evening_only(place) else ""), day.day, item.name, True)
                     if closed_on(place, profile, day.day):
                         add("date_closed", "根据已核验的常规规则，该日期不开放", day.day, item.name, True)
+                    from ..poi_semantics import experience_notices
+                    for notice in experience_notices(place, profile, day.day, item.start, item.end):
+                        unknowns.add(notice)
                     if place.opening_rules and place.opening_rules.last_entry is not None and item.start > place.opening_rules.last_entry:
                         add("opening_hours", "已超过最后入场时间", day.day, item.name, True)
                     if item.end - item.start + TOL < place.min_hours * 60:
@@ -148,7 +173,6 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
             if previous_end is not None:
                 previous_end = max(previous_end, max((slot.end for slot in day.reserved_meals), default=0))
                 back, mode, cost = travel_function(*position, profile.hotel.lat, profile.hotel.lon)
-                transit_minutes += back
                 transport += cost
                 detail = route.detail(*position, profile.hotel.lat, profile.hotel.lon) if hasattr(route, "detail") else day.return_leg
                 day_walking += detail.walking_m if detail else round(back * 75) if mode == "步行" else 0
@@ -158,13 +182,30 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                     unknowns.add("部分交通使用估算，不能作为已核验路线")
                 if previous_end + back > window["end"] + TOL or first_start is not None and first_start < window["start"] - TOL:
                     add("day_overlong", f"行程超出所选时段 {hm(window['start'])}–{hm(window['end'])}", day.day, hard=True)
+        zones = [areas.area_of(item.ref_id) for item in day.items if item.kind == "poi" and item.ref_id in pois]
+        distinct = list(dict.fromkeys(zones))
+        moves = sum(before != after for before, after in zip(zones, zones[1:]))
+        if len(distinct) > 2 or moves > 1 or any(not areas.compatible(first, second, home)
+                                                 for index, first in enumerate(distinct) for second in distinct[index + 1:]):
+            add("area_scattered", f"当天在{len(distinct)}个片区之间转场{moves}次（{'、'.join(areas.label(zone) for zone in distinct)}），路上较折腾", day.day)
         if transit_minutes > transit_limit:
-            add("excessive_transport", f"当天交通约{transit_minutes}分钟，超过本项目的{transit_limit}分钟舒适度阈值，建议减少跨区地点或调整起点", day.day)
+            add("excessive_transport", f"景点之间乘车约{transit_minutes}分钟，超过本项目的{transit_limit}分钟舒适度阈值，建议减少跨区地点", day.day)
         walking += day_walking
         if day_walking > walking_limit(profile):
             add("walking_limit", f"已知步行 {day_walking / 1000:.1f} 公里，超过每日上限 {walking_limit(profile) / 1000:.1f} 公里", day.day, hard=True)
         for kind in wanted:
             if kind not in matched_meals:
+                self_meal = next((slot for slot in day.reserved_meals if slot.meal == kind and slot.status == "self_arranged"
+                    and (LUNCH if kind == "lunch" else DINNER)[0] <= slot.start <= (LUNCH if kind == "lunch" else DINNER)[1]
+                    and slot.end - slot.start >= 30 and window["start"] <= slot.start < slot.end <= window["end"]
+                    and (any(visit.ref_id == slot.inside_poi_id and visit.start <= slot.start < slot.end <= visit.end
+                             and pois.get(visit.ref_id) and pois[visit.ref_id].onsite_dining for visit in visits)
+                         if slot.inside_poi_id is not None else not any(item.start < slot.end and slot.start < item.end for item in day.items))), None)
+                if self_meal:
+                    meals += self_meal.estimated_cost
+                    self_arranged_meals += 1
+                    unknowns.add("用户已确认自行安排用餐，预留费用不是已核验商户报价，未计作已落实餐厅")
+                    continue
                 onsite = next((slot for slot in day.reserved_meals if slot.meal == kind and slot.inside_poi_id is not None
                     and any(visit.ref_id == slot.inside_poi_id and visit.start <= slot.start < slot.end <= visit.end
                             and pois.get(visit.ref_id) and pois[visit.ref_id].onsite_dining for visit in visits)
@@ -172,9 +213,11 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                     and slot.end - slot.start >= 30), None)
                 if onsite:
                     meals += onsite.estimated_cost
+                    meal_confirmations += 1
                     add("onsite_meal_unconfirmed", f"{'午' if kind == 'lunch' else '晚'}餐已预留园内时间与预算，具体商户和饮食要求尚待确认", day.day)
                     unknowns.add("园内餐费为预算预留，不是已核验商户报价；未计作已落实餐厅")
                 else:
+                    missing_meals += 1
                     add(f"missing_{kind}", f"{'午' if kind == 'lunch' else '晚'}餐尚未落实餐厅，预留时段不计作已推荐", day.day)
                     unknowns.add("未落实的餐费尚未计入预算合计")
             else:
@@ -186,14 +229,19 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
     if total > profile.budget + 1e-6:
         add("over_budget", f"预计 {total:.0f} 元，超出预算 {profile.budget:.0f} 元", hard=True)
     passed = not any(item.severity == "hard" for item in violations)
+    constraint_status = "passed" if passed else "failed"
+    arrangement_status = "missing" if missing_meals else ("needs_confirmation" if meal_confirmations else "complete")
+    evidence_status = "partial" if unknowns else "verified"
     return ValidationReport(passed=passed, violations=violations,
         experience_status="complete" if passed and not any(item.code in QUALITY_CODES for item in violations) else "needs_attention",
-        data_status="partial" if unknowns else "verified", unknowns=sorted(unknowns), totals={
+        data_status=evidence_status, unknowns=sorted(unknowns), constraint_status=constraint_status,
+        arrangement_status=arrangement_status, evidence_status=evidence_status, totals={
             "tickets":round(tickets, 1), "meals":round(meals, 1), "transport":round(transport, 1), "total":round(total, 1),
             "items":sum(len(day.items) for day in it.days), "unknown_items":unknown_items,
             "feasible":float(not any(item.code in FEASIBILITY for item in violations)), "walking_m":walking,
             "idle_min":idle_total, "expected_meals":expected_meals, "covered_meals":covered_meals,
-            "meal_coverage":covered_meals / expected_meals if expected_meals else 1.0})
+            "meal_coverage":covered_meals / expected_meals if expected_meals else 1.0,
+            "self_arranged_meals":self_arranged_meals})
 
 
 def validate_node(state: dict) -> dict:
@@ -210,4 +258,4 @@ def validate_node(state: dict) -> dict:
         best = {"score":score, "report":report.model_copy(deep=True),
                 **{field:deepcopy(state.get(field, [])) for field in ("itinerary", "selected", "day_orders", "dropped")}}
     return {"report":report, "best_candidate":best,
-            "log":[f"校验：硬约束{'通过' if report.passed else '未通过'}；体验{'完整' if report.experience_status == 'complete' else '有待完善'}；仍有 {len(report.unknowns)} 类数据待确认"]}
+            "log":[f"校验：约束{'通过' if report.constraint_status == 'passed' else '未通过'}；安排{report.arrangement_status}；证据{report.evidence_status}；完整可执行{'是' if report.complete_executable else '否'}"]}

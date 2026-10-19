@@ -1,0 +1,845 @@
+{
+  "schema_version": 1,
+  "scope": "杭州全域逐批补充；首批下沙，队列不是已完成覆盖或行政边界地理围栏",
+  "region_source": {
+    "url": "https://zfgb.hangzhou.gov.cn/18/106220253/t106220253064/528872.shtml",
+    "source_date": "2021-04-30",
+    "reviewed_at": "2026-10-18",
+    "note": "2021行政区划调整历史来源；后续每批重新核对现行归属，不据此自动划分原377条",
+    "event_date": "2021-04-09"
+  },
+  "regions": [
+    {
+      "district": "钱塘区",
+      "batch": 1,
+      "state": "collecting_sources",
+      "area_definition": "首批下沙/白杨/金沙湖；江东另核对，不等同整个钱塘区",
+      "newly_admitted": 0
+    },
+    {
+      "district": "临平区",
+      "batch": 2,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "滨江区",
+      "batch": 2,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "余杭区",
+      "batch": 2,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "萧山区",
+      "batch": 2,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "上城区",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "拱墅区",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "西湖区",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "富阳区",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "临安区",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "桐庐县",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "淳安县",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    },
+    {
+      "district": "建德市",
+      "batch": 3,
+      "state": "collecting_sources",
+      "area_definition": "逐地点核实真实片区，不按近似经纬度自动贴区划标签",
+      "newly_admitted": 0
+    }
+  ],
+  "seeds": [
+    {
+      "canonical_key": "hz:qiantang:jinshahu-park",
+      "name": "金沙湖公园",
+      "aliases": [
+        "金沙湖"
+      ],
+      "district": "钱塘区",
+      "area": "下沙",
+      "experience_group": "hz:qiantang:jinshahu-park",
+      "state": "published",
+      "review_note": "已核对：列入官方《杭州市城市公园名录（2026年版）》第494号综合公园，面积50.54公顷，管理单位杭州钱塘新区产业发展集团有限公司（与报道的约64.7万平方米口径不同，未合并解释）；位于钱塘区下沙街道；园区东起海达南路、西至乔下线、北起金沙大道、南至天城东路，占地约64.7万平方米（2023-03杭州发布）；2013年一期开放，2023年全面对外开放，环湖一圈约3.3公里（2025-07杭州日报）；2023-08一期绿地作为首批城市公园绿地开放共享对外免费开放，并称后续可能推出预约管理（潮新闻）。入口与地图位置由用户2026-10-18在标注页指定（海达南路一侧东缘，两点相距约29米）。开放时段（全天）与门票（免费）为依据条例“敞开式公园免费游园”和名录四至的推断，经用户2026-10-18同意记录，按90天复核期使用至2027-01-16；游览时长1–2小时为项目规划建议。管理方公布的开放时段或收费信息仍未找到，出发前须确认。2023绿地免费不扩大解释为全园2026全天免费；沙滩/一期/二期同一游览组，停车场不独立计景点。核对者：Claude Code（AI）按可访问的公开网页逐条核对，未经人工复核。",
+      "evidence": {
+        "identity": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "https://www.hzzx.gov.cn/cshz/content/2023-03/06/content_8485487.htm ；杭州发布原文经杭州政协网转载：试运营开放、四至边界与占地面积",
+          "source_date": "2023-03-06",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "scope_history": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "observer",
+          "reference": "https://www.hzzx.gov.cn/cshz/content/2025-07/10/content_9035852.htm ；杭州日报：2013一期开放、2023全面开放、环湖约3.3公里",
+          "source_date": "2025-07-10",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "free_access_history": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "observer",
+          "reference": "https://tidenews.com.cn/news.html?id=2552908 ；潮新闻：一期绿地入选首批开放共享并免费开放；仅为历史线索，不是当期票价证据",
+          "source_date": "2023-08-15",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "directory_2026": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "https://ncstatic.clewm.net/rsrc/2026/0429/11/b0516d283cef4f384285cbf21c1c0ada.pdf ；杭州市园林文物局杭园文〔2026〕54号《杭州市城市公园名录（2026年版）》第494号（发文2026-04-20；杭州发布2026-05-12文内二维码 https://qr61.cn/oLVI9U/qAUIxem 指向该PDF）：钱塘区金沙湖公园，综合公园，北至金沙大道、南至天城东路、西至乔下路、东至海达南路，50.54公顷，管理单位杭州钱塘新区产业发展集团有限公司，监管单位钱塘区综合行政执法局，联系电话0571-89898751；名录无开放时间与门票字段",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "entrance": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；用户说明：主要入口；位于公园东缘海达南路一侧，金沙湖地铁站以南约400米",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "position": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选地图位置（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；用户说明：主要入口；位于公园东缘海达南路一侧，金沙湖地铁站以南约400米",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "ticket": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：作为敞开式城市公园免费游园。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第494号四至均为道路（北金沙大道、南天城东路、西乔下路、东海达南路），2023-08潮新闻报道一期绿地免费开放；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "opening": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：无围墙的敞开式公园全天可进入。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第494号四至均为道路（北金沙大道、南天城东路、西乔下路、东海达南路），2023-08潮新闻报道一期绿地免费开放；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "duration": {
+          "basis": "project_recommendation",
+          "origin": "project_planning",
+          "authority": "project",
+          "reference": "项目规划建议1–2小时：依据杭州日报2025-07-10“环湖一圈约3.3公里”估计慢走时长；用户2026-10-18同意，不是官方游玩时间",
+          "source_date": "2025-07-10",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        }
+      },
+      "place_type": "公园",
+      "entrance": {
+        "lat": 30.306969,
+        "lon": 120.325634,
+        "crs": "GCJ02"
+      },
+      "position": {
+        "lat": 30.306803,
+        "lon": 120.32587,
+        "crs": "GCJ02"
+      },
+      "ticket_price_upper": 0,
+      "ticket_price_exact": 0,
+      "weekly_opening": {
+        "0": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "1": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "2": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "3": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "4": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "5": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "6": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ]
+      },
+      "duration_min_hours": 1,
+      "duration_max_hours": 2,
+      "duration_scope": "环湖步道一圈约3.3公里的慢走游览，含沙滩与草坪短暂停留",
+      "interests": [
+        "自然风光",
+        "拍照出片"
+      ],
+      "audience": [
+        "亲子",
+        "朋友"
+      ]
+    },
+    {
+      "canonical_key": "hz:qiantang:baiyang-youth-park",
+      "name": "高教西公园",
+      "aliases": [
+        "白杨青年公园"
+      ],
+      "district": "钱塘区",
+      "area": "白杨",
+      "state": "published",
+      "review_note": "已核对：官方《杭州市城市公园名录（2026年版）》（2026-04-20）第506号仍用“高教西公园”，综合公园，17.78公顷，管理单位钱塘区综合行政执法局；2025-11-22每日商报报道其以“白杨青年公园”名义开张，属街道层面新称呼，名录未体现，故正式名称用高教西公园、白杨青年公园作别名。位于钱塘区白杨街道。开放时段（全天）与门票（免费）为依据条例和名录的推断（东侧邻校园，把握较低），经用户2026-10-18同意，按90天复核期使用至2027-01-16；游览时长按用户建议约2小时（1.5–2.5小时）。入口由用户2026-10-18在标注页指定（公园西缘文泽路一侧，学源街口以南），截图核对位置合理。核对者：Claude Code（AI）按可访问的公开网页逐条核对，未经人工复核。",
+      "evidence": {
+        "identity": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "observer",
+          "reference": "https://hznews.hangzhou.com.cn/chengshi/content/2025-11/22/content_9129135.htm ；每日商报：原名高教西公园、2025-11-21开张、白杨街道",
+          "source_date": "2025-11-22",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "directory_2026": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "https://ncstatic.clewm.net/rsrc/2026/0429/11/b0516d283cef4f384285cbf21c1c0ada.pdf ；杭州市园林文物局杭园文〔2026〕54号《杭州市城市公园名录（2026年版）》第506号（发文2026-04-20；杭州发布2026-05-12文内二维码 https://qr61.cn/oLVI9U/qAUIxem 指向该PDF）：钱塘区高教西公园，综合公园，北至学源街、南至学林街、西至文泽路、东至浙江理工大学，17.78公顷，管理与监管单位均为钱塘区综合行政执法局，联系电话0571-89898751；名录无开放时间与门票字段",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "ticket": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：作为敞开式城市公园免费游园。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第506号四至（北学源街、南学林街、西文泽路、东浙江理工大学；东侧为校园，敞开式判断把握较低）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "opening": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：无围墙的敞开式公园全天可进入。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第506号四至（北学源街、南学林街、西文泽路、东浙江理工大学；东侧为校园，敞开式判断把握较低）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "duration": {
+          "basis": "project_recommendation",
+          "origin": "project_planning",
+          "authority": "project",
+          "reference": "用户2026-10-18给出的规划建议“大概2小时”，记为1.5–2.5小时；不是官方游玩时间",
+          "source_date": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "entrance": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：公园西缘文泽路一侧，学源街口以南；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "position": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：公园西缘文泽路一侧，学源街口以南；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        }
+      },
+      "place_type": "公园",
+      "ticket_price_upper": 0,
+      "ticket_price_exact": 0,
+      "weekly_opening": {
+        "0": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "1": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "2": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "3": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "4": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "5": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "6": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ]
+      },
+      "duration_min_hours": 1.5,
+      "duration_max_hours": 2.5,
+      "duration_scope": "园内步道慢走游览，含短暂停留休息",
+      "interests": [
+        "自然风光"
+      ],
+      "entrance": {
+        "lat": 30.317329,
+        "lon": 120.348507,
+        "crs": "GCJ02"
+      },
+      "position": {
+        "lat": 30.317329,
+        "lon": 120.348507,
+        "crs": "GCJ02"
+      }
+    },
+    {
+      "canonical_key": "hz:qiantang:baiyang-eco-park",
+      "name": "白杨生态公园",
+      "aliases": [],
+      "district": "钱塘区",
+      "area": "白杨",
+      "place_type": "公园",
+      "experience_group": "hz:qiantang:baiyang-eco-park",
+      "state": "published",
+      "review_note": "已核对：官方名录第513号专类公园，42.89公顷，管理单位白杨街道办事处，按管理单位定白杨片区。开放时段（全天）与门票（免费）为依据条例和名录的推断，经用户2026-10-18同意，按90天复核期使用至2027-01-16；游览时长按用户建议约2小时（1.5–2.5小时）。入口由用户2026-10-18在标注页指定（11号渠西岸文津路一侧，用户确认此处为入口），截图核对位置合理。核对者：Claude Code（AI）按可访问的公开资料核对，未经人工复核。",
+      "evidence": {
+        "directory_2026": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "https://ncstatic.clewm.net/rsrc/2026/0429/11/b0516d283cef4f384285cbf21c1c0ada.pdf ；杭州市园林文物局杭园文〔2026〕54号《杭州市城市公园名录（2026年版）》第513号（发文2026-04-20）：钱塘区白杨生态公园，专类公园，北至德胜东路、南至6号路、西至11号渠、东至杭州绕城公路南线，42.89公顷，管理单位白杨街道办事处，监管单位钱塘区综合行政执法局，联系电话0571-89898751；名录无开放时间与门票字段",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "ticket": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：作为敞开式城市公园免费游园。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第513号四至（北德胜东路、南6号路、西11号渠、东杭州绕城公路南线）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "opening": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：无围墙的敞开式公园全天可进入。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第513号四至（北德胜东路、南6号路、西11号渠、东杭州绕城公路南线）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "duration": {
+          "basis": "project_recommendation",
+          "origin": "project_planning",
+          "authority": "project",
+          "reference": "用户2026-10-18给出的规划建议“大概2小时”，记为1.5–2.5小时；不是官方游玩时间",
+          "source_date": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "entrance": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：11号渠西岸文津路一侧，用户确认此处为入口；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "position": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：11号渠西岸文津路一侧，用户确认此处为入口；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        }
+      },
+      "ticket_price_upper": 0,
+      "ticket_price_exact": 0,
+      "weekly_opening": {
+        "0": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "1": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "2": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "3": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "4": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "5": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "6": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ]
+      },
+      "duration_min_hours": 1.5,
+      "duration_max_hours": 2.5,
+      "duration_scope": "园内步道慢走游览，含短暂停留休息",
+      "interests": [
+        "自然风光"
+      ],
+      "entrance": {
+        "lat": 30.311969,
+        "lon": 120.366103,
+        "crs": "GCJ02"
+      },
+      "position": {
+        "lat": 30.311969,
+        "lon": 120.366103,
+        "crs": "GCJ02"
+      }
+    },
+    {
+      "canonical_key": "hz:qiantang:riverside-east-park",
+      "name": "沿江景观东公园",
+      "aliases": [],
+      "district": "钱塘区",
+      "area": "",
+      "place_type": "公园",
+      "experience_group": "hz:qiantang:riverside-east-park",
+      "state": "published",
+      "review_note": "已核对：官方名录第503号综合公园，13.99公顷，位于之江东路以南、绕城高速以东的钱塘江边；所属街道待核对，片区暂空。开放时段（全天）与门票（免费）为依据条例和名录的推断，经用户2026-10-18同意，按90天复核期使用至2027-01-16；游览时长按用户建议约2小时（1.5–2.5小时）。入口由用户2026-10-18在标注页指定（之江东路边，下沙大桥以东绿地东端），截图核对位置合理。核对者：Claude Code（AI）按可访问的公开资料核对，未经人工复核。",
+      "evidence": {
+        "directory_2026": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "https://ncstatic.clewm.net/rsrc/2026/0429/11/b0516d283cef4f384285cbf21c1c0ada.pdf ；杭州市园林文物局杭园文〔2026〕54号《杭州市城市公园名录（2026年版）》第503号（发文2026-04-20）：钱塘区沿江景观东公园，综合公园，之江东路以南、绕城高速以东，13.99公顷，管理与监管单位钱塘区综合行政执法局，联系电话0571-89898751；名录无开放时间与门票字段",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "ticket": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：作为敞开式城市公园免费游园。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第503号位置（之江东路以南、绕城高速以东）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "opening": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：无围墙的敞开式公园全天可进入。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第503号位置（之江东路以南、绕城高速以东）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "duration": {
+          "basis": "project_recommendation",
+          "origin": "project_planning",
+          "authority": "project",
+          "reference": "用户2026-10-18给出的规划建议“大概2小时”，记为1.5–2.5小时；不是官方游玩时间",
+          "source_date": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "entrance": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：之江东路边，下沙大桥以东绿地东端；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "position": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：之江东路边，下沙大桥以东绿地东端；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        }
+      },
+      "ticket_price_upper": 0,
+      "ticket_price_exact": 0,
+      "weekly_opening": {
+        "0": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "1": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "2": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "3": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "4": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "5": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "6": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ]
+      },
+      "duration_min_hours": 1.5,
+      "duration_max_hours": 2.5,
+      "duration_scope": "园内步道慢走游览，含短暂停留休息",
+      "interests": [
+        "自然风光"
+      ],
+      "entrance": {
+        "lat": 30.263763,
+        "lon": 120.365915,
+        "crs": "GCJ02"
+      },
+      "position": {
+        "lat": 30.263763,
+        "lon": 120.365915,
+        "crs": "GCJ02"
+      }
+    },
+    {
+      "canonical_key": "hz:qiantang:riverside-west-park",
+      "name": "沿江景观西公园",
+      "aliases": [],
+      "district": "钱塘区",
+      "area": "",
+      "place_type": "公园",
+      "experience_group": "hz:qiantang:riverside-west-park",
+      "state": "published",
+      "review_note": "已核对：官方名录第504号综合公园，10.56公顷，位于之江东路以南、绕城高速以西的钱塘江边；所属街道待核对，片区暂空。开放时段（全天）与门票（免费）为依据条例和名录的推断，经用户2026-10-18同意，按90天复核期使用至2027-01-16；游览时长按用户建议约2小时（1.5–2.5小时）。入口由用户2026-10-18在标注页指定（下沙大桥以西的西区绿地（2026-10-18首次误标在桥东，经截图核对后用户重标）），截图核对位置合理。核对者：Claude Code（AI）按可访问的公开资料核对，未经人工复核。",
+      "evidence": {
+        "directory_2026": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "https://ncstatic.clewm.net/rsrc/2026/0429/11/b0516d283cef4f384285cbf21c1c0ada.pdf ；杭州市园林文物局杭园文〔2026〕54号《杭州市城市公园名录（2026年版）》第504号（发文2026-04-20）：钱塘区沿江景观西公园，综合公园，之江东路以南、绕城高速以西，10.56公顷，管理单位杭州钱塘新区建设投资集团有限公司，监管单位钱塘区综合行政执法局，联系电话0571-89898751；名录无开放时间与门票字段",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "ticket": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：作为敞开式城市公园免费游园。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第504号位置（之江东路以南、绕城高速以西）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "opening": {
+          "basis": "manual_review",
+          "origin": "independent_publication",
+          "authority": "official",
+          "reference": "推断：无围墙的敞开式公园全天可进入。依据《杭州市公园管理条例》（2014修正，据转载文本；官方原文页面拒绝自动访问，未直接核对）“敞开式公园实行免费游园”，及《杭州市城市公园名录（2026年版）》第504号位置（之江东路以南、绕城高速以西）；名录定义城市公园为向公众开放的场所；未见管理方公布的开放时段或收费。用户2026-10-18同意按此推断记录，出发前须确认",
+          "source_date": "2026-04-20",
+          "reviewed_at": "2026-10-18",
+          "valid_from": "2026-10-18",
+          "valid_until": "2027-01-16",
+          "validity_basis": "review_horizon",
+          "inferred": true,
+          "storage_allowed": true
+        },
+        "duration": {
+          "basis": "project_recommendation",
+          "origin": "project_planning",
+          "authority": "project",
+          "reference": "用户2026-10-18给出的规划建议“大概2小时”，记为1.5–2.5小时；不是官方游玩时间",
+          "source_date": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "entrance": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：下沙大桥以西的西区绿地（2026-10-18首次误标在桥东，经截图核对后用户重标）；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        },
+        "position": {
+          "basis": "manual_review",
+          "origin": "user_survey",
+          "authority": "observer",
+          "reference": "用户2026-10-18在私网测试实例入口标注页点选主要入口（GCJ-02；点击位置由用户确定，底图仅作显示，非地图服务商地点资料）；位置：下沙大桥以西的西区绿地（2026-10-18首次误标在桥东，经截图核对后用户重标）；地图位置沿用入口",
+          "source_date": "2026-10-18",
+          "observed_at": "2026-10-18",
+          "reviewed_at": "2026-10-18",
+          "storage_allowed": true
+        }
+      },
+      "ticket_price_upper": 0,
+      "ticket_price_exact": 0,
+      "weekly_opening": {
+        "0": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "1": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "2": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "3": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "4": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "5": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ],
+        "6": [
+          {
+            "start": 0,
+            "end": 1440
+          }
+        ]
+      },
+      "duration_min_hours": 1.5,
+      "duration_max_hours": 2.5,
+      "duration_scope": "园内步道慢走游览，含短暂停留休息",
+      "interests": [
+        "自然风光"
+      ],
+      "entrance": {
+        "lat": 30.262325,
+        "lon": 120.355736,
+        "crs": "GCJ02"
+      },
+      "position": {
+        "lat": 30.262325,
+        "lon": 120.355736,
+        "crs": "GCJ02"
+      }
+    }
+  ]
+}

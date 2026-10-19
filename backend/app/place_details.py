@@ -59,9 +59,17 @@ def describe_place(place, kind: str) -> dict:
                 "audiences": place.audience, "tags": place.interests,
                 "duration": f"{round(place.min_hours * 60)}–{round(place.max_hours * 60)} 分钟", "opening": f"{hm(place.open_min)}–{hm(place.close_min)}",
                 "tips": [text for text in (place.review_note, place.seasonal_note, place.duration_source, "适合人群和游览建议是项目推荐标签，非场馆认证") if text],
-                "content_source": "ChinaTravel 地点资料与项目整理；介绍、标签和逛法含模型辅助生成，非场馆官方说明", "rating": None,
+                "content_source": "项目自有补充资料：坐标、开放、票价逐字段注明来源（含用户提供与规则推断，核对者为AI），介绍与标签为项目整理，非场馆官方说明"
+                    if place.catalog_source == "supplement" else
+                    "ChinaTravel 地点资料与项目整理；介绍、标签和逛法含模型辅助生成，非场馆官方说明", "rating": None,
                 "rating_source": None, "rating_status": "pending", "rating_at": None, "address": "",
-                "source_url": place.opening_rules.source_url if place.opening_rules else None}
+                "source_url": place.opening_rules.source_url if place.opening_rules else None,
+                "region_id": place.region_id, "region_label": place.region_label,
+                "experience_kind": place.experience_kind, "merge_group": place.visit_group,
+                "onsite_dining": place.onsite_dining,
+                "booking_required": place.opening_rules.booking_required if place.opening_rules else None,
+                "experience_conditions": [condition.model_dump(mode="json") for condition in place.experience_conditions],
+                "field_evidence": {field: evidence.model_dump(mode="json") for field, evidence in place.field_evidence.items()}}
     return {"kind": kind, "id": place.id, "name": place.name,
             "introduction": f"{place.cuisine or '餐饮'}餐厅。" + (f"历史菜单参考：{'、'.join(dish.strip() for dish in re.split(r'[,，、]', place.dishes) if dish.strip())}。" if place.dishes else "具体菜品以商家当日菜单为准。"),
             "highlights": [f"参考人均 ¥{place.price:g}" if place.price_known else "人均消费暂无可靠数据", "在行程中比较到店时间、预算与绕路成本"],

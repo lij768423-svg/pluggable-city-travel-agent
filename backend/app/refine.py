@@ -14,6 +14,7 @@ from __future__ import annotations
 import itertools
 import re
 
+from .areas import area_fill_conflicts
 from .data import load_pois, load_restaurants
 from .evening import add_evening_visits
 from .experiences import experience_key, keep_walks_together, walk_boundary
@@ -57,6 +58,7 @@ def _missing(report) -> set[tuple[int | None, str]]:
 
 def refine(state: dict) -> dict:
     profile, route, catalog = state["profile"], state.get("travel"), state.get("catalog")
+    removed = set(state.get("repair_removed_ids", []))
     factor = state.get("meal_factor", 1.0)
     pois = load_pois()
     restaurants = catalog.restaurants if catalog else load_restaurants()
@@ -64,9 +66,12 @@ def refine(state: dict) -> dict:
     scores = {candidate.poi_id: candidate.score for candidate in state.get("candidates", [])}
     hotel = (profile.hotel.lat, profile.hotel.lon)
 
-    def build(orders, selected, pins, live: bool) -> Itinerary:
-        itinerary = build_itinerary(orders, profile, selected, factor, route, live=live, catalog=catalog, pins=pins)
-        return add_evening_visits(itinerary, profile, route if live or route is None else _CacheOnly(route), catalog)[0]
+    def build(trial_orders, selected, pins, live: bool) -> Itinerary:
+        itinerary = build_itinerary(trial_orders, profile, selected, factor, route, live=live, catalog=catalog, pins=pins)
+        trial_ids = {identifier for order in trial_orders for identifier in order}
+        previous_ids = {identifier for order in orders for identifier in order}
+        return add_evening_visits(itinerary, profile, route if live or route is None else _CacheOnly(route), catalog,
+                                  excluded_ids=removed | (previous_ids - trial_ids))[0]
 
     def check(itinerary: Itinerary, live: bool):
         travel_fn = None if route is None else route.leg if live else _CacheOnly(route).leg
@@ -167,7 +172,7 @@ def refine(state: dict) -> dict:
                 groups = {experience_key(pois[identifier]) for identifier in chosen}
                 near = lambda candidate: min(haversine_km(pois[identifier].lat, pois[identifier].lon, pois[candidate.poi_id].lat,
                                                           pois[candidate.poi_id].lon) for identifier in order)
-                pool = [candidate for candidate in state.get("candidates", []) if candidate.poi_id not in chosen
+                pool = [candidate for candidate in state.get("candidates", []) if candidate.poi_id not in chosen | removed
                         and ("add", candidate.poi_id) not in seen and candidate.poi_id in pois
                         and pois[candidate.poi_id].visit_role != "viewpoint" and not pois[candidate.poi_id].day_anchor
                         and experience_key(pois[candidate.poi_id]) not in groups
@@ -192,6 +197,8 @@ def refine(state: dict) -> dict:
             if key in failed:
                 continue
             trial = build(trial_orders, trial_selected, pins or None, live=False)
+            if area_fill_conflicts(trial, pois):
+                continue
             trial_report = check(trial, live=False)
             if not acceptable(trial_report, report):
                 if debug is not None:
@@ -207,12 +214,18 @@ def refine(state: dict) -> dict:
         # 试算只读缓存，可能与真实路线不符：复核失败就换下一个候选，最多复核 CONFIRM_TRIES 个
         for _, key, label, trial_orders, trial_selected, pins in sorted(ranked, key=lambda row: row[0], reverse=True)[:CONFIRM_TRIES]:
             real = build(trial_orders, trial_selected, pins or None, live=True)
+            if area_fill_conflicts(real, pois):
+                failed.add(key)
+                notes.append(f"合理性精修：「{label}」造成片区折返或超过两个片区，未采纳")
+                continue
             real_report = check(real, live=True)
             graded = grade(real)
             if not acceptable(real_report, report) or graded["overall"] < current["overall"] + MIN_GAIN:
                 failed.add(key)
                 notes.append(f"合理性精修：「{label}」用真实路线复核后没有改善，未采纳")
                 continue
+            removed.update({item.ref_id for day in itinerary.days for item in day.items if item.kind == "poi"}
+                           - {item.ref_id for day in real.days for item in day.items if item.kind == "poi"} - must)
             orders, selected, itinerary, report, current = trial_orders, trial_selected, real, real_report, graded
             log.append(f"合理性精修：{label}（综合分 {graded['overall']:.1f}）")
             accepted = True
@@ -224,6 +237,7 @@ def refine(state: dict) -> dict:
     actual = {item.ref_id for day in itinerary.days for item in day.items if item.kind == "poi"}
     return {"itinerary": itinerary, "report": report, "selected": selected, "day_orders": orders,
             "dropped": [identifier for identifier in state.get("dropped", []) if identifier not in actual],
+            "repair_removed_ids": sorted(removed),
             "refine_scores": {"before": before["overall"], "after": current["overall"]}, "log": [summary, *log]}
 
 

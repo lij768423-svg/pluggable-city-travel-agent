@@ -31,6 +31,22 @@ def test_registration_needs_the_invite_code(public):
     assert client.get("/api/meta").json()["access"] == {"login_to_plan": True, "invite_required": True}
 
 
+def test_unlimited_accounts_skip_daily_counts(public, monkeypatch):
+    monkeypatch.setattr(config, "UNLIMITED_USERS", frozenset({"traveler_one"}))
+    owner = TestClient(api.app)
+    assert join(owner).status_code == 200
+    assert owner.get("/api/auth/me").json()["quota"] is None
+    for _ in range(5):   # 超过账号 2 次、IP 3 次的上限
+        assert owner.post("/api/plan", json=PLAN).status_code == 200
+    # 不限次的账号不占同一 IP 的额度，同 IP 的普通账号照常按自己的 2 次计
+    other = TestClient(api.app)
+    assert join(other, username="traveler_two").status_code == 200
+    assert other.get("/api/auth/me").json()["quota"] == {"limit": 2, "used": 0, "remaining": 2}
+    assert [other.post("/api/plan", json=PLAN).status_code for _ in range(3)] == [200, 200, 429]
+    # 不限次也仍然要求登录
+    assert TestClient(api.app).post("/api/plan", json=PLAN).status_code == 401
+
+
 def test_planning_needs_login_and_counts_per_account(public):
     client = TestClient(api.app)
     assert client.post("/api/plan", json=PLAN).status_code == 401

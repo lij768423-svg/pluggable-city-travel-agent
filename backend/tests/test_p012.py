@@ -17,6 +17,7 @@ from app.nodes.validate import validate_itinerary, validate_node
 from app.restaurants import RestaurantCatalog, dietary_status, meal_start, normalize_restaurant, opening_periods
 from app.rules import activity_window, required_meals
 from app.schemas import DayPlan, Hotel, Item, Itinerary, LegEvidence, OpeningRules, POI, Restaurant, Selection, UserProfile, ValidationReport, Violation
+from app.amap import pt as router_pt
 from app.travel import Travel
 from .test_amap import A, B, distance_handler, fake_router
 
@@ -147,6 +148,48 @@ def test_transit_unavailable_does_not_implicitly_switch_to_taxi(tmp_path):
     allowed.allow_taxi_fallback = True
     result = allowed.detail(*A, *B)
     assert result.available and result.mode == "打车" and result.fallback_reason
+
+
+def test_slow_transit_upgrades_to_taxi_only_when_allowed_and_affordable(tmp_path):
+    # 公交 46 分钟、打车 21+5 分钟：默认开启时改打车并标明原因；关闭或预算太紧时仍坐公交
+    router = fake_router(tmp_path, distance_handler())
+    route = Travel("amap", "transit", router=router, live_budget=None)
+    route.set_day(UserProfile(days=2, budget=300, transport="transit"), 1)
+    result = route.detail(*A, *B)
+    assert (result.minutes, result.mode) == (26, "打车") and result.cost > 0 and "46" in result.fallback_reason
+    for profile in (UserProfile(days=2, budget=300, transport="transit", allow_taxi_fallback=False),
+                    UserProfile(days=2, budget=150, transport="transit")):
+        plain = Travel("amap", "transit", router=router, live_budget=None)
+        plain.set_day(profile, 1)
+        assert plain.leg(*A, *B) == (46, "公交/地铁", 3.0)
+
+
+def test_long_expensive_taxi_is_not_an_automatic_upgrade(tmp_path, monkeypatch):
+    # 跨城长途（车费超过上限）继续坐公交/地铁，避免几段打车吃掉预算
+    monkeypatch.setattr("app.travel.TAXI_UPGRADE_MAX_FARE", 10)
+    route = Travel("amap", "transit", router=fake_router(tmp_path, distance_handler()), live_budget=None)
+    route.set_day(UserProfile(days=2, budget=300, transport="transit"), 1)
+    assert route.leg(*A, *B) == (46, "公交/地铁", 3.0)
+
+
+def test_solver_matrix_sees_taxi_when_transit_is_only_estimated(tmp_path):
+    # 求解矩阵不逐段查公交：已缓存打车时，估算公交（约50分钟）应换成打车，而不是让求解器只看到慢公交
+    router = fake_router(tmp_path, distance_handler())
+    router.drive(router_pt(*A), router_pt(*B))
+    route = Travel("amap", "transit", router=router, live_budget=None)
+    route.set_day(UserProfile(days=2, budget=300, transport="transit"), 1)
+    minutes, mode, _ = route.leg(*A, *B, live=False)
+    assert (minutes, mode) == (26, "打车")
+
+
+def test_transit_within_comfort_is_kept_even_if_taxi_is_faster(tmp_path):
+    def handler(kind, params):
+        if kind == "integrated":
+            return {"status": "1", "route": {"transits": [{"duration": "1500", "cost": "2", "walking_distance": "1"}]}}
+        return distance_handler(drive=(5600, 300))(kind, params)
+    route = Travel("amap", "transit", router=fake_router(tmp_path, handler), live_budget=None)
+    route.set_day(UserProfile(days=1, budget=300, transport="transit"), 1)
+    assert route.leg(*A, *B) == (25, "公交/地铁", 2.0)
 
 
 def raw_restaurant(**updates):

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ import pandas as pd
 from .config import CITY_DIR
 from .geo import gcj02_to_bd09, parse_hm
 from .matching import norm
-from .schemas import POI, Restaurant
+from .schemas import POI, Restaurant, FieldEvidence, ExperienceCondition
 
 # 规则兜底：数据集 type → 兴趣标签 / 体力 / 室内
 TYPE_RULES: dict[str, tuple[list[str], int, bool]] = {
@@ -38,8 +39,22 @@ DIET_EXCLUDE: dict[str, set[str]] = {
 NON_MEAL_CUISINES = {"咖啡店", "面包甜点", "酒吧/酒馆", "茶馆/茶室", ""}
 
 
-@lru_cache(maxsize=1)
 def load_pois() -> dict[int, POI]:
+    """当前任务固定目录中的景点（app/poi_catalog.py）；无任务上下文时读进程当前发布版，base_only 即原库。"""
+    from .poi_catalog import current_catalog
+    return current_catalog().pois
+
+
+@lru_cache(maxsize=1)
+def base_digest() -> str:
+    """原库（Parquet＋审阅/语义叠加）的内容摘要；补充目录发布和任务目录版本都以它为基准。"""
+    normalized = {str(key): value.model_dump(mode="json") for key, value in sorted(load_base_pois().items())}
+    return hashlib.sha256(json.dumps(normalized, sort_keys=True, ensure_ascii=False,
+                                     allow_nan=False).encode()).hexdigest()
+
+
+@lru_cache(maxsize=1)
+def load_base_pois() -> dict[int, POI]:
     df = pd.read_parquet(CITY_DIR / "attractions.parquet")
     tags_path = CITY_DIR / "attraction_tags.parquet"
     tags = pd.read_parquet(tags_path).set_index("id") if tags_path.exists() else None
@@ -48,15 +63,22 @@ def load_pois() -> dict[int, POI]:
         interests, stamina, indoor = TYPE_RULES.get(r.type, ([], 2, False))
         audience: list[str] = []
         summary = ""
+        tag_basis = "rule"
         if tags is not None and r.id in tags.index:
             t = tags.loc[r.id]
             interests, stamina, indoor = list(t["interests"]), int(t["stamina"]), bool(t["indoor"])
             audience, summary = list(t["audience"]), str(t["summary"])
+            tag_basis = "model_estimate" if t.get("source", "llm") == "llm" else "rule"
+        evidence = {field: FieldEvidence(basis="dataset", reference=f"ChinaTravel 2026.08.2 / attractions.parquet / id={int(r.id)}; CC BY 4.0")
+                    for field in ("type", "coordinates", "opening_hours", "duration", "price")}
+        evidence.update({field: FieldEvidence(basis=tag_basis, reference=f"attraction_tags.parquet / id={int(r.id)}" if tags is not None and r.id in tags.index else "app/data.py:TYPE_RULES")
+                         for field in ("interests", "audience", "stamina", "summary")})
         out[int(r.id)] = POI(
             id=int(r.id), name=r.name, type=r.type, lat=r.lat, lon=r.lon,
             open_min=parse_hm(r.opentime), close_min=parse_hm(r.endtime), price=float(r.price),
             min_hours=float(r.recommendmintime), max_hours=float(r.recommendmaxtime),
             interests=interests, stamina=stamina, audience=audience, indoor=indoor, summary=summary,
+            field_evidence=evidence,
         )
     review = json.loads((Path(__file__).parent / "assets" / "poi_reviews.json").read_text())
     for entry in review["places"]:
@@ -71,7 +93,18 @@ def load_pois() -> dict[int, POI]:
         if "opening_rules" in changes:
             changes["opening_rules"] = {**changes["opening_rules"], "verified_at":review["reviewed_at"],
                 "source_url":review["sources"][entry["sources"][0]]["url"]}
-        out[poi.id] = POI.model_validate({**poi.model_dump(), **changes, "review_note":entry["note"]})
+        evidence = dict(poi.field_evidence)
+        observed = bool(entry["sources"] and review["sources"][entry["sources"][0]].get("verification") == "observed")
+        for field in changes:
+            key = {"min_hours": "duration", "max_hours": "duration", "duration_source": "duration", "open_min": "opening_hours", "close_min": "opening_hours"}.get(field, field)
+            direct = observed and key in {"opening_hours", "price", "opening_rules"}
+            source = review["sources"][entry["sources"][0]] if direct else {}
+            evidence[key] = FieldEvidence(basis="observed" if direct else "curator_inference",
+                reference=source.get("url", f"app/assets/poi_reviews.json:places[id={poi.id}]; {entry['note']}"),
+                source_date=source.get("published_at"), reviewed_at=review["reviewed_at"] if direct else None)
+        if "opening_rules" in changes and "booking_required" in changes["opening_rules"]:
+            evidence["booking_required"] = evidence["opening_rules"]
+        out[poi.id] = POI.model_validate({**poi.model_dump(), **changes, "review_note":entry["note"], "field_evidence": evidence})
     # 用户核对的停留区间（scripts/apply_stay_audit.py 生成）；已在上面审阅过停留时长的景点不在其中
     overrides = Path(__file__).parent / "assets" / "stay_overrides.json"
     if overrides.exists():
@@ -81,7 +114,18 @@ def load_pois() -> dict[int, POI]:
             if poi is None or norm(entry["name"]) != norm(poi.name) or poi.id in reviewed:
                 raise ValueError(f"停留覆盖身份不匹配或与审阅冲突：{entry['poi_id']} {entry['name']}")
             out[poi.id] = poi.model_copy(update={"min_hours": entry["low_min"] / 60, "max_hours": entry["high_min"] / 60,
-                "duration_source": f"停留时长按{entry['reviewed_at']}人工核对结果：{entry['evidence']}"})
+                "duration_source": f"停留时长按{entry['reviewed_at']}人工核对结果：{entry['evidence']}",
+                "field_evidence": {**poi.field_evidence, "duration": FieldEvidence(basis="manual_review", reference=entry["evidence"], reviewed_at=entry["reviewed_at"])}})
+    semantics = json.loads((Path(__file__).parent / "assets" / "poi_semantics.json").read_text())
+    for entry in semantics["places"]:
+        poi = out.get(entry["id"])
+        if poi is None or norm(poi.name) != norm(entry["name"]):
+            raise ValueError(f"地点语义身份不匹配：{entry['id']}")
+        conditions = [ExperienceCondition.model_validate(condition) for condition in entry["conditions"]]
+        out[poi.id] = poi.model_copy(update={"experience_conditions": conditions,
+            "field_evidence": {**poi.field_evidence, "experience_conditions": FieldEvidence(basis="curator_inference", reference=f"app/assets/poi_semantics.json:{semantics['version']}")}})
+    from .poi_semantics import enrich_semantics
+    out = {identifier: enrich_semantics(poi) for identifier, poi in out.items()}
     return out
 
 

@@ -89,11 +89,11 @@ class AccountStore:
             raise HTTPException(401, "用户名或密码不正确。")
         return {"id": row["id"], "username": row["username"]}
 
-    def issue(self, user_id: str) -> str:
+    def issue(self, user_id: str, age: int = SESSION_AGE) -> str:
         token = secrets.token_urlsafe(32)
         with self.connect() as database:
             database.execute("DELETE FROM logins WHERE expires < ?", (time.time(),))
-            database.execute("INSERT INTO logins VALUES (?,?,?)", (hash_token(token), user_id, time.time() + SESSION_AGE))
+            database.execute("INSERT INTO logins VALUES (?,?,?)", (hash_token(token), user_id, time.time() + age))
         return token
 
     def user(self, token: str | None) -> dict | None:
@@ -111,6 +111,7 @@ class AccountStore:
 
     def save(self, user_id: str, source_id: str, request_data: dict, plan: dict) -> str:
         saved = copy.deepcopy(plan)
+        saved["history_revision"] = plan.get("revision")
         saved.update(plan_id=None, revision=None, change=None, history_readonly=True)
         saved["log"] = []
         saved["candidates"] = []
@@ -121,13 +122,17 @@ class AccountStore:
                     item.pop(key, None)
                 item["alternatives"] = []
         title = f"杭州 {saved['profile']['days']} 日 · " + "、".join(saved["profile"].get("interests", [])[:2] or ["随心旅行"])
+        if saved.get("delivery_status") == "draft":
+            title = "[测试草稿·待核实] " + title
         now = time.time()
         with self.connect() as database:
             previous = database.execute("SELECT id FROM trips WHERE user_id=? AND source_id=?", (user_id, source_id)).fetchone()
             identifier = previous["id"] if previous else secrets.token_urlsafe(12)
             saved["history_id"] = identifier
             database.execute("""INSERT INTO trips VALUES (?,?,?,?,?,?,?,?)
-                ON CONFLICT(user_id,source_id) DO UPDATE SET title=excluded.title, updated=excluded.updated, request_json=excluded.request_json, plan_json=excluded.plan_json""",
+                ON CONFLICT(user_id,source_id) DO UPDATE SET title=excluded.title, updated=excluded.updated, request_json=excluded.request_json, plan_json=excluded.plan_json
+                WHERE COALESCE(json_extract(excluded.plan_json,'$.history_revision'),0) >=
+                      COALESCE(json_extract(trips.plan_json,'$.history_revision'),0)""",
                 (identifier, user_id, source_id, title, now, now, json.dumps(request_data, ensure_ascii=False), json.dumps(saved, ensure_ascii=False)))
         return identifier
 
@@ -238,9 +243,9 @@ class Credentials(BaseModel):
         return value.casefold()
 
 
-def establish(user: dict, request: Request, response: Response) -> dict:
+def establish(user: dict, request: Request, response: Response, *, age: int = SESSION_AGE) -> dict:
     STORE.revoke(request.cookies.get(AUTH_COOKIE))
-    response.set_cookie(AUTH_COOKIE, STORE.issue(user["id"]), httponly=True, secure=request.url.scheme == "https", samesite="strict", max_age=SESSION_AGE)
+    response.set_cookie(AUTH_COOKIE, STORE.issue(user["id"], age=age), httponly=True, secure=request.url.scheme == "https", samesite="strict", max_age=age)
     response.headers["Cache-Control"] = "no-store"
     return {"user": user}
 

@@ -132,8 +132,12 @@ def test_api_swap_revert_and_errors(monkeypatch, mock_llm):
                             if it["kind"] == "meal" and it["alternatives"])
     url = f"/api/plans/{plan['plan_id']}"
     target = item["alternatives"][0]
-    swapped = client.post(f"{url}/swap-meal", json={"revision": 0, "day": day, "item_index": index,
-                                                    "restaurant_id": target["ref_id"]})
+    preview = client.post(f"{url}/meal-preview", json={"revision": 0, "day": day, "item_index": index,
+                                                       "restaurant_id": target["ref_id"]})
+    assert preview.status_code == 200, preview.text
+    assert client.get(url).json()["revision"] == 0
+    assert client.get(url).json()["days"] == plan["days"]
+    swapped = client.post(f"{url}/meal-commit", json={"revision": 0, "preview_id": preview.json()["preview_id"]})
     assert swapped.status_code == 200, swapped.text
     body = swapped.json()
     assert body["revision"] == 1 and body["change"]["to"] == target["name"]
@@ -146,5 +150,5 @@ def test_api_swap_revert_and_errors(monkeypatch, mock_llm):
     assert client.post(f"{url}/revert", json={"revision": 0, "base_revision": 1}).status_code == 409
     assert client.post("/api/plans/nope/swap-meal", json={"revision": 0, "day": 1, "item_index": 0,
                                                           "restaurant_id": 1}).status_code == 410
-    bad = client.post(f"{url}/swap-meal", json={"revision": 2, "day": day, "item_index": index, "restaurant_id": 987654321})
+    bad = client.post(f"{url}/meal-preview", json={"revision": 2, "day": day, "item_index": index, "restaurant_id": 987654321})
     assert bad.status_code == 404

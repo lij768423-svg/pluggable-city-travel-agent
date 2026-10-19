@@ -4,6 +4,33 @@ from __future__ import annotations
 from .geo import hm
 
 
+# 单段乘车舒适线：超过只提示并加排程成本，不再直接拦截（2026-10-18 用户决定改为软上限）
+MAX_INTERSTOP_RIDE_MIN = 25
+# 单段乘车封顶：超过仍硬性拦截
+HARD_INTERSTOP_RIDE_MIN = 45
+# 这是片区偏好阈值，不是硬约束；用于让排程优先把相邻地点放在同一天。
+LOCALITY_PREFERENCE_MIN = 15
+# 每天从起点出发的首段、回起点的尾段不限时长、不提示（2026-10-18 用户决定：出游前跑远路很常见）
+MUST_VISIT_POLICY = "required"
+
+
+def interstop_ride_allowed(minutes: int, mode: str) -> bool:
+    return mode in {"步行", "原地"} or minutes <= HARD_INTERSTOP_RIDE_MIN
+
+
+def interstop_ride_long(minutes: int, mode: str) -> bool:
+    """超过舒适线但未到封顶的乘车段：允许排入，需提示。"""
+    return mode not in {"步行", "原地"} and minutes > MAX_INTERSTOP_RIDE_MIN
+
+
+def locality_transition_penalty(minutes: int, mode: str) -> int:
+    """给跨片区的非步行连接一个软成本，步行仍按散步处理；超过舒适线的部分加倍计，让排程尽量避开长段。"""
+    if mode in {"步行", "原地"}:
+        return 0
+    return max(0, minutes - LOCALITY_PREFERENCE_MIN) + 2 * max(0, minutes - MAX_INTERSTOP_RIDE_MIN)
+
+
+
 def activity_window(profile, day: int = 1) -> dict[str, int]:
     window = dict(PACE[profile.pace])
     if profile.include_evening and profile.day_end is None:

@@ -113,6 +113,10 @@ def main() -> None:
         all_items = [i for d in it.days for i in d.items]
         return {
             "passed": report.passed,
+            "constraint_status": report.constraint_status,
+            "arrangement_status": report.arrangement_status,
+            "evidence_status": report.evidence_status,
+            "complete_executable": report.complete_executable,
             "feasible": not any(v.code in FEASIBILITY for v in report.violations),
             # 更公平的口径：不计"库外地点"（数据集未收录不等于不存在），只看时间/路程/重复等问题
             "feasible_excl_unknown": not any(v.code in FEASIBILITY - {"unknown_place"} for v in report.violations),
@@ -158,12 +162,16 @@ def main() -> None:
                 r = run_plan("", form, **kw)
                 rep = judge(r["itinerary"], prof)
                 rec["results"][key] = metrics(r["itinerary"], prof, rep, r["seconds"], r["usage"]) | {
+                    "experiment_config": kw,
+                    "retrieval": r.get("retrieval_report", {}), "candidate_metrics": r.get("candidate_metrics", {}),
+                    "meals": r.get("meal_metrics", {}),
                     "repair_rounds": r.get("repair_round", 0), "travel": r.get("travel_stats", {}),
                     "est": est_view(r["itinerary"], prof), "real": independent(r["itinerary"], prof),
                     "violations": [v.model_dump() for v in rep.violations],
                     "itinerary": r["itinerary"].model_dump()}
             except Exception as e:
-                rec["results"][key] = {"error": str(e)[:300], "passed": False, "feasible": False}
+                rec["results"][key] = {"error": str(e)[:300], "passed": False, "feasible": False,
+                                        "experiment_config": kw}
         for k, v in rec["results"].items():
             rl = v.get("real", {})
             print(f"   {k:14s} passed={v.get('passed')} feasible={v.get('feasible')} hard={v.get('hard')} "
@@ -184,6 +192,10 @@ def main() -> None:
             codes.update(x["codes"])
         return {"n": len(rs), "errors": len(rs) - len(ok),
                 "pass_rate": sum(1 for x in rs if x.get("passed")) / len(rs),
+                "constraint_pass_rate": sum(x.get("constraint_status") == "passed" for x in rs) / len(rs),
+                "arrangement_complete_rate": sum(x.get("arrangement_status") == "complete" for x in rs) / len(rs),
+                "evidence_verified_rate": sum(x.get("evidence_status") == "verified" for x in rs) / len(rs),
+                "complete_executable_rate": sum(x.get("complete_executable") for x in rs) / len(rs),
                 "feasible_rate": sum(1 for x in rs if x.get("feasible")) / len(rs),
                 "feasible_excl_rate": sum(1 for x in rs if x.get("feasible_excl_unknown")) / len(rs),
                 "hard_excl_mean": mean("hard_excl_unknown"),

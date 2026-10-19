@@ -35,11 +35,17 @@ def blocked(request: Request) -> bool:
     return host in config.PUBLIC_HOSTS and request.url.path.startswith(PUBLIC_BLOCKED)
 
 
+def unlimited(user: dict | None) -> bool:
+    return bool(user) and user.get("username") in config.UNLIMITED_USERS
+
+
 def guard_plan(request: Request) -> None:
     """生成行程前调用：未登录（开启时）返回 401；当天次数用完返回 429。计数在开始规划时扣除。"""
     user = accounts.current_user(request)
     if config.REQUIRE_LOGIN_TO_PLAN and user is None:
         raise HTTPException(401, "请先登录，再生成行程。")
+    if unlimited(user):
+        return
     limits = {}
     if user and config.PLAN_LIMIT_USER:
         limits[f"user:{user['id']}"] = config.PLAN_LIMIT_USER
@@ -50,7 +56,7 @@ def guard_plan(request: Request) -> None:
 
 
 def quota(user: dict | None) -> dict | None:
-    if not user or not config.PLAN_LIMIT_USER:
+    if not user or not config.PLAN_LIMIT_USER or unlimited(user):
         return None
     used = accounts.STORE.usage(today(), f"user:{user['id']}")
     return {"limit": config.PLAN_LIMIT_USER, "used": used, "remaining": max(0, config.PLAN_LIMIT_USER - used)}

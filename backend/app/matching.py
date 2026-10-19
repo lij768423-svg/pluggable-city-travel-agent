@@ -42,6 +42,15 @@ def variants(name: str) -> list[str]:
     return res
 
 
+def match_place(name: str, places: dict[int, POI]) -> int | None:
+    """先按补充地点登记的别名精确匹配，同一别名对应多处时不自动取第一条；再走原有从宽匹配。"""
+    wanted = {norm(v) for v in variants(name)}
+    hits = {place.id for place in places.values() for alias in place.aliases if norm(alias) in wanted}
+    if hits:
+        return hits.pop() if len(hits) == 1 else None
+    return match_name(name, {identifier: place.name for identifier, place in places.items()})
+
+
 def match_name(name: str, names: dict[int, str], threshold: float = 0.8) -> int | None:
     for v in variants(name):
         hit = _match_one(v, names, threshold)

@@ -1,0 +1,8 @@
+{
+  "version": "2026-10-17-v1",
+  "scope": "结构化既有项目审阅中的体验限制；整理日不代表重新核验天气、营业或官方游览时长",
+  "places": [
+    {"id": 36, "name": "断桥残雪", "conditions": [{"label": "残雪观景", "months": [12, 1, 2], "weather_required": true, "reference": "app/assets/poi_reviews.json:places[id=36]; 2026-10-15 项目整理，冬季为规划假设，天气未核验"}]},
+    {"id": 136, "name": "平湖秋月", "conditions": [{"label": "赏月", "start_min": 1080, "weather_required": true, "reference": "app/assets/poi_reviews.json:places[id=136]; 2026-10-15 项目整理，18:00为保守规划时段，月色未核验"}]}
+  ]
+}

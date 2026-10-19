@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from collections import Counter
+
+from .areas import AREA_EXTRA_COST, AREA_FAR_COST, AREA_SPLIT_COST, area_index
 from .calendar import closed_on
 from .data import load_pois, load_restaurants
 from .experiences import experience_key
-from .rules import MEAL_MIN, activity_window, required_meals
+from .poi_semantics import evening_only, visit_open_min
+from .rules import (MAX_INTERSTOP_RIDE_MIN, MEAL_MIN, activity_window, interstop_ride_allowed, interstop_ride_long,
+                     locality_transition_penalty, required_meals)
 from .schemas import Itinerary, Selection, UserProfile, ValidationReport
 
 
@@ -39,20 +44,41 @@ def experience_blocks(order: list[int]) -> list[list[int]]:
 
 
 def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[list[int]]:
-    from .nodes.schedule import service_min
+    from .nodes.schedule import day_capacity, service_min
 
     places = load_pois()
+    areas = area_index(places)
+    home = areas.home_areas(profile.hotel.lat, profile.hotel.lon)
+    area_load = Counter()
+    for group in groups:
+        for identifier in group:
+            area_load[areas.area_of(identifier)] += service_min(places[identifier], profile.pace)
+    capacity = max(day_capacity(profile, day) for day in range(1, len(groups) + 1))
+
+    def area_cost(candidate: list[list[list[int]]]) -> float:
+        """片区为主：当天多一个片区、出现不相邻片区、一天装得下的片区被拆到多天都加成本。"""
+        value = 0.0
+        spread = Counter()
+        for day in candidate:
+            zones = areas.areas_of([identifier for block in day for identifier in block])
+            value += AREA_EXTRA_COST * max(0, len(zones) - 1)
+            value += AREA_FAR_COST * sum(not areas.compatible(first, second, home)
+                                         for index, first in enumerate(zones) for second in zones[index + 1:])
+            spread.update(zones)
+        return value + sum(AREA_SPLIT_COST * (count - 1) for area, count in spread.items()
+                           if count > 1 and area_load[area] <= capacity)
     blocks = [experience_blocks(group) for group in groups]
     occupied_days = sum(bool(group) for group in groups)
+    daytime_days = sum(any(not evening_only(places[i]) for i in group) for group in groups)
     origin = (profile.hotel.lat, profile.hotel.lon)
     locations = {identifier: (places[identifier].lat, places[identifier].lon)
                  for group in groups for identifier in group}
     locations[-1] = origin
 
     @lru_cache(maxsize=None)
-    def minutes(day: int, before: int, after: int) -> int:
+    def connection(day: int, before: int, after: int) -> tuple[int, str, float]:
         route.set_day(profile, day)
-        return route.leg(*locations[before], *locations[after], live=False)[0]
+        return route.leg(*locations[before], *locations[after], live=False)
 
     @lru_cache(maxsize=None)
     def day_cost(day: int, identifiers: tuple[int, ...]) -> tuple[float, float]:
@@ -61,23 +87,33 @@ def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[l
         remaining = set(identifiers)
         elapsed = window["start"]
         transport = 0
+        riding = 0
+        locality_cost = 0
+        overlong_transfers = 0
         previous = -1
         while remaining:
-            following = min(remaining, key=lambda identifier: (minutes(day, previous, identifier), identifier))
-            duration = minutes(day, previous, following)
+            following = min(remaining, key=lambda identifier: (evening_only(places[identifier]), connection(day, previous, identifier)[0], identifier))
+            duration, mode, _ = connection(day, previous, following)
             transport += duration
-            elapsed = max(elapsed + duration, places[following].open_min) + service_min(places[following], profile.pace)
+            riding += duration if previous != -1 and mode not in {"步行", "原地"} else 0
+            locality_cost += locality_transition_penalty(duration, mode)
+            overlong_transfers += int(previous != -1 and not interstop_ride_allowed(duration, mode))
+            elapsed = max(elapsed + duration, visit_open_min(places[following])) + service_min(places[following], profile.pace)
             previous = following
             remaining.remove(following)
-        transport += minutes(day, previous, -1) if identifiers else 0
-        elapsed += minutes(day, previous, -1) if identifiers else 0
+        if identifiers:
+            returning, return_mode, _ = connection(day, previous, -1)
+            transport += returning
+            elapsed += returning
+            locality_cost += locality_transition_penalty(returning, return_mode)
         if identifiers and not any(places[identifier].onsite_dining for identifier in identifiers):
             elapsed += len(required_meals(profile, day)) * (MEAL_MIN + 15)
         load = max(0, elapsed - window["start"])
         unavailable = sum(closed_on(places[identifier], profile, day) for identifier in identifiers)
         overload = max(0, load - available)
-        comfort = max(0, transport - min(180, max(120, available * 0.3)))
-        return unavailable * 10000 + overload * 30 + transport * 2 + comfort * 4, load / available
+        comfort = max(0, riding - min(180, max(120, available * 0.3)))
+        return ((unavailable + overlong_transfers) * 10000 + overload * 30
+                + transport * 2 + comfort * 4 + locality_cost * 2, load / available)
 
     def cost(candidate: list[list[list[int]]]) -> float:
         totals = [day_cost(index + 1, tuple(sorted(identifier for block in day for identifier in block)))
@@ -85,7 +121,10 @@ def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[l
         loads = [load for _, load in totals]
         mean = sum(loads) / len(loads)
         lost_days = max(0, occupied_days - sum(bool(day) for day in candidate))
-        return lost_days * 10000 + sum(value for value, _ in totals) + sum((load - mean) ** 2 for load in loads) * 240
+        lost_daytime = max(0, daytime_days - sum(any(not evening_only(places[i]) for block in day for i in block)
+                                                 for day in candidate))
+        return ((lost_days + lost_daytime) * 10000 + sum(value for value, _ in totals) + sum((load - mean) ** 2 for load in loads) * 240
+                + area_cost(candidate))
 
     def locked(day: list[list[int]]) -> bool:
         return any(places[identifier].day_anchor for block in day for identifier in block)
@@ -124,12 +163,16 @@ def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[l
 def quality_key(itinerary: Itinerary, report: ValidationReport) -> tuple[int, int, float]:
     weights = {"empty_day": 40, "missing_lunch": 20, "missing_dinner": 20,
                "excessive_transport": 12, "anchor_mixed": 30, "audience_mismatch": 30,
-               "early_finish": 4, "long_idle": 3, "short_visit": 6}
+               "early_finish": 4, "long_idle": 3, "short_visit": 6, "interstop_ride_long": 2, "area_scattered": 10}
     transport = sum(day.return_travel_min + sum(item.travel_min for item in day.items) for day in itinerary.days)
-    long_legs = sum(max(0, item.travel_min - 40) for day in itinerary.days for item in day.items)
-    long_legs += sum(max(0, day.return_travel_min - 40) for day in itinerary.days)
+    long_legs = sum(max(0, item.travel_min - MAX_INTERSTOP_RIDE_MIN)
+                    for day in itinerary.days for item in day.items[1:]
+                    if interstop_ride_long(item.travel_min, item.travel_mode))
+    zones = area_index(load_pois())
+    sequences = [[zones.area_of(item.ref_id) for item in day.items if item.kind == "poi"] for day in itinerary.days]
+    moves = sum(before != after for sequence in sequences for before, after in zip(sequence, sequence[1:]))
     return (len(report.hard), sum(weights.get(item.code, 0) for item in report.violations),
-            round(transport * 2 + long_legs + report.totals.get("idle_min", 0) * 0.5, 2))
+            round(transport * 2 + long_legs + report.totals.get("idle_min", 0) * 0.5 + moves * 20, 2))
 
 
 def meal_order_candidates(orders: list[list[int]], limit: int = 7) -> list[list[list[int]]]:
@@ -139,6 +182,12 @@ def meal_order_candidates(orders: list[list[int]], limit: int = 7) -> list[list[
     daily_variants = []
     for day_index, order in enumerate(orders):
         blocks = experience_blocks(order)
+        zones = area_index(places)
+        grouped: dict[str, list[int]] = {}
+        for block in blocks:
+            grouped.setdefault(zones.area_of(block[0]), []).extend(block)
+        if len(grouped) > 1:
+            blocks = list(grouped.values())
         if len(blocks) < 2 or any(places[identifier].day_anchor for identifier in order):
             continue
         variants = [list(reversed(blocks)), blocks[1:] + blocks[:1], blocks[-1:] + blocks[:-1]]
