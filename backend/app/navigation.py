@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+
 from datetime import date as Date
 import math
+from .cities import current_city
 from .amap import AmapError, MissingSnapshotError, get_router, straight_km
 from .amap_limits import RequestBudget
 from .schemas import MapPoint, NavigationLeg, NavigationRequest
@@ -21,7 +23,7 @@ def coordinates(value) -> list[list[float]]:
     for point in str(value or "").split(";"):
         try:
             longitude, latitude = map(float, point.split(","))
-            if not (118 <= longitude <= 121 and 29 <= latitude <= 31):
+            if not (current_city().contains(latitude, longitude)):
                 return []
             result.append([longitude, latitude])
         except ValueError:
@@ -78,7 +80,7 @@ def navigation_leg(router, leg: NavigationLeg, service_date: Date | None) -> dic
     params = {"origin": origin, "destination": destination, "extensions": "all"}
     if leg.mode == "公交/地铁":
         endpoint = "v3/direction/transit/integrated"
-        params.update(city="杭州", cityd="杭州", strategy=0, time=time_text)
+        params.update(city=current_city().amap_city, cityd=current_city().amap_city, strategy=0, time=time_text)
         if service_date:
             params["date"] = service_date.isoformat()
     else:
@@ -98,7 +100,15 @@ def navigation_leg(router, leg: NavigationLeg, service_date: Date | None) -> dic
     return result
 
 
+class NavigationBoundsError(ValueError):
+    """导航起终点超出所属行程城市；不能发出外部查询。"""
+
+
 def get_navigation(request: NavigationRequest, router=None) -> dict:
+    settings = current_city()
+    if any(not settings.contains(point.lat, point.lon)
+           for leg in request.legs for point in (leg.origin, leg.destination)):
+        raise NavigationBoundsError(f"导航起终点须在{settings.name}范围内，请检查行程地点后重试。")
     budget = RequestBudget(40)
     router = (router or get_router()).fork(budget)
     results = []

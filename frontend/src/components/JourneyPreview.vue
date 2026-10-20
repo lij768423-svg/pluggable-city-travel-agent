@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-const props = defineProps<{ step: number }>()
+import { cityArtwork } from '../cityArt'
+const props = defineProps<{ step: number; city: { key: string; name: string } }>()
+const scene = computed(() => cityArtwork(props.city.key))
 const photoIndex = ref(props.step)
 watch(() => props.step, value => { photoIndex.value = value })
 const photos = [
@@ -15,7 +17,8 @@ function photoFailed(file: string) { if (!failedPhotos.value.includes(file)) fai
 </script>
 
 <template>
-  <aside class="journey-preview" aria-label="杭州实景">
+  <aside v-if="city.key !== 'hangzhou'" class="journey-preview city-art-preview" :class="{ 'neutral-backdrop': !scene }" :aria-label="`${city.name}主题插画`"><div v-if="scene" class="preview-illustration" v-html="scene.right" /><div class="journey-photo-top"><span>{{ scene?.rightLabel || city.name }}</span><span>{{ city.name }}印象 · 插画</span></div><div class="journey-photo-caption"><p>把喜欢的，<br />慢慢走成一段旅程。</p><span>先选喜欢的，再安排去哪里。</span></div></aside>
+  <aside v-else class="journey-preview" aria-label="杭州实景">
     <Transition name="journey-photo"><img v-if="!failedPhotos.includes(activePhoto.file)" :key="activePhoto.file" class="journey-photo" :src="`/questionnaire/${activePhoto.file}`" :alt="activePhoto.place" @error="photoFailed(activePhoto.file)" /></Transition>
     <div class="journey-photo-shade" />
     <div class="journey-photo-top"><span>{{ activePhoto.place }}</span><span>杭州印象</span></div>
@@ -23,3 +26,8 @@ function photoFailed(file: string) { if (!failedPhotos.value.includes(file)) fai
     <div class="journey-photo-controls"><div class="journey-photo-dots" aria-label="切换杭州实景"><button v-for="(photo, index) in photos" :key="photo.file" type="button" :aria-label="`查看${photo.place}照片`" :aria-pressed="photoIndex === index" @click="photoIndex = index"><span /></button></div><a :href="activePhoto.source" target="_blank" rel="noopener noreferrer" :aria-label="`${activePhoto.author} 摄影，${activePhoto.license}，查看来源`">{{ activePhoto.author }} · {{ activePhoto.license }} ↗</a></div>
   </aside>
 </template>
+
+<style scoped>
+.preview-illustration { position: absolute; inset: 0; }
+.preview-illustration :deep(svg) { width: 100%; height: 100%; object-fit: cover; }
+</style>

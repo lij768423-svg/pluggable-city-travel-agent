@@ -19,6 +19,7 @@ import threading
 import numpy as np
 from scipy.cluster.hierarchy import fcluster, linkage
 
+from .cities import current_city
 from .geo import haversine_km
 from .schemas import Itinerary, POI
 
@@ -81,9 +82,10 @@ def area_fill_conflicts(itinerary: Itinerary, places: dict[int, POI]) -> list[in
 
 
 def _names() -> list[dict]:
-    if not NAMES_PATH.exists():
+    path = current_city().assets_dir / "area_names.json"
+    if not path.exists():
         return []
-    return json.loads(NAMES_PATH.read_text(encoding="utf-8"))["areas"]
+    return json.loads(path.read_text(encoding="utf-8"))["areas"]
 
 
 def build_area_index(places: dict[int, POI], names: list[dict] | None = None) -> AreaIndex:
@@ -149,9 +151,9 @@ def area_index(places: dict[int, POI] | None = None) -> AreaIndex:
     from .poi_catalog import current_catalog
     catalog = current_catalog()
     if places is None or places is catalog.pois:
-        places, key = catalog.pois, ("catalog", catalog.version)
+        places, key = catalog.pois, (catalog.city, catalog.version)
     else:
-        key = ("places", tuple(sorted((identifier, place.lat, place.lon, place.visit_group, place.name)
+        key = (catalog.city, "places", tuple(sorted((identifier, place.lat, place.lon, place.visit_group, place.name)
                                       for identifier, place in places.items())))
     with _LOCK:
         found = _CACHE.get(key)

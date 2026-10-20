@@ -1,0 +1,109 @@
+{
+  "hangzhou": {
+    "key": "hangzhou",
+    "name": "杭州",
+    "name_full": "杭州市",
+    "province": "浙江省",
+    "amap_city": "杭州",
+    "adcode": "330100",
+    "bounds": [
+      29,
+      31,
+      118,
+      121
+    ],
+    "default_origin": {
+      "name": "西湖湖滨（默认）",
+      "lat": 30.254433,
+      "lon": 120.169771
+    },
+    "map_center": {
+      "lat": 30.254433,
+      "lon": 120.169771
+    },
+    "data_dir": "data/hangzhou",
+    "assets_dir": "app/assets",
+    "supplement_dir": "data/poi_supplement",
+    "calibration": "data/travel_calibration.json",
+    "local_cuisine": "杭帮|浙江菜|江浙",
+    "evening_streets": {
+      "20": "清河坊街",
+      "69": "武林夜市",
+      "91": "南宋御街",
+      "208": "湖滨路步行街"
+    },
+    "brand": "杭州行记",
+    "hotel_areas": [
+      "湖滨",
+      "西溪",
+      "武林",
+      "钱江新城",
+      "滨江",
+      "灵隐"
+    ],
+    "local_cuisine_labels": {
+      "杭帮": "杭帮菜",
+      "浙江菜": "江浙菜",
+      "江浙": "江浙菜"
+    }
+  },
+  "nanjing": {
+    "key": "nanjing",
+    "name": "南京",
+    "name_full": "南京市",
+    "province": "江苏省",
+    "amap_city": "南京",
+    "adcode": "320100",
+    "bounds": [
+      31,
+      33,
+      118,
+      120
+    ],
+    "default_origin": {
+      "name": "新街口附近（默认参考起点）",
+      "lat": 32.034885,
+      "lon": 118.783734
+    },
+    "map_center": {
+      "lat": 32.034885,
+      "lon": 118.783734
+    },
+    "data_dir": "data/nanjing",
+    "assets_dir": "app/assets/cities/nanjing",
+    "supplement_dir": "data/nanjing/poi_supplement",
+    "calibration": "data/nanjing/travel_calibration.json",
+    "local_cuisine": "淮扬|金陵|南京菜|江苏菜|苏菜|江浙",
+    "local_cuisine_labels": {
+      "淮扬": "淮扬菜",
+      "金陵": "南京菜",
+      "南京菜": "南京菜",
+      "江苏菜": "江苏菜",
+      "苏菜": "苏菜",
+      "江浙": "江浙菜"
+    },
+    "evening_streets": {
+      "32": "老门东历史街区",
+      "37": "南京1912街",
+      "66": "南京夫子庙步行街",
+      "103": "狮子桥步行美食街"
+    },
+    "brand": "南京行记",
+    "hotel_areas": [
+      "新街口",
+      "夫子庙",
+      "玄武湖",
+      "南京站",
+      "南京南站",
+      "河西"
+    ],
+    "provenance": {
+      "bounds": "南京市政府2026-09-30城市概况的经纬范围外扩为粗筛矩形；不是行政区边界",
+      "bounds_source": "https://www.nanjing.gov.cn/zjnj/csgk/202609/t20260930_5920248.html",
+      "default_origin": "ChinaTravel中文accommodations.parquet 南京 id=42 桔子水晶南京新街口酒店的历史坐标；只作默认参考起点，不宣称地铁口坐标",
+      "night_streets": "按数据集地点名和街区类型整理的夜游候选，不代表已核实商铺营业或当日夜间开放",
+      "reviewed_at": "2026-10-19",
+      "reviewer": "Codex AI，未替代用户人工复核"
+    }
+  }
+}

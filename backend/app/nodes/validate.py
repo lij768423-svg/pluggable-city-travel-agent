@@ -252,7 +252,7 @@ def validate_node(state: dict) -> dict:
         route.finalize(state["itinerary"], state["profile"], restaurants)
     report = validate_itinerary(state["itinerary"], state["profile"], travel_fn=route.leg if route else None, restaurants=restaurants)
     from ..planning_quality import quality_key
-    score = quality_key(state["itinerary"], report)
+    score = quality_key(state["itinerary"], report, count_idle=True)
     best = state.get("best_candidate")
     if best is None or score < best["score"]:
         best = {"score":score, "report":report.model_copy(deep=True),

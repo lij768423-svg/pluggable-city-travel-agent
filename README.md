@@ -1,6 +1,6 @@
-# 杭州行记 · Hangzhou Travel Agent
+# 行记 · City Travel Agent
 
-面向杭州 1–5 天旅行的个性化行程规划系统。本科毕业设计项目：**基于大模型 Agent 的个性化旅游行程规划系统设计与实现**。
+面向杭州、南京 1–5 天旅行的个性化行程规划系统，城市按配置接入（`backend/app/assets/cities.json`）。本科毕业设计项目：**基于大模型 Agent 的个性化旅游行程规划系统设计与实现**。
 
 大模型负责理解需求和挑选地点，调度算法安排时间与顺序，规则校验器检查预算、交通、用餐和游玩约束。用户可以在问卷中选择偏好，查看真实规划步骤，比较备选餐厅，并确认换餐后的单日重规划。
 
@@ -46,6 +46,7 @@ cd backend
 cp .env.example .env
 uv sync --frozen
 uv run python scripts/fetch_data.py
+uv run python scripts/fetch_data.py --city nanjing
 ```
 
 编辑 `backend/.env`，至少设置 `LLM_API_KEY`。默认使用 `MiniMax-M3.1-Flash-Preview` 与 `LLM_THINKING=adaptive`；该模型标识是否可用取决于服务商账号。使用其他 OpenAI 兼容服务时，同时设置 `LLM_BASE_URL` 和 `LLM_MODEL`，并根据服务商支持情况将 `LLM_THINKING` 设为空或 `disabled`。
@@ -77,7 +78,7 @@ uv run uvicorn app.api:app --host 127.0.0.1 --port 18600
 
 ## 数据与许可
 
-基础景点、餐厅、住宿表由脚本从 ChinaTravel Sandbox 下载后筛选杭州，并不随仓库发布。它们是历史数据快照。在线餐饮和路线是外部服务返回，也不保证所有字段实时或完整。
+基础景点、餐厅、住宿表由脚本从 ChinaTravel Sandbox 下载后按城市（杭州、南京）筛选，并不随仓库发布。它们是历史数据快照。在线餐饮和路线是外部服务返回，也不保证所有字段实时或完整。
 
 公开版攻略包含 **11 条 Wikivoyage 改编的结构化样本**，保留来源、日期、地点映射与 CC BY-SA 4.0 声明。内部研究使用的其他来源不在公开分发中；这里没有小红书抓取数据，也没有训练好的微调模型。攻略辅助选点，时间表仍由调度器计算。
 

@@ -1,6 +1,7 @@
 """提示词与画像文本化（各节点、基线共用，保证对比公平）。"""
 from __future__ import annotations
 
+from .cities import current_city
 from .rules import HARD_INTERSTOP_RIDE_MIN, MAX_INTERSTOP_RIDE_MIN, day_window_text, activity_window, required_meals
 from .geo import hm
 from .schemas import INTERESTS, UserProfile
@@ -13,7 +14,7 @@ COMPANION_TEXT = {"solo": "独自出行", "couple": "情侣/夫妻", "friends": 
 
 def profile_to_text(p: UserProfile) -> str:
     lines = [
-        f"- 城市：杭州，共 {p.days} 天",
+        f"- 城市：{current_city().name}，共 {p.days} 天",
         f"- 人均总预算：{p.budget:.0f} 元（含门票、餐饮、市内交通，不含住宿）",
         f"- 节奏：{p.pace}；活动时段：" + "；".join(f"第{day}天 {hm(activity_window(p, day)['start'])}–{hm(activity_window(p, day)['end'])}" for day in range(1, p.days + 1)),
         f"- 出游日期：{p.start_date.isoformat() if p.start_date else '未指定，不承诺具体日期开放'}",
@@ -57,7 +58,7 @@ PARSE_SYSTEM = f"""你是旅行需求解析器。把用户的一句话需求解�
 - meal_budget_min/meal_budget_max: 用户明确的每餐预算范围（元），未说则省略
 """
 
-SELECT_SYSTEM = """你是杭州旅行规划师，负责"选点"：从给定候选景点中选出最适合该用户的景点。
+_SELECT_TEMPLATE = """你是__CITY__旅行规划师，负责"选点"：从给定候选景点中选出最适合该用户的景点。
 规则：
 1. 只能从候选列表中选，用候选的 id 表示；不要编造景点。
 2. 选出恰好 N 个（N 会给出），用户"必去"的景点如果在候选中必须选上。
@@ -69,10 +70,22 @@ SELECT_SYSTEM = """你是杭州旅行规划师，负责"选点"：从给定候�
 只输出 JSON：{"selected": [{"id": 整数, "reason": "理由"}]}
 """
 
-BASELINE_SYSTEM = """你是杭州旅行规划师。根据用户画像，直接给出完整的逐日行程，包括景点和午餐、晚餐的餐厅。
-要求：使用真实存在的杭州景点和餐厅名称；时间要合理（考虑开放时间和路上的时间）；控制在预算内。
+_BASELINE_TEMPLATE = """你是__CITY__旅行规划师。根据用户画像，直接给出完整的逐日行程，包括景点和午餐、晚餐的餐厅。
+要求：使用真实存在的__CITY__景点和餐厅名称；时间要合理（考虑开放时间和路上的时间）；控制在预算内。
 只输出 JSON，格式：
 {"days": [{"day": 1, "items": [
   {"type": "attraction" 或 "restaurant", "name": "名称", "start": "HH:MM", "end": "HH:MM", "cost": 人均费用数字, "reason": "一句理由"}
 ]}]}
 """
+
+
+def select_system() -> str:
+    return _SELECT_TEMPLATE.replace("__CITY__", current_city().name)
+
+
+def baseline_system() -> str:
+    return _BASELINE_TEMPLATE.replace("__CITY__", current_city().name)
+
+
+SELECT_SYSTEM = select_system()  # 兼容旧调用者，规划入口使用动态函数
+BASELINE_SYSTEM = baseline_system()

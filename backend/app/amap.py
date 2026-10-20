@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+
 import json
 import copy
 import os
@@ -23,6 +24,7 @@ from typing import Any
 
 import httpx
 
+from .cities import current_city
 from . import config
 from .geo import SAME_PLACE_KM, bd09_to_gcj02, haversine_km
 from .amap_limits import RequestBudget, RequestBudgetExceeded, amap_limiter
@@ -207,16 +209,19 @@ class AmapRouter:
         if not self.has(k):
             if not live:
                 return False
-            params = {"origin": o, "destination": d, "city": "杭州", "cityd": "杭州"}
+            params = {"origin": o, "destination": d, "city": current_city().amap_city, "cityd": current_city().amap_city}
             if self.service_date:
                 params.update(date=self.service_date.isoformat(), time=self.departure_time)
-            ts = self._get("v3/direction/transit/integrated", params)["route"].get("transits") or []
+            route = self._get("v3/direction/transit/integrated", params)["route"]
+            ts = route.get("transits") or []
             v = None
             if ts:
                 best = min(ts, key=lambda t: int(t["duration"]))
-                cost = best.get("cost")
+                cost, taxi = best.get("cost"), route.get("taxi_cost")
+                # taxi_cost 是高德对同一起终点的打车估价；距离测量接口不给车费，改打车时优先用它
                 v = {"min": int(best["duration"]) / 60, "cost": float(cost) if cost not in (None, "", []) else None,
-                     "walk_m": int(best.get("walking_distance") or 0)}
+                     "walk_m": int(best.get("walking_distance") or 0),
+                     "taxi_cost": float(taxi) if taxi not in (None, "", []) else None}
             self._put(k, v)
         return self.get(k)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .cities import current_city
 from .areas import area_fill_conflicts, area_index
 from .calendar import closed_on, date_notices
 from .data import load_pois, load_restaurants
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from .restaurants import RestaurantCatalog
 
 
-NIGHT_STREETS = {20: "清河坊街", 69: "武林夜市", 91: "南宋御街", 208: "湖滨路步行街"}
+NIGHT_STREETS = current_city().evening_streets  # 兼容旧脚本；运行时按任务城市读取
 
 
 def add_evening_visits(itinerary: Itinerary, profile: UserProfile, route: Travel | None = None,
@@ -58,7 +59,7 @@ def add_evening_visits(itinerary: Itinerary, profile: UserProfile, route: Travel
         position = (place.lat, place.lon)
         departure = max(last.end, *(slot.end for slot in day.reserved_meals), 0)
         seen = {item.ref_id for planned in itinerary.days for item in planned.items if item.kind == "poi"}
-        candidates = [poi for identifier, name in NIGHT_STREETS.items() if (poi := pois.get(identifier))
+        candidates = [poi for identifier, name in current_city().evening_streets.items() if (poi := pois.get(identifier))
                       and (allowed is None or poi.id in allowed)
                       and poi.name == name and poi.id not in seen and poi.id not in (excluded_ids or set()) and poi.recommendable
                       and not closed_on(poi, profile, day.day)

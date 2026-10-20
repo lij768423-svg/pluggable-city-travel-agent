@@ -12,10 +12,11 @@ from ..geo import haversine_km, travel
 from ..matching import match_place, norm, same_attraction
 from ..poi_semantics import experience_notices
 from ..rules import PACE, activity_window
-from ..schemas import POI, Candidate, UserProfile
+from ..schemas import POI, Candidate, UserProfile, interest_list, interest_tags
 
 TOP_K = 30
 AREA_MEMBERS = 6  # 片区补齐：每个片区最多纳入的成员数
+THEME_NEAR_KM = 15  # 只选“主题乐园”时，起点这一范围内的乐园少于 天数×3 个，亲子游乐地点也纳入候选
 MAX_KM = 40
 AUDIENCE_OF = {"family_kids": "亲子", "elderly": "老人", "couple": "情侣", "friends": "朋友", "solo": "独行"}
 
@@ -36,7 +37,7 @@ def must_visit_ids(profile: UserProfile) -> set[int]:
 
 
 def score_poi(poi: POI, profile: UserProfile, must_ids: set[int] | None = None) -> Candidate:
-    hit = len(set(profile.interests) & set(poi.interests))
+    hit = len(set(profile.interests) & interest_tags(poi.interests))
     tag = min(1.0, hit / min(len(profile.interests), 3)) if profile.interests else 0.5
     stamina = 1.0 if poi.stamina <= max_stamina(profile) else 0.2
     audience = 1.0 if AUDIENCE_OF[profile.companions] in poi.audience else 0.0
@@ -49,7 +50,7 @@ def score_poi(poi: POI, profile: UserProfile, must_ids: set[int] | None = None) 
     seasonal_penalty = 0.08 if notices else 0.0
     score = 0.6 * tag + 0.2 * fit + 0.2 * distance - price_penalty + must - seasonal_penalty
     areas = area_index(load_pois())
-    return Candidate(poi_id=poi.id, score=round(score, 4), interests=list(poi.interests),
+    return Candidate(poi_id=poi.id, score=round(score, 4), interests=interest_list(poi.interests),
         region_id=poi.region_id, region_label=poi.region_label, place_type=poi.type,
         area_id=areas.area_of(poi.id), area_label=areas.label(areas.area_of(poi.id)),
         experience_id=experience_key(poi), experience_kind=poi.experience_kind, notices=notices,
@@ -115,13 +116,18 @@ def retrieve_with_report(profile: UserProfile, k: int = TOP_K) -> tuple[list[Can
     must = {identifier for identifier in must_mapping.values() if identifier is not None}
     eligible = []
     excluded = {}
+    theme_only = set(profile.interests) == {"主题乐园"}
+    theme_relaxed = theme_only and sum(
+        1 for poi in places.values() if poi.recommendable and "主题乐园" in poi.interests
+        and haversine_km(profile.hotel.lat, profile.hotel.lon, poi.lat, poi.lon) <= THEME_NEAR_KM) < profile.days * 3
     for poi in places.values():
         reason = None
         if _name_hit(poi.name, profile.avoid):
             reason = "explicit_avoid"
         elif poi.family_only and profile.companions != "family_kids" and poi.id not in must:
             reason = "audience_mismatch"
-        elif set(profile.interests) == {"主题乐园"} and "主题乐园" not in poi.interests and poi.id not in must:
+        elif (theme_only and "主题乐园" not in poi.interests and poi.id not in must
+              and not (theme_relaxed and "亲子游乐" in interest_tags(poi.interests))):
             reason = "theme_mismatch"
         elif poi.price > profile.budget:
             reason = "ticket_over_budget"
@@ -193,7 +199,7 @@ def retrieve_with_report(profile: UserProfile, k: int = TOP_K) -> tuple[list[Can
             result.append(candidate)
     eligible_ids = {candidate.poi_id for candidate in eligible}
     recalled = {candidate.poi_id for candidate in result}
-    interests = [coverage_entry(name, {identifier for identifier, place in places.items() if name in place.interests},
+    interests = [coverage_entry(name, {identifier for identifier, place in places.items() if name in interest_tags(place.interests)},
                                eligible_ids, recalled, excluded) for name in dict.fromkeys(profile.interests)]
     regions = [coverage_entry(name, {identifier for identifier, place in places.items() if region_matches(place, name)},
                              eligible_ids, recalled, excluded) for name in dict.fromkeys(profile.preferred_regions)]
@@ -203,7 +209,7 @@ def retrieve_with_report(profile: UserProfile, k: int = TOP_K) -> tuple[list[Can
     return result, {"strategy": "coverage_v1", "limit": limit, "database_count": len(places),
         "eligible_count": len(eligible), "candidate_count": len(result), "interest_coverage": interests,
         "candidate_ids": [candidate.poi_id for candidate in result],
-        "region_coverage": regions, "must_visit": required,
+        "region_coverage": regions, "must_visit": required, "theme_relaxed": theme_relaxed,
         "area_coverage": [{"area_id": area, "label": by_area[area][0].area_label,
                            "candidate_count": sum(candidate.area_id == area for candidate in result)} for area in filled_areas],
         "must_visit_recall": {"numerator": sum(entry["status"] == "covered" for entry in required),

@@ -111,8 +111,13 @@ def test_evening_fill_cannot_return_to_departed_area(places, monkeypatch):
     from app.evening import add_evening_visits
     plan = itinerary([1, 2])
     plan.days[0].items.append(Item(kind="meal", ref_id=9, name="晚餐", start=1050, end=1110, meal="dinner"))
-    monkeypatch.setattr("app.evening.NIGHT_STREETS", {20: "同A片区夜游"})
-    monkeypatch.setattr("app.evening.load_restaurants", lambda: {})
+    from dataclasses import replace
+    from app.cities import current_city
+    from app.schemas import Restaurant
+    monkeypatch.setattr("app.evening.current_city", lambda: replace(current_city(), evening_streets={20: places[20].name}))
+    meal = Restaurant(id=9, name="晚餐", lat=places[2].lat, lon=places[2].lon,
+                      price=30, cuisine="中餐", open_min=480, close_min=1440)
+    monkeypatch.setattr("app.evening.load_restaurants", lambda: {9: meal})
     monkeypatch.setattr("app.nodes.validate.validate_itinerary", lambda *a, **kw: ValidationReport(passed=True))
     profile = UserProfile(days=1, budget=5000, hotel=Hotel(lat=30.25, lon=120.20))
 
@@ -120,6 +125,11 @@ def test_evening_fill_cannot_return_to_departed_area(places, monkeypatch):
         def set_day(self, *args): pass
         def leg(self, *args, **kw): return 5, "步行", 0
 
+    # 正对照证明已进入夜游补点路径；只游览B再去A允许，A→B→A则拒绝。
+    control = plan.model_copy(deep=True)
+    control.days[0].items = control.days[0].items[1:]
+    admitted, additions = add_evening_visits(control, profile, Route())
+    assert additions and admitted.days[0].items[-1].ref_id == 20
     result, added = add_evening_visits(plan, profile, Route())
     assert not added and not area_fill_conflicts(result, places)
 

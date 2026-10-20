@@ -1,0 +1,1758 @@
+{
+  "version": "2026-10-19-c4-v1",
+  "reviewed_at": "2026-10-19",
+  "scope": "Codex AI来源审阅及安排范围整理，未做人类或现场核验。价格上限与实际票价分开；所有未修订字段继续保留数据集证据。",
+  "sources": {
+    "price_2026": {
+      "url": "https://fgw.nanjing.gov.cn/njsfzhggwyh/202601/P020260107586054627681.pdf",
+      "published_at": "2026-01-07",
+      "effective_as_of": "2025-12",
+      "verification": "upper_bound",
+      "facts": "2026版，纸页13–14；政府指导最高限价，不是当前售票价。2026-10-19下载并查看表格。"
+    },
+    "museum": {
+      "url": "https://www.njmuseum.org.cn/zh/visitIndex",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "常规9–17，16点停入，周一闭馆（节假日例外）；实名预约；基本展览免费，收费特展另计。"
+    },
+    "palace": {
+      "url": "https://www.njztf.cn/index.html",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官网35元；旺季3/1–10/14为8:30–18，17点停入；淡季8:30–17，16点停入；周一闭馆（法定节假日除外）。"
+    },
+    "zhongshan": {
+      "url": "https://zschina.nanjing.gov.cn/lyzx/202506/t20250623_5591074.html",
+      "published_at": "2025-06-23",
+      "verification": "observed",
+      "facts": "中山陵8:30–17，周一维护（节日及孙中山诞辰/逝世纪念日例外）；美龄宫7:30–18，17:30停入；明孝陵/音乐台/灵谷季节时段另有差异。"
+    },
+    "memorial": {
+      "url": "https://www.19371213.org.cn/guide/how/",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "8:30–17:30，16:30停入，周一闭馆（节日例外），所有观众实名分馆预约。"
+    },
+    "lake": {
+      "url": "https://www.xuanwuhu.net/lyfw/lyfw.aspx",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "免费；环湖路24小时，五洲及情侣园4–10月6–22，11–3月6–21；游船另收费、受天气影响。"
+    },
+    "curator": {
+      "url": "https://huggingface.co/datasets/LAMDA-NeSy/ChinaTravel-Sandbox",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Codex基于名称、位置、父子范围的项目安排规则；停留时长为估计，不是现场事实。"
+    },
+    "putang": {
+      "url": "https://www.mashsq.gov.cn/xwzx/jrhs/19368861.html",
+      "published_at": "2026-03-09",
+      "verification": "observed",
+      "facts": "马鞍山市花山区政府发布濮塘休闲度假区的官方活动信息；中国旅行数据南京表中混入该地。"
+    },
+    "yuanbo_open_2024": {
+      "url": "https://m.thepaper.cn/newsDetail_forward_27865512",
+      "published_at": "2024-06-26",
+      "verification": "reported_notice",
+      "facts": "园区运营方问答经澎湃号刊发：开放式运营后取消园区大门票、免费开放、无需预约；苏韵十三园70元/人、抱抱乐园50元/人单独收费；周一至周四9:00—18:00、周五至周日9:00—21:00。2026-10-20 AI查看原文；非官网实时页面。"
+    },
+    "dahepiao_longchumo_2025": {
+      "url": "https://www.dahepiao.com/lvyounews1/20250722522237.html",
+      "published_at": "2025-07-22",
+      "verification": "third_party_reference",
+      "facts": "大河票务网：团购价格99元起；另一篇（2024-04-22）记5–12月每日08:30–17:00，1–4月仅周末开放。第三方票务平台，非官方挂牌价。"
+    },
+    "dahepiao_fenhongtu_2024": {
+      "url": "https://www.dahepiao.com/lvyounews1/20240911487414.html",
+      "published_at": "2024-09-11",
+      "verification": "third_party_reference",
+      "facts": "大河票务网：单人票39.9元（含40项游乐、游船等）；周二至周五09:00–17:00，周末08:30–17:30，周一全天不开放。第三方票务平台，非官方挂牌价。"
+    },
+    "dahepiao_songshukaka_2023": {
+      "url": "https://www.dahepiao.com/news1/20230728405604.html",
+      "published_at": "2023-07-28",
+      "verification": "third_party_reference",
+      "facts": "大河票务网：团购价格19.9元起；4–12月工作日08:30–17:30、周末08:30–18:00。资料较旧，第三方票务平台，非官方挂牌价。"
+    },
+    "ai_web_check_20261020": {
+      "url": "data/nanjing/audit-v2/tier2-ai-check.csv",
+      "published_at": "2026-10-20",
+      "verification": "third_party_reference",
+      "facts": "Claude 2026-10-20 网页检索（携程、买购网、票务平台、新闻转载等第三方），逐条链接见核对记录；非官网实时页面，出发前确认。"
+    }
+  },
+  "places": [
+    {
+      "id": 0,
+      "name": "牛首山文化旅游区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 160,
+        "min_hours": 3.0,
+        "max_hours": 4.5
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：大型文化旅游区（门票约160元，佛顶宫＋山林），原表2–2.5小时偏短，改为项目估计3–4.5小时。"
+    },
+    {
+      "id": 3,
+      "name": "红山森林动物园",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 70,
+        "min_hours": 3.0,
+        "max_hours": 4.5
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：大型城市动物园，原表2.5–3小时偏短，改为项目估计3–4.5小时。"
+    },
+    {
+      "id": 4,
+      "name": "明孝陵",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 70
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 10,
+      "name": "大报恩寺遗址景区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 90
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 11,
+      "name": "美龄宫",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 12,
+      "name": "太平天国历史博物馆(瞻园)",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 13,
+      "name": "六朝博物馆",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 15,
+      "name": "栖霞山",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 80
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。红枫节最高80元，全年保守按80元预算。"
+    },
+    {
+      "id": 17,
+      "name": "阅江楼",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 40
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 19,
+      "name": "音乐台",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 20,
+      "name": "江宁织造博物馆",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30,
+        "interests": [
+          "博物馆展览",
+          "人文历史",
+          "艺术文创",
+          "特色文化"
+        ]
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 22,
+      "name": "鸡鸣寺",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 28,
+      "name": "朝天宫",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 25,
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：朝天宫（含南京市博物馆），原表0.5–1小时偏短，改为项目估计1–2小时。"
+    },
+    {
+      "id": 29,
+      "name": "中华门瓮城",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 50
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 36,
+      "name": "灵谷景区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 35
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 45,
+      "name": "达摩古洞",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 51,
+      "name": "金牛湖野生动物王国",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 144,
+        "min_hours": 3.5,
+        "max_hours": 5.0
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：野生动物园（车行＋步行区），原表2–2.5小时偏短，改为项目估计3.5–5小时。"
+    },
+    {
+      "id": 55,
+      "name": "天生桥景区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 27,
+        "min_hours": 1.5,
+        "max_hours": 2.5
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：风景区，原表0.5–1.5小时偏短，改为项目估计1.5–2.5小时。"
+    },
+    {
+      "id": 65,
+      "name": "珍珠泉风景区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 40,
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：风景区（含游乐项目），原表1–2小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 67,
+      "name": "燕子矶公园",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 97,
+      "name": "老山国家森林公园",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30,
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；2026-10-20 AI核对（Claude）第3层：国家森林公园徒步，原表1–2小时偏短，改为项目估计2–4小时。"
+    },
+    {
+      "id": 128,
+      "name": "金牛湖风景区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 40
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 193,
+      "name": "宝船厂遗址",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 18
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 215,
+      "name": "长江观音景区",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 232,
+      "name": "平山森林公园",
+      "sources": [
+        "price_2026"
+      ],
+      "changes": {
+        "price": 18
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。"
+    },
+    {
+      "id": 6,
+      "name": "南京博物院",
+      "sources": [
+        "museum"
+      ],
+      "changes": {
+        "open_min": 540,
+        "close_min": 1020,
+        "price": 0,
+        "opening_rules": {
+          "closed_weekdays": [
+            0
+          ],
+          "last_entry": 960,
+          "booking_required": true
+        },
+        "min_hours": 3.0,
+        "max_hours": 4.5
+      },
+      "note": "仅基本展览；收费临展另核。周一法定节假日例外仍需确认，未代为预约。；2026-10-20 AI核对（Claude）第3层：大型综合博物馆（六馆），原表1.5–3小时偏短，改为项目估计3–4.5小时。"
+    },
+    {
+      "id": 7,
+      "name": "南京总统府",
+      "sources": [
+        "palace"
+      ],
+      "changes": {
+        "price": 35
+      },
+      "note": "官网当前单人票35元，动态优惠与库存另核。"
+    },
+    {
+      "id": 7,
+      "name": "南京总统府",
+      "sources": [
+        "palace"
+      ],
+      "changes": {
+        "open_min": 510,
+        "close_min": 1020,
+        "opening_rules": {
+          "closed_weekdays": [
+            0
+          ],
+          "last_entry": 960,
+          "booking_required": true
+        }
+      },
+      "note": "官网当前单人票35元，动态优惠与库存另核。；采用淡季安全时段；旺季可延至18点，项目保守截断到17点，周一及预约按官网常规规则，节假日另核。"
+    },
+    {
+      "id": 9,
+      "name": "中山陵景区",
+      "sources": [
+        "zhongshan"
+      ],
+      "changes": {
+        "open_min": 510,
+        "close_min": 1020,
+        "opening_rules": {
+          "closed_weekdays": [
+            0
+          ],
+          "booking_required": true
+        }
+      },
+      "note": "中山陵陵寝范围；周一维护及纪念日例外另核，不承诺墓室开放。"
+    },
+    {
+      "id": 11,
+      "name": "美龄宫",
+      "sources": [
+        "zhongshan"
+      ],
+      "changes": {
+        "open_min": 450,
+        "close_min": 1080,
+        "opening_rules": {
+          "last_entry": 1050
+        }
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；常规时段已有来源；临时安排、售票及预约另核。"
+    },
+    {
+      "id": 23,
+      "name": "侵华日军南京大屠杀遇难同胞纪念馆",
+      "sources": [
+        "memorial"
+      ],
+      "changes": {
+        "open_min": 510,
+        "close_min": 1050,
+        "opening_rules": {
+          "closed_weekdays": [
+            0
+          ],
+          "last_entry": 990,
+          "booking_required": true
+        },
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "仅南京大屠杀史实展区；三个展馆分开预约，不能合并视作同一张预约。；2026-10-20 AI核对（Claude）第3层：大型纪念馆，原表1–2小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 18,
+      "name": "玄武湖景区",
+      "sources": [
+        "lake"
+      ],
+      "changes": {
+        "price": 0
+      },
+      "note": "公园免费不含游船、观光车和收费项目。"
+    },
+    {
+      "id": 18,
+      "name": "玄武湖景区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "open_min": 360,
+        "close_min": 1260
+      },
+      "note": "公园免费不含游船、观光车和收费项目。；为覆盖冬季内洲游览，项目保守采用6–21点交集；环湖路24小时不能推导全部设施全天开放。"
+    },
+    {
+      "id": 4,
+      "name": "明孝陵",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "open_min": 420,
+        "close_min": 1050
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；按钟山官方冬季时段7–17:30取全年安全交集；非实时园方时刻，旺季可更长。"
+    },
+    {
+      "id": 19,
+      "name": "音乐台",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "open_min": 420,
+        "close_min": 1050
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；按钟山官方冬季时段7–17:30取全年安全交集；非实时园方时刻，旺季可更长。"
+    },
+    {
+      "id": 36,
+      "name": "灵谷景区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "open_min": 420,
+        "close_min": 1050
+      },
+      "note": "预算采用政府指导最高限价；不是实时售票价，优惠及联票另核。；按钟山官方冬季时段7–17:30取全年安全交集；非实时园方时刻，旺季可更长。"
+    },
+    {
+      "id": 227,
+      "name": "濮塘风景区",
+      "sources": [
+        "putang"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "濮塘风景区属于马鞍山市花山区；保留原始表及ID作为问题证据，南京自动规划隔离此点。"
+    },
+    {
+      "id": 2,
+      "name": "夫子庙秦淮风光带",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "与夫子庙/步行街范围重叠，自动召回保留具体主项。本轮AI整理，待人审。"
+    },
+    {
+      "id": 5,
+      "name": "钟山风景名胜区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "钟山聚合范围含多个独立收费景区，0.5–1小时不能代表全景区。本轮AI整理，待人审。"
+    },
+    {
+      "id": 14,
+      "name": "南京城墙",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "南京城墙为多入口多票价聚合项，具体登城段未定。本轮AI整理，待人审。"
+    },
+    {
+      "id": 39,
+      "name": "秦淮河",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "秦淮河为广义水系，不能按一个确定收费/开放的独立停留点安排。本轮AI整理，待人审。"
+    },
+    {
+      "id": 27,
+      "name": "江苏园博园",
+      "sources": [
+        "yuanbo_open_2024"
+      ],
+      "changes": {
+        "recommendable": true,
+        "price": 0.0,
+        "open_min": 540,
+        "close_min": 1080
+      },
+      "note": "2026-10-20 AI核对（Claude）：园区公告称取消大门票、免费开放、无需预约，按免费入园与每日共同开放的9:00–18:00安排；苏韵十三园、抱抱乐园等项目另收费。公告为2024-06，出发前确认。（此前：园博园历史零票价未核实，暂不自动推荐。本轮AI整理，待人审。）"
+    },
+    {
+      "id": 43,
+      "name": "德基艺术博物馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "艺术馆历史零票价未区分收费展与公共空间。本轮AI整理，待人审。"
+    },
+    {
+      "id": 63,
+      "name": "外秦淮河游船（水木秦淮码头）",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "游船历史零票价、班次和码头范围未核实。本轮AI整理，待人审。"
+    },
+    {
+      "id": 90,
+      "name": "南京玄武湖游船",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "游船历史零票价及班次未核实。本轮AI整理，待人审。"
+    },
+    {
+      "id": 167,
+      "name": "玄武湖游船(阳光码头)",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "码头游船不是免费公园游览，票价班次未核实。本轮AI整理，待人审。"
+    },
+    {
+      "id": 314,
+      "name": "江心洲大桥",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "公路桥被归为游乐园且建议3–4小时，步行资格和游览范围未核实。本轮AI整理，待人审。"
+    },
+    {
+      "id": 266,
+      "name": "杉林氧吧",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "跨午夜时段尚无可核来源，当前排程不支持翌日闭店。本轮AI整理，待人审。"
+    },
+    {
+      "id": 293,
+      "name": "南京啤酒博物馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "夜间商业场馆跨午夜时段和收费未核实。本轮AI整理，待人审。"
+    },
+    {
+      "id": 139,
+      "name": "玄武湖公园-玄武门",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "玄武门是玄武湖入口，不能与全湖重复算2–3小时。本轮AI整理，待人审。"
+    },
+    {
+      "id": 163,
+      "name": "南京博物院-民国馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "南京博物院民国馆是院内子项，随父项参观，不另算一次预约和游览。本轮AI整理，待人审。"
+    },
+    {
+      "id": 166,
+      "name": "小熊猫馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "小熊猫馆是动物园内子项，随父项参观。本轮AI整理，待人审。"
+    },
+    {
+      "id": 79,
+      "name": "佛顶宫",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "佛顶宫是牛首山园内子项，随父项参观。本轮AI整理，待人审。"
+    },
+    {
+      "id": 91,
+      "name": "佛顶寺",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "佛顶寺是牛首山园内子项，随父项参观。本轮AI整理，待人审。"
+    },
+    {
+      "id": 248,
+      "name": "文德桥",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint",
+        "duration_source": "2026-10-19 Codex项目估计：单个地标停留，不含周边街区；待现场/人工核验"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。"
+    },
+    {
+      "id": 274,
+      "name": "亲水圆环景观桥",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint",
+        "duration_source": "2026-10-19 Codex项目估计：单个地标停留，不含周边街区；待现场/人工核验"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。"
+    },
+    {
+      "id": 94,
+      "name": "老门东牌坊",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint",
+        "duration_source": "2026-10-19 Codex项目估计：单个地标停留，不含周边街区；待现场/人工核验"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。"
+    },
+    {
+      "id": 238,
+      "name": "钟山风景区-流徽榭",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint",
+        "duration_source": "2026-10-19 Codex项目估计：单个地标停留，不含周边街区；待现场/人工核验"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。"
+    },
+    {
+      "id": 47,
+      "name": "鼓楼",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint",
+        "duration_source": "2026-10-19 Codex项目估计：单个地标停留，不含周边街区；待现场/人工核验"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。"
+    },
+    {
+      "id": 1,
+      "name": "夫子庙",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "visit_group": "nanjing-fuzimiao-walk",
+        "visit_group_label": "夫子庙·秦淮街区漫步",
+        "interests": [
+          "人文历史",
+          "宗教寺庙",
+          "美食探店",
+          "夜景夜游",
+          "特色文化"
+        ]
+      },
+      "note": "按一段街区游览计体验，商铺、船班及大成殿收费分开核实。；兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 66,
+      "name": "南京夫子庙步行街",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "visit_group": "nanjing-fuzimiao-walk",
+        "visit_group_label": "夫子庙·秦淮街区漫步"
+      },
+      "note": "按一段街区游览计体验，商铺、船班及大成殿收费分开核实。"
+    },
+    {
+      "id": 248,
+      "name": "文德桥",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "visit_group": "nanjing-fuzimiao-walk",
+        "visit_group_label": "夫子庙·秦淮街区漫步"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。；按一段街区游览计体验，商铺、船班及大成殿收费分开核实。"
+    },
+    {
+      "id": 32,
+      "name": "老门东历史街区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "visit_group": "nanjing-laomendong-walk",
+        "visit_group_label": "老门东街区漫步",
+        "interests": [
+          "人文历史",
+          "拍照出片",
+          "夜景夜游",
+          "美食探店",
+          "特色文化"
+        ]
+      },
+      "note": "牌坊与街区连续游览，不重复算独立活动。；兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 94,
+      "name": "老门东牌坊",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "visit_group": "nanjing-laomendong-walk",
+        "visit_group_label": "老门东街区漫步"
+      },
+      "note": "修正单桥/亭/门楼被当作数小时活动的范围问题；不是官方时长。；牌坊与街区连续游览，不重复算独立活动。"
+    },
+    {
+      "id": 125,
+      "name": "南京云锦博物馆",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "博物馆展览",
+          "艺术文创",
+          "人文历史",
+          "特色文化"
+        ],
+        "min_hours": 1.0,
+        "max_hours": 1.5
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）；2026-10-20 AI核对（Claude）第3层：云锦博物馆（含织机演示），原表0.5–1小时偏短，改为项目估计1–1.5小时。"
+    },
+    {
+      "id": 60,
+      "name": "南京市民俗博物馆",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "博物馆展览",
+          "人文历史",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 211,
+      "name": "非遗馆·南京市非遗体验中心",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "博物馆展览",
+          "艺术文创",
+          "亲子游乐",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 16,
+      "name": "中国科举博物馆(江南贡院)",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "博物馆展览",
+          "人文历史",
+          "艺术文创",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 58,
+      "name": "中国秦淮灯会主会场（白鹭洲公园）",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "夜景夜游",
+          "人文历史",
+          "亲子游乐",
+          "拍照出片",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 175,
+      "name": "雨花石博物馆",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "博物馆展览",
+          "艺术文创",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 299,
+      "name": "夫子庙雨花石博物馆",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "博物馆展览",
+          "艺术文创",
+          "人文历史",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 222,
+      "name": "秦淮戏院里",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "人文历史",
+          "艺术文创",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 114,
+      "name": "大梦·红楼沉浸式展演",
+      "sources": [],
+      "changes": {
+        "interests": [
+          "艺术文创",
+          "人文历史",
+          "特色文化"
+        ]
+      },
+      "note": "兴趣补标“特色文化”：用户 2026-10-20 确认的南京特色文化地点名单（项目整理，非官方分类）"
+    },
+    {
+      "id": 88,
+      "name": "南京龙出没乐园",
+      "sources": [
+        "dahepiao_longchumo_2025"
+      ],
+      "changes": {
+        "price": 99.0,
+        "min_hours": 4.0,
+        "max_hours": 6.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：原表0元不对，按第三方票务平台团购起价99元作预算参考（非官方挂牌价，实际可能更高）；1–4月仅周末开放，出发前确认。；2026-10-20 AI核对（Claude）第3层：主题乐园，原表2.5–3小时偏短，改为项目估计4–6小时。"
+    },
+    {
+      "id": 230,
+      "name": "粉红兔冒险乐园",
+      "sources": [
+        "dahepiao_fenhongtu_2024"
+      ],
+      "changes": {
+        "price": 39.9
+      },
+      "note": "2026-10-20 AI核对（Claude）：原表0元不对，按第三方票务平台单人票39.9元作预算参考（非官方挂牌价）；周一全天不开放，出发前确认。"
+    },
+    {
+      "id": 201,
+      "name": "松鼠咔咔森林乐园",
+      "sources": [
+        "dahepiao_songshukaka_2023"
+      ],
+      "changes": {
+        "price": 19.9
+      },
+      "note": "2026-10-20 AI核对（Claude）：原表0元不对，按第三方票务平台团购起价19.9元作预算参考（2023年资料，实际可能更高）；出发前确认。"
+    },
+    {
+      "id": 132,
+      "name": "南京森林大世界亲子主题乐园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：未查到票价与营业信息，乐园类原表0元不可信，暂停自动推荐。"
+    },
+    {
+      "id": 172,
+      "name": "雨花台科技乐园游乐场",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：只查到所在雨花台景区免费，游乐场本身票价未查到，暂停自动推荐。"
+    },
+    {
+      "id": 202,
+      "name": "南京沃德喜马拉雅冰雪乐园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：多个平台标注“暂停营业”，票价未查到，暂停自动推荐。"
+    },
+    {
+      "id": 322,
+      "name": "白马公园时光岛乐园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：乐园价目表仅有图片、未能核读票价，暂停自动推荐。"
+    },
+    {
+      "id": 115,
+      "name": "南京古生物博物馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "open_min": 540,
+        "close_min": 1020,
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：开放09:00–17:00、16:00停止入馆，2021年改造后免费开放，可能需公众号预约（携程 you.ctrip.com/sight/nanjing9/143633.html；中国日报政务频道2021）；原表全天开放有误。时长为项目估计。"
+    },
+    {
+      "id": 135,
+      "name": "南京地质博物馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "open_min": 570,
+        "close_min": 990
+      },
+      "note": "2026-10-20 AI核对（Claude）：开放09:30–16:30（买购网词条，日期不明）；原表全天开放有误，出发前确认闭馆日。"
+    },
+    {
+      "id": 273,
+      "name": "地球科学博物馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：位于南京大学校内；南大仅双休日及法定节假日对社会开放、需提前7天公众号实名预约（新京报、扬子晚报2026），排程无法保证入校，暂停自动推荐。"
+    },
+    {
+      "id": 195,
+      "name": "南京大学(鼓楼校区)-校史博物馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：南京大学校史博物馆，入校限制同上，暂停自动推荐。"
+    },
+    {
+      "id": 71,
+      "name": "南京大学(鼓楼校区)",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：南京大学鼓楼校区仅双休日及法定节假日对社会开放、需提前预约且半年一次，排程无法保证，暂停自动推荐。"
+    },
+    {
+      "id": 69,
+      "name": "南京城墙博物馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：免费，周二至周日约09:00–17:00开放、周一闭馆（游记与票务平台转述）；出发前确认。；2026-10-20 AI核对（Claude）第3层：城墙博物馆，原表0.5–1小时偏短，改为项目估计1–2小时。"
+    },
+    {
+      "id": 180,
+      "name": "拉贝旧居",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：开放08:30–16:30（买购网），携程另记09:00–17:00；原表2.5–3小时偏长，改为项目估计0.5–1小时。"
+    },
+    {
+      "id": 296,
+      "name": "江南丝绸文化博物馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "open_min": 570,
+        "close_min": 1020,
+        "min_hours": 1.0,
+        "max_hours": 1.5
+      },
+      "note": "2026-10-20 AI核对（Claude）：周二至周日09:30–17:00、周一闭馆（买购网），非国有博物馆；时长为项目估计。"
+    },
+    {
+      "id": 278,
+      "name": "中科院紫金山天文台陨石馆",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：陨石展馆2015年起对公众开放（紫金山天文台官网新闻），但未查到现行开放时间与票价，暂停自动推荐。"
+    },
+    {
+      "id": 122,
+      "name": "心印中华门",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "price": 48.0,
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：中华门瓮城内夜间实景演出，团购48元起，2025年每晚19:45、20:20、21:00三场（大河票务网2025-08）；原表0元有误，按参考价预算。"
+    },
+    {
+      "id": 263,
+      "name": "南京爱情博物馆（新街口店）",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：未查到该馆票价与营业信息（检索仅见羊皮巷“失恋博物展”），原表0元不可信，暂停自动推荐。"
+    },
+    {
+      "id": 310,
+      "name": "净觉寺",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：未查到南京净觉寺的开放时间与参观规定（检索结果为河北同名寺），原表全天开放不可信，暂停自动推荐。"
+    },
+    {
+      "id": 124,
+      "name": "芥子园",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {},
+      "note": "2026-10-20 AI核对（Claude）：周三至周日09:00–16:30、周一周二闭馆（买购网，日期不明）；票价未查到，出发前确认。"
+    },
+    {
+      "id": 151,
+      "name": "中华门",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：与“中华门瓮城”（id 29，收费）为同一处，原表0元重复条目，暂停单独推荐。"
+    },
+    {
+      "id": 150,
+      "name": "牛首山弘觉寺塔",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：位于牛首山文化旅游区（id 0，收费）内，随景区一并游览，原表0元全天开放不单独推荐。"
+    },
+    {
+      "id": 217,
+      "name": "古鸡鸣寺-尼众佛学院图书馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：位于鸡鸣寺内（id 22），不单独成行，暂停单独推荐。"
+    },
+    {
+      "id": 225,
+      "name": "战神突击真枪射击馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：商业射击馆，票价未知、原表0元不可信，且非常规观光地点，暂停自动推荐。"
+    },
+    {
+      "id": 320,
+      "name": "原国民政府(外交部)旧址",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint"
+      },
+      "note": "2026-10-20 AI核对（Claude）：单栋历史建筑外观参观，原表全天2–3.5小时偏长，改为项目估计。"
+    },
+    {
+      "id": 209,
+      "name": "基督教圣保罗堂",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5,
+        "visit_role": "viewpoint"
+      },
+      "note": "2026-10-20 AI核对（Claude）：教堂外观参观，原表1–2小时偏长，改为项目估计；宗教活动时间另核。"
+    },
+    {
+      "id": 250,
+      "name": "清凉寺",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：小型寺院，原表3–3.5小时偏长，改为项目估计0.5–1小时。"
+    },
+    {
+      "id": 131,
+      "name": "樱花大道",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：樱花大道步行观赏，原表2–3.5小时偏长，改为项目估计；樱花季约3月下旬至4月上旬，其余时间为普通街道。"
+    },
+    {
+      "id": 68,
+      "name": "颐和路公馆区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：公馆区街巷漫步，原表2.5–4小时偏长，改为项目估计1–2小时；多数公馆不对外开放。"
+    },
+    {
+      "id": 103,
+      "name": "狮子桥步行美食街",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.5
+      },
+      "note": "2026-10-20 AI核对（Claude）：美食街逛吃，原表2–2.5小时偏长，改为项目估计1–1.5小时。"
+    },
+    {
+      "id": 204,
+      "name": "南京银杏湖",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "price": 260.0,
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：原表0元有误；2026-07亲子攻略记约260元含水上项目，2022年票务平台团购150元起（大河票务网）；按较新参考价预算，非官方挂牌价。；2026-10-20 AI核对（Claude）第3层：与“银杏湖乐园”（id 38）同属银杏湖景区、相距约700米，重复条目，暂停单独推荐。"
+    },
+    {
+      "id": 59,
+      "name": "南京玛雅海滩水公园",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：收费（2022年票务平台团购99元起）且为夏季水上乐园，开放季节与当前票价未核实，暂停自动推荐。"
+    },
+    {
+      "id": 178,
+      "name": "华谊兄弟（南京）电影小镇",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：2023年探访与游记称街区免费但多数关闭、游乐项目另收费（界面新闻、携程游记），营业状态存疑，暂停自动推荐。"
+    },
+    {
+      "id": 56,
+      "name": "WeLope紫金山探险公园",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：未查到票价（仅见园区介绍），原表0元不可信，暂停自动推荐。"
+    },
+    {
+      "id": 177,
+      "name": "世界之窗",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：未查到南京该“世界之窗”的票价与营业信息（检索结果均为深圳世界之窗），暂停自动推荐。"
+    },
+    {
+      "id": 212,
+      "name": "真枪会射击俱乐部",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：商业射击俱乐部，票价未知、原表0元不可信，适合人群不含亲子，非常规观光地点，暂停自动推荐。"
+    },
+    {
+      "id": 249,
+      "name": "江苏省五台山体育中心",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：体育场馆，非常规观光地点，原表0元与游览时长不适用，暂停自动推荐。"
+    },
+    {
+      "id": 308,
+      "name": "江苏万驰国际赛车场",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：赛车场体验项目收费未知、原表0元不可信，暂停自动推荐。"
+    },
+    {
+      "id": 85,
+      "name": "长生鹿苑",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-20 AI核对（Claude）：位于明孝陵景区内，本身不另收费但需明孝陵门票约70元（什么值得买攻略），作为景区内子景点不单独推荐。"
+    },
+    {
+      "id": 184,
+      "name": "浦口珍珠泉野生动物生态园",
+      "sources": [
+        "ai_web_check_20261020"
+      ],
+      "changes": {
+        "price": 60.0,
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）：原表0元有误；珍珠泉风景区+生态园成人票60元起（大河票务网2025-09、携程），按参考价预算，非官方挂牌价。；2026-10-20 AI核对（Claude）第3层：野生动物生态园，原表0.5–2小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 21,
+      "name": "南京欢乐谷",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 7.0,
+        "day_anchor": true,
+        "onsite_dining": true
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：大型主题乐园，原表2–3.5小时偏短，参照杭州乐园（5–7小时、整日锚点、园内用餐）改为项目估计。"
+    },
+    {
+      "id": 38,
+      "name": "银杏湖乐园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 6.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：大型主题乐园（门票约210元），原表0.5–1小时明显偏短，改为项目估计4–6小时。"
+    },
+    {
+      "id": 80,
+      "name": "龙出没穿越漂流",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：龙出没乐园旁漂流项目，原表0.5–1小时偏短，改为项目估计1–1.5小时。"
+    },
+    {
+      "id": 52,
+      "name": "华昌龙之谷奇幻新大陆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：大型主题乐园（门票约180元），原表1–2.5小时偏短，改为项目估计3–5小时。"
+    },
+    {
+      "id": 46,
+      "name": "紫清湖野生动物世界",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 3.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：野生动物园，原表1–1.5小时偏短，改为项目估计2.5–3.5小时。"
+    },
+    {
+      "id": 54,
+      "name": "汤山紫清湖旅游区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 4.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：旅游区（含动物园、温泉等，门票约118元），原表0.5–1小时偏短，改为项目估计2.5–4小时。"
+    },
+    {
+      "id": 107,
+      "name": "弘阳未来世界",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：室内主题乐园（门票约78元），原表0.5–1小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 216,
+      "name": "金陵矩阵",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：沉浸式体验馆（门票约99元），原表0.5–1小时偏短，改为项目估计1.5–2小时。"
+    },
+    {
+      "id": 260,
+      "name": "杜比乐园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 2.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：亲子乐园，原表0.5–1小时偏短，改为项目估计1.5–2.5小时。"
+    },
+    {
+      "id": 224,
+      "name": "南京幻境世界",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 2.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：室内主题乐园，原表1–1.5小时偏短，改为项目估计1.5–2.5小时。"
+    },
+    {
+      "id": 149,
+      "name": "固城湖水慢城",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：水上慢城乐园（门票约70元），原表0.5–1小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 302,
+      "name": "水墨大埝旅游区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：乡村旅游区，原表0.5–1.5小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 101,
+      "name": "无想水镇",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：水乡古镇，原表1.5–2小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 108,
+      "name": "溧水周园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：园林主题乐园（门票约79元），原表1–2小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 75,
+      "name": "紫金山",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：紫金山登山步道，原表0.5–1小时偏短，改为项目估计2–3小时（山上各景点另列）。"
+    },
+    {
+      "id": 133,
+      "name": "无想山",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：山岳景区，原表0.5–1小时偏短，改为项目估计2–3.5小时。"
+    },
+    {
+      "id": 228,
+      "name": "南京游子山休闲旅游区",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：休闲旅游区（登山＋游乐），原表0.5–1小时偏短，改为项目估计2–3小时。"
+    },
+    {
+      "id": 87,
+      "name": "汤山矿坑公园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：矿坑公园漫步，原表0.5–1小时偏短，改为项目估计1–2小时。"
+    },
+    {
+      "id": 277,
+      "name": "南京六合恋山坝上草原",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 2.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：草原景区，原表0.5–1.5小时偏短，改为项目估计1.5–2.5小时。"
+    },
+    {
+      "id": 275,
+      "name": "江苏六合国家地质公园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 2.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：国家地质公园，原表0.5–1.5小时偏短，改为项目估计1.5–2.5小时。"
+    },
+    {
+      "id": 148,
+      "name": "清凉山公园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.5
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：城市山林公园，原表0.5–1小时偏短，改为项目估计1–1.5小时。"
+    },
+    {
+      "id": 84,
+      "name": "莫愁湖公园",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：城市湖泊公园，原表0.5–1.5小时偏短，改为项目估计1–2小时。"
+    },
+    {
+      "id": 78,
+      "name": "江苏科技馆",
+      "sources": [
+        "curator"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-20 AI核对（Claude）第3层：大型科技馆（亲子），原表0.5–1小时明显偏短，改为项目估计2–3小时。"
+    }
+  ]
+}

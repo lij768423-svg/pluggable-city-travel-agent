@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 
+from .cities import city_config, current_city
 from .calendar import trip_date
 from .experiences import LOCALITY_CELL_DEGREES
 from .schemas import POI, FieldEvidence, UserProfile
@@ -20,7 +21,7 @@ def visit_open_min(place: POI) -> int:
     return max(place.open_min, EVENING_START_MIN) if evening_only(place) else place.open_min
 
 
-def enrich_semantics(place: POI) -> POI:
+def enrich_semantics(place: POI, city: str | None = None) -> POI:
     region = f"grid:{math.floor(place.lat / LOCALITY_CELL_DEGREES)}:{math.floor(place.lon / LOCALITY_CELL_DEGREES)}"
     kind = "full_day" if place.day_anchor else "continuous_walk" if place.visit_group else "independent"
     if "游船" in place.name and not place.day_anchor:
@@ -28,7 +29,7 @@ def enrich_semantics(place: POI) -> POI:
     evidence = dict(place.field_evidence)
     evidence["region"] = FieldEvidence(basis="rule", reference="app/poi_semantics.py:0.02-degree-coordinate-grid; not an administrative area")
     evidence["experience_kind"] = FieldEvidence(basis="curator_inference" if place.day_anchor or place.visit_group else "rule",
-        reference="app/assets/poi_reviews.json" if place.day_anchor or place.visit_group else "app/poi_semantics.py:name/type classification; duration unchanged")
+        reference=(city_config(city) if city else current_city()).asset_reference("poi_reviews.json") if place.day_anchor or place.visit_group else "app/poi_semantics.py:name/type classification; duration unchanged")
     for field in ("booking_required", "onsite_dining", "visit_group", "experience_conditions"):
         evidence.setdefault(field, FieldEvidence(basis="unknown", reference="未提供已核验记录"))
     return place.model_copy(update={"region_id": region, "region_label": place.visit_group_label or region,

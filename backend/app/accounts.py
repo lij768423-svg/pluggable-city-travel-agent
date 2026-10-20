@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 import copy
 import hashlib
 import hmac
@@ -16,6 +17,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
+from .cities import DEFAULT_CITY, city_config
 from . import config
 
 AUTH_COOKIE = "tta_session"
@@ -121,7 +123,8 @@ class AccountStore:
                 for key in ("detail", "restaurant", "leg", "guide_evidence", "travel_evidence"):
                     item.pop(key, None)
                 item["alternatives"] = []
-        title = f"杭州 {saved['profile']['days']} 日 · " + "、".join(saved["profile"].get("interests", [])[:2] or ["随心旅行"])
+        # 保存时已不在规划上下文里，城市名按行程画像自己的城市取
+        title = f"{city_config(saved['profile'].get('city') or DEFAULT_CITY).name} {saved['profile']['days']} 日 · " + "、".join(saved["profile"].get("interests", [])[:2] or ["随心旅行"])
         if saved.get("delivery_status") == "draft":
             title = "[测试草稿·待核实] " + title
         now = time.time()
@@ -163,8 +166,11 @@ class AccountStore:
             row = database.execute("SELECT * FROM trips WHERE id=? AND user_id=?", (identifier, user_id)).fetchone()
         if row is None:
             raise HTTPException(404, "这份历史行程不存在。")
+        from .presentation import city_entry
+        plan = json.loads(row["plan_json"])
+        plan["city_info"] = city_entry(plan["profile"].get("city") or DEFAULT_CITY)
         return {"id": identifier, "title": row["title"], "created": row["created"], "updated": row["updated"],
-                "request": json.loads(row["request_json"]), "plan": json.loads(row["plan_json"])}
+                "request": json.loads(row["request_json"]), "plan": plan}
 
     def delete(self, user_id: str, identifier: str) -> None:
         with self.connect() as database:

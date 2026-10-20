@@ -308,3 +308,24 @@ def test_refine_excludes_a_newly_added_place_when_later_trying_to_remove_it(patc
     assert result["refine_scores"]["after"] == 60
     # 第一步补入的夜市在第二步尝试移除时也必须传入排除集合，不能被夜游模块当场补回。
     assert exclusion_checks and all(69 in excluded for excluded in exclusion_checks)
+
+
+def test_day_split_comparison_counts_dropped_visit_time(patch_places, monkeypatch):
+    """两种分天软违例相同时，不能只因路短就选舍掉大段游玩的那种。"""
+    from app.nodes import schedule as module
+    from app.travel import Travel
+    patch_places({1: place(1), 2: place(2, min_hours=2.5, max_hours=3), 3: place(3, min_hours=0.5, max_hours=0.5)})
+    profile = UserProfile(days=2, budget=5000, hotel=Hotel(lat=30.25, lon=120.15))
+    balanced, seed = [[1], [2]], [[1], [3]]
+    monkeypatch.setattr(module, "split_days", lambda *a, **kw: balanced)
+    monkeypatch.setattr(module, "_seed_days", lambda *a, **kw: seed)
+    monkeypatch.setattr(module, "_schedule_groups", lambda groups, *a: (
+        groups, [3] if groups == balanced else [2], []))
+    monkeypatch.setattr("app.nodes.meals.build_itinerary", lambda orders, *a, **kw: orders)
+    monkeypatch.setattr("app.nodes.validate.validate_itinerary", lambda itinerary, *a, **kw: itinerary)
+    # 原片区分组路更短，软违例相同
+    monkeypatch.setattr("app.planning_quality.quality_key",
+                        lambda itinerary, report: (0, 8, 100 if itinerary == balanced else 60))
+    orders, dropped, log = module.schedule([1, 2, 3], profile, {}, Travel("estimate"))
+    assert orders == balanced and dropped == [3]
+    assert "采用时长与交通均衡方案" in log[-1]

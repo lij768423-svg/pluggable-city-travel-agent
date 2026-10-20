@@ -6,13 +6,17 @@ import time
 from dataclasses import dataclass, field
 
 
+# 单次规划的高德 HTTP 上限（2026-10-20 用户让 Claude 定：120→200；杭州 20 画像实测均值约 84 次，4 天行程常用满 120）
+PLAN_HTTP_LIMIT = 200
+
+
 class RequestBudgetExceeded(RuntimeError):
     pass
 
 
 @dataclass
 class RequestBudget:
-    limit: int | None = 120
+    limit: int | None = PLAN_HTTP_LIMIT
     used: int = 0
     ceiling: int | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)

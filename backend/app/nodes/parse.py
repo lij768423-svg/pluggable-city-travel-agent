@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from ..llm import LLM, chat_json, get_llm
 from ..prompts import PARSE_SYSTEM
-from ..schemas import DIETARY, INTERESTS, UserProfile
+from ..schemas import DIETARY, INTERESTS, UserProfile, interest_list
 
 
 class _Parsed(BaseModel):
@@ -42,7 +42,7 @@ def parse_profile(query: str, llm: LLM | None = None, form: dict[str, Any] | Non
             {"role": "user", "content": query.strip()},
         ], _Parsed, tag="parse", temperature=0.0, max_tokens=2048)
         data = p.model_dump(exclude_none=True)
-        data["interests"] = [i for i in data.get("interests", []) if i in INTERESTS][:5]
+        data["interests"] = [i for i in interest_list(data.get("interests", [])) if i in INTERESTS][:5]
         data["dietary"] = [d for d in data.get("dietary", []) if d in DIETARY]
         if data.get("pace") not in ("relaxed", "normal", "intense"):
             data.pop("pace", None)

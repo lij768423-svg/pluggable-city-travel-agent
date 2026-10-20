@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .schemas import interest_tags
 
 from .data import load_pois
 from .experiences import experience_count
@@ -29,9 +30,9 @@ def candidate_metrics(state: dict) -> dict:
         "candidate_to_delivery_unused": ratio(len(candidates - delivered), len(candidates)),
         "scheduler_dropped_ids": sorted(selected - scheduled), "delivery_dropped_ids": sorted(selected - delivered),
         "interest_coverage": [{"name": interest,
-            "candidate_count": sum(interest in places[identifier].interests for identifier in candidates),
-            "selected_count": sum(interest in places[identifier].interests for identifier in selected),
-            "delivered_count": sum(interest in places[identifier].interests for identifier in delivered)}
+            "candidate_count": sum(interest in interest_tags(places[identifier].interests) for identifier in candidates),
+            "selected_count": sum(interest in interest_tags(places[identifier].interests) for identifier in selected),
+            "delivered_count": sum(interest in interest_tags(places[identifier].interests) for identifier in delivered)}
             for interest in dict.fromkeys(profile.interests)],
         "delivered_experiences": experience_count(delivered, places),
         "route_conflicts": [{"code": issue.code, "day": issue.day, "item": issue.item, "message": issue.message}

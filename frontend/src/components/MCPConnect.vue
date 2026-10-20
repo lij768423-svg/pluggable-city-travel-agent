@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { AccountUser } from '../api'
-const props = defineProps<{ connectionId: string; user: AccountUser }>()
+const props = defineProps<{ brand: string; connectionId: string; user: AccountUser }>()
 const emit = defineEmits<{ connected: []; switchAccount: [] }>()
 const name = ref('旅行 MCP')
 const ready = ref(false)
@@ -38,12 +38,12 @@ async function approve() {
 <template>
   <section class="mcp-connect" aria-labelledby="mcp-connect-title">
     <div class="mcp-card">
-      <p class="mcp-eyebrow">杭州行记 · MCP</p>
+      <p class="mcp-eyebrow">{{ brand }} · MCP</p>
       <h1 id="mcp-connect-title">{{ done ? '账号已连接' : '连接你的旅行账号' }}</h1>
       <template v-if="done">
         <p>已连接账号 <strong>{{ user.username }}</strong>。回到聊天即可使用，之后无需重复登录 MCP。</p>
         <p>这个浏览器将保留 30 天登录，点行程链接就能直接查看。</p>
-        <a href="/">进入杭州行记</a>
+        <a href="/">进入{{ brand }}</a>
       </template>
       <template v-else>
         <p>将 <strong>{{ name }}</strong> 连接到账号 <strong>{{ user.username }}</strong>。</p>

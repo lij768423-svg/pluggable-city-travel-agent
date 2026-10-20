@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = BACKEND_DIR.parent
 DATA_DIR = Path(os.environ.get("TTA_DATA_DIR", REPO_DIR / "data"))
-CITY_DIR = DATA_DIR / "hangzhou"
+CITY_DIR = DATA_DIR / "hangzhou"  # 旧脚本的杭州别名；按城市读取使用 app.cities
 LLM_CACHE_DIR = DATA_DIR / "llm_cache"
 
 load_dotenv(BACKEND_DIR / ".env")

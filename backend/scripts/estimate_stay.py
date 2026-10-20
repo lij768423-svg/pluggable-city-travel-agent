@@ -45,9 +45,11 @@ def write_json(path: Path, value: object) -> None:
     temporary.replace(path)
 
 
-def input_rows() -> list[dict]:
-    frame = pd.read_parquet(config.CITY_DIR / "attractions.parquet")
-    tags_path = config.CITY_DIR / "attraction_tags.parquet"
+def input_rows(city: str = "hangzhou") -> list[dict]:
+    from app.cities import city_config
+    settings = city_config(city)
+    frame = pd.read_parquet(settings.data_dir / "attractions.parquet")
+    tags_path = settings.data_dir / "attraction_tags.parquet"
     tags = pd.read_parquet(tags_path).set_index("id") if tags_path.exists() else None
     return [{"poi_id": int(row.id), "name": row.name, "type": row.type,
              "summary": str(tags.loc[row.id, "summary"]) if tags is not None and row.id in tags.index else "",
@@ -55,10 +57,13 @@ def input_rows() -> list[dict]:
             for row in frame.sort_values("id").itertuples()]
 
 
-def messages_for(rows: list[dict], sample: int) -> list[dict]:
+def messages_for(rows: list[dict], sample: int, city: str = "hangzhou") -> list[dict]:
+    payload = {"prompt_version": PROMPT_VERSION, "independent_sample": sample, "places": rows}
+    if city != "hangzhou":
+        from app.cities import city_config
+        payload.update(city=city, city_name=city_config(city).name, prompt_version=f"{city}-stay-v1")
     return [{"role": "system", "content": SYSTEM},
-            {"role": "user", "content": json.dumps({"prompt_version": PROMPT_VERSION,
-             "independent_sample": sample, "places": rows}, ensure_ascii=False)}]
+            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]
 
 
 def aggregate(rows: list[dict], records: list[dict], generated_at: str) -> list[dict]:
@@ -94,23 +99,31 @@ def aggregate(rows: list[dict], records: list[dict], generated_at: str) -> list[
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--city", default="hangzhou")
     parser.add_argument("--batch-size", type=int, default=10)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--output", type=Path, default=config.BACKEND_DIR / "app/assets/stay_reference.json")
-    parser.add_argument("--checkpoint", type=Path, default=config.DATA_DIR / "stay-reference-v1/checkpoint.json")
+    parser.add_argument("--reasoning-effort", choices=("low", "medium", "high", "xhigh", "max"))
+    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--checkpoint", type=Path, default=None)
     args = parser.parse_args()
     if not 10 <= args.batch_size <= 12:
         parser.error("每批必须为10至12个景点，以控制总调用数")
-    rows = input_rows()
+    from app.cities import city_config
+    settings = city_config(args.city)
+    args.output = args.output or settings.assets_dir / "stay_reference.json"
+    args.checkpoint = args.checkpoint or (config.DATA_DIR / "stay-reference-v1/checkpoint.json" if settings.key == "hangzhou" else settings.data_dir / "stay-reference-v1/checkpoint.json")
+    rows = input_rows(settings.key)
     batches = [rows[offset:offset + args.batch_size] for offset in range(0, len(rows), args.batch_size)]
     expected = len(batches) * 3
     print(f"POI={len(rows)}，每批={args.batch_size}，独立采样=3，预计调用={expected}，模型={config.LLM_MODEL}，缓存={config.LLM_CACHE}", flush=True)
     if expected > 120:
         parser.error("预计超过120次，停止")
-    identity = {"prompt_version": PROMPT_VERSION, "prompt_sha256": PROMPT_SHA256,
+    identity = {"prompt_version": PROMPT_VERSION if settings.key == "hangzhou" else f"{settings.key}-stay-v1", "prompt_sha256": PROMPT_SHA256,
                 "input_sha256": digest(rows), "configured_model": config.LLM_MODEL,
                 "thinking": config.LLM_THINKING, "batch_size": args.batch_size,
                 "temperature": .7, "max_tokens": 12000}
+    if args.reasoning_effort is not None:
+        identity["reasoning_effort"] = args.reasoning_effort
     if args.dry_run:
         print(json.dumps(identity, ensure_ascii=False))
         return 0
@@ -119,7 +132,7 @@ def main() -> int:
         checkpoint = json.loads(args.checkpoint.read_text(encoding="utf-8"))
         if any(checkpoint.get(key) != value for key, value in identity.items()):
             raise ValueError("检查点与输入/提示词/模型/参数不一致；请指定新的checkpoint路径")
-    llm = OpenAICompatLLM(retry_attempts=1, sdk_max_retries=0)
+    llm = OpenAICompatLLM(retry_attempts=1, sdk_max_retries=0, reasoning_effort=args.reasoning_effort)
     started = time.perf_counter()
     session = {"started_at": datetime.now(timezone.utc).isoformat(), "request_attempts": 0,
                "cache_hits": 0, "seconds": 0.0}
@@ -136,7 +149,7 @@ def main() -> int:
     stopped = False
     for sample in range(1, 4):
         for batch_number, batch in enumerate(batches, 1):
-            messages = messages_for(batch, sample)
+            messages = messages_for(batch, sample, settings.key)
             request_sha = digest({**identity, "messages": messages})
             if request_sha in completed:
                 continue

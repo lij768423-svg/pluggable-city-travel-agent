@@ -21,6 +21,7 @@ import unicodedata
 from collections.abc import Iterator
 
 from . import config
+from .cities import city_config
 from .planning_context import poi_catalog
 from .poi_admission import admitted_poi, persistence_issues, publication_issues
 from .schemas import POI, CatalogSnapshot, SupplementRecord
@@ -203,38 +204,39 @@ class PlanningCatalog:
     base_digest: str
     supplement_digest: str | None = None
     pois: dict[int, POI] = field(default_factory=dict, compare=False, repr=False)
+    city: str = "hangzhou"
 
     @classmethod
-    def build(cls, pois: dict[int, POI], base_digest: str, supplement_digest: str | None = None) -> "PlanningCatalog":
+    def build(cls, pois: dict[int, POI], base_digest: str, supplement_digest: str | None = None, *, city: str = "hangzhou") -> "PlanningCatalog":
         # 原库版本号等于原库摘要，与此前 data_version 的用途一致；叠加补充目录后另算组合摘要。
         version = base_digest if supplement_digest is None else hashlib.sha256(
             f"{base_digest}+{supplement_digest}".encode()).hexdigest()
-        return cls(version=version, base_digest=base_digest, supplement_digest=supplement_digest, pois=pois)
+        return cls(version=version, base_digest=base_digest, supplement_digest=supplement_digest, pois=pois, city=city)
 
     def reference(self) -> dict[str, str | None]:
         """写入规划结果的目录身份；会话修改和展示按它解析，不保存景点内容本身。"""
-        return {"version": self.version, "base_digest": self.base_digest, "supplement_digest": self.supplement_digest}
+        return {"city": self.city, "version": self.version, "base_digest": self.base_digest, "supplement_digest": self.supplement_digest}
 
 
-_CATALOGS: dict[str, PlanningCatalog] = {}
+_CATALOGS: dict[tuple[str, str], PlanningCatalog] = {}
 _CATALOGS_LOCK = threading.Lock()
 
 
 def register_catalog(catalog: PlanningCatalog) -> PlanningCatalog:
     """登记后同版本在本进程内始终解析为同一对象；同版本不同内容视为篡改。"""
     with _CATALOGS_LOCK:
-        existing = _CATALOGS.setdefault(catalog.version, catalog)
+        existing = _CATALOGS.setdefault((catalog.city, catalog.version), catalog)
     if existing is not catalog and existing.pois != catalog.pois:
         raise CatalogUnavailable("同一目录版本出现不同内容")
     return existing
 
 
-def base_catalog() -> PlanningCatalog:
+def base_catalog(city: str = "hangzhou") -> PlanningCatalog:
     from .data import base_digest, load_base_pois
-    digest = base_digest()
+    digest = base_digest() if city == "hangzhou" else base_digest(city)
     with _CATALOGS_LOCK:
-        found = _CATALOGS.get(digest)
-    return found or register_catalog(PlanningCatalog.build(load_base_pois(), digest))
+        found = _CATALOGS.get((city, digest))
+    return found or register_catalog(PlanningCatalog.build(load_base_pois() if city == "hangzhou" else load_base_pois(city), digest, city=city))
 
 
 def supplement_pois(snapshot: CatalogSnapshot) -> dict[int, POI]:
@@ -244,32 +246,32 @@ def supplement_pois(snapshot: CatalogSnapshot) -> dict[int, POI]:
     return {poi.id: poi for poi in pois if poi is not None}
 
 
-def supplement_catalog(digest: str, root: Path | None = None) -> PlanningCatalog:
-    base = base_catalog()
+def supplement_catalog(digest: str, root: Path | None = None, *, city: str = "hangzhou") -> PlanningCatalog:
+    base = base_catalog(city)
     version = PlanningCatalog.build({}, base.base_digest, digest).version
     with _CATALOGS_LOCK:
-        found = _CATALOGS.get(version)
+        found = _CATALOGS.get((city, version))
     if found is not None:
         return found
-    snapshot = read_snapshot(root or config.POI_SUPPLEMENT_DIR, digest)
+    snapshot = read_snapshot(root or city_config(city).supplement_dir, digest)
     if json.loads(snapshot.payload)["base_digest"] != base.base_digest:
         raise CatalogUnavailable("补充目录发布时的原库摘要与当前原库不一致，须重新发布")
     extra = supplement_pois(snapshot)
     if extra.keys() & base.pois.keys():
         raise CatalogUnavailable("补充目录ID与原库冲突")
     pois = {**base.pois, **extra} if extra else base.pois
-    return register_catalog(PlanningCatalog.build(pois, base.base_digest, digest))
+    return register_catalog(PlanningCatalog.build(pois, base.base_digest, digest, city=city))
 
 
-def published_catalog() -> PlanningCatalog:
+def published_catalog(city: str = "hangzhou") -> PlanningCatalog:
     """进程当前发布版：base_only 恒为原库；with_supplement 读发布指针，尚未发布则仍为原库。"""
     mode = config.POI_CATALOG_MODE
     if mode == "base_only":
-        return base_catalog()
+        return base_catalog(city)
     if mode != "with_supplement":
         raise ValueError(f"未知景点目录模式：{mode}")
-    digest = published_digest(config.POI_SUPPLEMENT_DIR)
-    return base_catalog() if digest is None else supplement_catalog(digest)
+    digest = published_digest(city_config(city).supplement_dir)
+    return base_catalog(city) if digest is None else supplement_catalog(digest, city=city)
 
 
 def current_catalog() -> PlanningCatalog:
@@ -278,20 +280,22 @@ def current_catalog() -> PlanningCatalog:
 
 def resolve_catalog(reference: dict | None) -> PlanningCatalog:
     """按规划结果记录的目录身份解析；没有记录的旧结果由原库生成，按原库处理。"""
-    base = base_catalog()
+    city = reference.get("city", "hangzhou") if reference else "hangzhou"
+    city_config(city)
+    base = base_catalog(city)
     if not reference:
         return base
     version = reference.get("version")
     with _CATALOGS_LOCK:
-        found = _CATALOGS.get(version)
+        found = _CATALOGS.get((city, version))
     if found is not None:
-        if found.reference() != {key: reference.get(key) for key in ("version", "base_digest", "supplement_digest")}:
+        if found.reference() != {"city": city, **{key: reference.get(key) for key in ("version", "base_digest", "supplement_digest")}}:
             raise CatalogUnavailable("目录版本与记录不一致")
         return found
     if reference.get("base_digest") != base.base_digest:
         raise CatalogUnavailable("原库已变化，不能按旧目录版本继续")
     supplement = reference.get("supplement_digest")
-    catalog = base if supplement is None else supplement_catalog(supplement)
+    catalog = base if supplement is None else supplement_catalog(supplement, city=city)
     if catalog.version != version:
         raise CatalogUnavailable("目录版本与记录不一致")
     return catalog

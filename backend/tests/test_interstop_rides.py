@@ -318,7 +318,9 @@ def test_evening_uses_same_ride_limit_and_allows_walks(scenario, monkeypatch, mi
     profile.include_evening = True
     monkeypatch.setattr("app.evening.load_pois", lambda: places)
     monkeypatch.setattr("app.evening.load_restaurants", lambda: {9: restaurant})
-    monkeypatch.setattr("app.evening.NIGHT_STREETS", {3: places[3].name})
+    from dataclasses import replace
+    from app.cities import current_city
+    monkeypatch.setattr("app.evening.current_city", lambda: replace(current_city(), evening_streets={3: places[3].name}))
     # 本测试只隔离单段25分钟/步行规则；跨片区额外15分钟另有专门边界回归。
     coordinates[3] = (places[1].lat + .0001, places[1].lon)
     places[3] = places[3].model_copy(update={"lat": coordinates[3][0], "lon": coordinates[3][1]})

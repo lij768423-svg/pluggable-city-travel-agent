@@ -1,11 +1,11 @@
 export const planStages = [
   { id: 'parse', title: '理解你的出行需求', description: '核对日期、起点、预算和个人偏好' },
-  { id: 'retrieve', title: '寻找合适的地点', description: '从杭州地点库召回符合条件的候选' },
+  { id: 'retrieve', title: '寻找合适的地点', description: '从目的地地点库召回符合条件的候选' },
   { id: 'select', title: '挑选这次值得去的地方', description: '结合偏好与必去地点，确定游览候选' },
   { id: 'schedule', title: '排好每天的游览顺序', description: '计算地点间交通与可用游览时段' },
   { id: 'meals', title: '安排沿途餐饮与夜间活动', description: '比较餐厅，检查夜游是否适合加入' },
   { id: 'validate', title: '核对路线和时间', description: '检查营业时间、预算、步行与行程完整性' },
-  { id: 'finalize', title: '整理你的杭州行记', description: '汇总行程、交通数据与待确认事项' },
+  { id: 'finalize', title: '整理你的行记', description: '汇总行程、交通数据与待确认事项' },
 ] as const
 
 export type PlanStage = typeof planStages[number]['id'] | 'repair' | 'refine'

@@ -24,8 +24,9 @@ from .test_amap import A, B, distance_handler, fake_router
 
 @pytest.mark.parametrize("point", [{"lat":float("nan")}, {"lon":float("inf")}, {"lat":35}, {"lon":0}])
 def test_origin_rejects_nonfinite_and_outside_city(point):
+    # Hotel 接受全国坐标；默认杭州的业务范围由画像校验器负责。
     with pytest.raises(ValidationError):
-        Hotel(**point)
+        UserProfile(hotel=point)
 
 
 def test_api_nonfinite_input_returns_sanitized_422():
@@ -190,6 +191,42 @@ def test_transit_within_comfort_is_kept_even_if_taxi_is_faster(tmp_path):
     route = Travel("amap", "transit", router=fake_router(tmp_path, handler), live_budget=None)
     route.set_day(UserProfile(days=1, budget=300, transport="transit"), 1)
     assert route.leg(*A, *B) == (25, "公交/地铁", 2.0)
+
+
+
+def test_long_transit_walk_upgrades_to_taxi_for_kids_not_for_solo(tmp_path):
+    # 公交 20 分钟但接驳步行 1400 米：亲子（每日上限 4500 米的 1/4）改打车少走路；独自出行（8000 米的 1/4）仍坐公交
+    def handler(kind, params):
+        if kind == "integrated":
+            return {"status": "1", "route": {"transits": [{"duration": "1200", "cost": "2", "walking_distance": "1400"}]}}
+        return distance_handler(drive=(5600, 600))(kind, params)
+    router = fake_router(tmp_path, handler)
+    kids = Travel("amap", "transit", router=router, live_budget=None)
+    kids.set_day(UserProfile(days=1, budget=300, transport="transit", companions="family_kids"), 1)
+    result = kids.detail(*A, *B)
+    assert (result.mode, result.walking_m) == ("打车", 0) and "1400" in result.fallback_reason
+    solo = Travel("amap", "transit", router=router, live_budget=None)
+    solo.set_day(UserProfile(days=1, budget=300, transport="transit", companions="solo"), 1)
+    assert solo.leg(*A, *B) == (20, "公交/地铁", 2.0)
+
+
+def test_walk_upgrade_uses_amap_taxi_quote_over_fare_model(tmp_path):
+    # 直线约 21 公里：标定模型估车费远超 60 元；公交接口报价 50 元时按报价改打车，没有报价时仍坐公交
+    far = (30.40, 120.25)
+
+    def route(quote):
+        def handler(kind, params):
+            if kind == "integrated":
+                return {"status": "1", "route": {"taxi_cost": quote,
+                        "transits": [{"duration": "4800", "cost": "6", "walking_distance": "3300"}]}}
+            return distance_handler(drive=(24000, 2400))(kind, params)
+        travel = Travel("amap", "transit", router=fake_router(tmp_path / str(quote), handler), live_budget=None)
+        travel.set_day(UserProfile(days=1, budget=1500, transport="transit", companions="family_kids"), 1)
+        return travel.detail(*A, *far)
+
+    quoted = route("50")
+    assert (quoted.mode, quoted.cost, quoted.walking_m) == ("打车", 50.0, 0)
+    assert route("").mode == "公交/地铁"
 
 
 def raw_restaurant(**updates):

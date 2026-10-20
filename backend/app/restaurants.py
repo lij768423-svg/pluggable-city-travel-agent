@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+
 import hashlib
 import math
 import re
 from datetime import datetime, timezone
 
+from .cities import current_city
 from . import config
 from .amap import AmapError
 from .data import diet_ok, load_restaurants
@@ -21,7 +23,7 @@ DIET_HINT = {"清真": {"新疆菜", "西北菜", "清真", "中东菜", "土耳
 
 
 def valid_location(restaurant: Restaurant) -> bool:
-    return math.isfinite(restaurant.lat) and math.isfinite(restaurant.lon) and 29 <= restaurant.lat <= 31 and 118 <= restaurant.lon <= 121
+    return current_city().contains(restaurant.lat, restaurant.lon)
 
 
 def brand_name(restaurant: Restaurant) -> str:
@@ -87,8 +89,10 @@ def normalize_restaurant(raw: dict) -> Restaurant | None:
     periods = opening_periods(opening)
     cuisine = next((name for name in ("素食", "江浙菜", "杭帮菜", "川菜", "湘菜", "火锅", "西餐", "日本料理", "烧烤", "海鲜")
                     if name in categories + place["name"]), "中餐" if "中餐" in categories else categories.split(";")[-1] or "餐厅")
-    if cuisine not in {"素食", "清真"} and re.search(r"杭帮|浙江菜|江浙", categories + place["name"]):
-        cuisine = "杭帮菜" if "杭帮" in categories + place["name"] else "江浙菜"
+    local = re.search(current_city().local_cuisine, categories + place["name"])
+    if cuisine not in {"素食", "清真"} and local:
+        cuisine = next((label for token, label in current_city().local_cuisine_labels.items()
+                        if token in categories + place["name"]), local.group())
     return Restaurant(id=-int(hashlib.sha256(place["id"].encode()).hexdigest()[:12], 16),
                       external_id=place["id"], provider="amap", name=place["name"], lat=place["lat"], lon=place["lon"],
                       address=place["address"], price=price, price_known=price > 0, cuisine=cuisine, rating=rating,

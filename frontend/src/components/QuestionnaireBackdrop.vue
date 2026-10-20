@@ -1,16 +1,14 @@
 <script setup lang="ts">
-// 问卷背景：两幅杭州插画，左景北望宝石山（保俶塔、断桥、荷），右景雷峰夕照（雷峰塔、画舫、三潭印月）。
-// 插画由 scripts/gen_scene.py 生成（内容固定、随仓库管理），内联进页面，动画样式在 questionnaire.css，
-// 这样“减少动态效果”的系统设置能统一停掉画中的动画。
-import westScene from '../assets/backdrop/hangzhou-west.svg?raw'
-import southScene from '../assets/backdrop/hangzhou-south.svg?raw'
+import { computed } from 'vue'
+import { cityArtwork } from '../cityArt'
+// 各城市两幅主题插画；资产由仓库脚本生成，低动态效果统一受系统设置控制。
+const props = defineProps<{ city: string }>()
+const scene = computed(() => cityArtwork(props.city))
 </script>
 
 <template>
-  <div class="questionnaire-backdrop" aria-hidden="true">
-    <!-- eslint-disable-next-line vue/no-v-html -->
-    <div class="qb-scene qb-west" v-html="westScene" />
-    <!-- eslint-disable-next-line vue/no-v-html -->
-    <div class="qb-scene qb-south" v-html="southScene" />
+  <div class="questionnaire-backdrop" :class="{ 'neutral-backdrop': !scene }" :data-city-art="city" aria-hidden="true">
+    <div v-if="scene" class="qb-scene qb-west" :data-scene="scene.leftLabel" v-html="scene.left" />
+    <div v-if="scene" class="qb-scene qb-south" :data-scene="scene.rightLabel" v-html="scene.right" />
   </div>
 </template>

@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+import argparse
+from functools import partial
 import random
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -17,12 +19,13 @@ import pandas as pd
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app.config import BACKEND_DIR, CITY_DIR  # noqa: E402
+from app.config import BACKEND_DIR
+from app.cities import city_config  # noqa: E402
 from app.data import TYPE_RULES  # noqa: E402
 from app.llm import chat_json, get_llm  # noqa: E402
 from app.schemas import AUDIENCES, INTERESTS  # noqa: E402
 
-SYSTEM = f"""你是杭州本地旅游专家。为给定的每个景点打标签，只输出 JSON。
+SYSTEM = f"""你是__CITY__本地旅游专家。为给定的每个景点打标签，只输出 JSON。
 字段：
 - id: 原样返回
 - interests: 从词表中选 1-4 个最贴切的：{"、".join(INTERESTS)}
@@ -47,10 +50,10 @@ class _Out(BaseModel):
     items: list[_Tag]
 
 
-def tag_batch(rows: list[dict]) -> list[dict]:
+def tag_batch(rows: list[dict], city: str = "hangzhou") -> list[dict]:
     lines = [f"id={r['id']} | {r['name']} | 类型:{r['type']} | 门票:{r['price']:.0f}元 | 建议游玩:{r['recommendmintime']}-{r['recommendmaxtime']}小时"
              for r in rows]
-    out: _Out = chat_json(get_llm(), [{"role": "system", "content": SYSTEM},
+    out: _Out = chat_json(get_llm(), [{"role": "system", "content": SYSTEM.replace("__CITY__", city_config(city).name)},
                                       {"role": "user", "content": "\n".join(lines)}],
                           _Out, tag="tag_pois", temperature=0.0, max_tokens=6000)
     ids = {r["id"] for r in rows}
@@ -67,11 +70,19 @@ def tag_batch(rows: list[dict]) -> list[dict]:
 
 
 def main() -> None:
-    df = pd.read_parquet(CITY_DIR / "attractions.parquet")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--city", default="hangzhou")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    settings = city_config(args.city)
+    df = pd.read_parquet(settings.data_dir / "attractions.parquet")
     rows = df.to_dict("records")
     batches = [rows[i:i + 20] for i in range(0, len(rows), 20)]
+    print(f"城市={settings.key}，POI={len(rows)}，预计模型请求={len(batches)}（不含重试）", flush=True)
+    if args.dry_run:
+        return
     with ThreadPoolExecutor(max_workers=4) as ex:
-        results = list(ex.map(tag_batch, batches))
+        results = list(ex.map(partial(tag_batch, city=settings.key), batches))
     tags = {t["id"]: t for batch in results for t in batch}
     n_fallback = 0
     for r in rows:  # LLM 漏掉或标签为空的：规则兜底并标注来源
@@ -81,9 +92,9 @@ def main() -> None:
                              "indoor": indoor, "summary": "", "source": "rule"}
             n_fallback += 1
     out = pd.DataFrame([tags[r["id"]] for r in rows])
-    out.to_parquet(CITY_DIR / "attraction_tags.parquet", index=False)
+    out.to_parquet(settings.data_dir / "attraction_tags.parquet", index=False)
 
-    audit_dir = BACKEND_DIR / "eval" / "tag_audit"
+    audit_dir = BACKEND_DIR / "eval" / "tag_audit" if settings.key == "hangzhou" else settings.data_dir / "tag_audit"
     audit_dir.mkdir(parents=True, exist_ok=True)
     random.seed(42)
     sample_ids = sorted(random.sample([r["id"] for r in rows], k=max(1, len(rows) // 10)))

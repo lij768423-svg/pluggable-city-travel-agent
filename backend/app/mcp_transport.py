@@ -72,7 +72,8 @@ def create_mcp_app(service: MCPService, owner: str, credential: str, *, port: in
     def prepare_trip(profile: dict, request_id: str, job_id: str | None = None,
                      origin_query: str | None = None) -> dict[str, Any]:
         """准备画像和有限候选，不生成行程。days/budget/start_date须用户确认；hotel坐标为BD-09。
-        起点不明确时用origin_query返回杭州选项，用户选择后以同job_id重新prepare；不可猜坐标。
+        profile.city为城市键（如hangzhou），只能是已启用城市，默认hangzhou；一次行程只在一个城市内。
+        起点不明确时用origin_query返回当前城市的起点选项，用户选择后以同job_id重新prepare；不可猜坐标。
         request_id为8–100字符，重试复用；改变内容须新request_id。缺字段会给profile_schema。
         """
         return invoke(service.prepare, profile, request_id, job_id, origin_query)

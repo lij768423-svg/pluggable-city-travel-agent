@@ -8,9 +8,22 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 # 兴趣标签固定词表：画像解析、景点打标签、检索打分共用
 INTERESTS: list[str] = [
-    "自然风光", "人文历史", "宗教寺庙", "博物馆展览", "园林古镇", "拍照出片", "茶文化",
+    "自然风光", "人文历史", "宗教寺庙", "博物馆展览", "园林古镇", "拍照出片", "特色文化",
     "亲子游乐", "主题乐园", "购物街区", "夜景夜游", "户外徒步", "小众安静", "艺术文创", "美食探店",
 ]
+# 2026-10-20 用户决定：“茶文化”改为更通用的“特色文化”（南京等城市不以茶文化为特色）。
+# 景点数据里的旧标签不改（会改变原库摘要、使已发布补充目录失效），匹配和展示时按别名归一。
+INTEREST_ALIASES: dict[str, str] = {"茶文化": "特色文化"}
+
+
+def interest_list(values) -> list[str]:
+    """按别名归一后的兴趣标签，保持原顺序、去重。"""
+    return list(dict.fromkeys(INTEREST_ALIASES.get(value, value) for value in values))
+
+
+def interest_tags(values) -> set[str]:
+    return set(interest_list(values))
+
 AUDIENCES: list[str] = ["亲子", "老人", "情侣", "朋友", "独行"]
 DIETARY: list[str] = ["不吃辣", "只吃中餐", "清真", "不吃海鲜"]
 
@@ -66,8 +79,9 @@ class StayReference(StayEstimate):
 
 
 class MapPoint(BaseModel):
-    lat: float = Field(ge=29, le=31, allow_inf_nan=False)
-    lon: float = Field(ge=118, le=121, allow_inf_nan=False)
+    # 通用坐标先做数值粗筛；所属城市范围须在导航解析行程上下文后校验。
+    lat: float = Field(ge=18, le=54, allow_inf_nan=False)
+    lon: float = Field(ge=73, le=136, allow_inf_nan=False)
 
     def coordinate(self) -> str:
         return f"{self.lon:.6f},{self.lat:.6f}"
@@ -81,6 +95,17 @@ class NavigationLeg(BaseModel):
 
 
 class NavigationRequest(BaseModel):
+    # 旧客户端省略时按杭州；历史会话过期时仍能按显式城市查询路线。
+    city: str = Field(default="hangzhou", min_length=1, max_length=40)
+    plan_id: str | None = Field(None, max_length=64)
+
+    @field_validator("city")
+    @classmethod
+    def known_city(cls, value: str) -> str:
+        from .cities import city_config
+        city_config(value)
+        return value
+
     date: Date | None = None
     legs: list[NavigationLeg] = Field(min_length=1, max_length=16)
 
@@ -96,10 +121,20 @@ class PlaceDetailsRequest(BaseModel):
     plan_id: str | None = Field(None, max_length=64)
 
 
+def _context_city() -> str:
+    from .cities import current_city
+    return current_city().key
+
+
+def _default_origin() -> dict:
+    from .cities import current_city
+    return current_city().default_origin
+
+
 class Hotel(BaseModel):
-    name: str = Field("西湖湖滨（默认）", min_length=1, max_length=160)
-    lat: float = Field(30.254433, ge=29, le=31, allow_inf_nan=False)
-    lon: float = Field(120.169771, ge=118, le=121, allow_inf_nan=False)
+    name: str = Field(default_factory=lambda: _default_origin()["name"], min_length=1, max_length=160)
+    lat: float = Field(default_factory=lambda: _default_origin()["lat"], ge=18, le=54, allow_inf_nan=False)
+    lon: float = Field(default_factory=lambda: _default_origin()["lon"], ge=73, le=136, allow_inf_nan=False)
 
 
 class DayWindow(BaseModel):
@@ -116,6 +151,9 @@ class DayWindow(BaseModel):
 
 class UserProfile(BaseModel):
     model_config = ConfigDict(allow_inf_nan=False)
+    # 城市键（app/assets/cities.json）。没写时取当前任务城市，无任务上下文（如读取 C2 之前的旧记录）即杭州。
+    # 画像只校验城市存在，是否启用由新建规划、修改等入口检查，保证旧记录总能读出
+    city: str = Field(default_factory=lambda: _context_city(), min_length=1, max_length=40)
     days: int = Field(2, ge=1, le=5)
     budget: float = Field(1500, gt=0, description="人均总预算（元），含门票、餐饮、市内交通，不含住宿")
     pace: Pace = "normal"
@@ -146,8 +184,37 @@ class UserProfile(BaseModel):
             raise ValueError("总预算需大于0，包含餐饮和市内交通；不确定时请留空，0不代表不限预算")
         return value
 
+    @field_validator("interests")
+    @classmethod
+    def normalized_interests(cls, value: list[str]) -> list[str]:
+        return interest_list(value)  # 旧行程里的“茶文化”读出来即为“特色文化”
+
+    @field_validator("city")
+    @classmethod
+    def known_city(cls, value: str) -> str:
+        from .cities import city_config
+        city_config(value)
+        return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def city_default_origin(cls, data):
+        # 没给起点时用所选城市的默认起点，而不是调用方上下文的城市
+        if isinstance(data, dict) and data.get("hotel") is None:
+            from .cities import city_config
+            try:
+                origin = city_config(data.get("city") or _context_city()).default_origin
+            except ValueError:
+                return data  # 未知城市交给字段校验报错
+            data = {**data, "hotel": dict(origin)}
+        return data
+
     @model_validator(mode="after")
     def valid_preferences(self):
+        from .cities import city_config
+        settings = city_config(self.city)
+        if not settings.contains(self.hotel.lat, self.hotel.lon):
+            raise ValueError(f"起点须在{settings.name}范围内")
         from .rules import activity_window
         window = activity_window(self)
         start, end = window["start"], window["end"]

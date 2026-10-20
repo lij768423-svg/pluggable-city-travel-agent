@@ -14,7 +14,7 @@ from app.data import load_pois, load_restaurants
 from app.geo import parse_hm
 from app.llm import LLM, chat_json, get_llm
 from app.matching import match_name
-from app.prompts import BASELINE_SYSTEM, profile_to_text
+from app.prompts import BASELINE_SYSTEM, profile_to_text, baseline_system
 from app.schemas import DayPlan, Item, Itinerary, UserProfile
 
 
@@ -45,7 +45,7 @@ class BaselineOut(BaseModel):
 def run_pure_llm(profile: UserProfile, llm: LLM | None = None) -> Itinerary:
     llm = llm or get_llm()
     out: BaselineOut = chat_json(llm, [
-        {"role": "system", "content": BASELINE_SYSTEM},
+        {"role": "system", "content": baseline_system()},
         {"role": "user", "content": "用户画像：\n" + profile_to_text(profile)},
     ], BaselineOut, tag="baseline_pure_llm", max_tokens=8192)
     poi_names = {i: p.name for i, p in load_pois().items()}

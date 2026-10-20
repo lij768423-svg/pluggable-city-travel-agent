@@ -15,7 +15,7 @@ import httpx
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app.config import CITY_DIR  # noqa: E402
+from app.cities import city_config, _definitions  # noqa: E402
 
 REPO = "LAMDA-NeSy/ChinaTravel-Sandbox"
 TABLES = ["attractions", "restaurants", "accommodations"]
@@ -30,20 +30,22 @@ def fetch(table: str, base: str) -> pd.DataFrame:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--city", default="杭州")
+    ap.add_argument("--city", default="hangzhou", help="城市键；兼容已配置的中文城市名")
     ap.add_argument("--mirror", default="https://huggingface.co")
     args = ap.parse_args()
 
-    CITY_DIR.mkdir(parents=True, exist_ok=True)
+    key = next((key for key, raw in _definitions().items() if args.city in (key, raw["name"], raw["name_full"])), args.city)
+    city = city_config(key)
+    city.data_dir.mkdir(parents=True, exist_ok=True)
     meta = {"source": f"https://huggingface.co/datasets/{REPO}", "license": "CC BY 4.0",
-            "city": args.city, "fetched_at": datetime.now(timezone.utc).isoformat(), "tables": {}}
+            "city": city.name, "fetched_at": datetime.now(timezone.utc).isoformat(), "tables": {}}
     for t in TABLES:
         df = fetch(t, args.mirror)
-        sub = df[df["city"] == args.city].reset_index(drop=True)
-        sub.to_parquet(CITY_DIR / f"{t}.parquet", index=False)
+        sub = df[df["city"] == city.name].reset_index(drop=True)
+        sub.to_parquet(city.data_dir / f"{t}.parquet", index=False)
         meta["tables"][t] = {"rows_total": len(df), "rows_city": len(sub), "columns": list(sub.columns)}
         print(f"{t}: {len(sub)}/{len(df)} rows, columns={list(sub.columns)}")
-    (CITY_DIR / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    (city.data_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

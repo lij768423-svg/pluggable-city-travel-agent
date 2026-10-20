@@ -2,13 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { PhArrowLeft, PhArrowRight, PhEye, PhEyeSlash, PhLockSimple, PhTicket, PhUser } from '@phosphor-icons/vue'
 import BrandMark from './BrandMark.vue'
-import sunset from '../assets/backdrop/hangzhou-south.svg?raw'
-import bridge from '../assets/backdrop/hangzhou-west.svg?raw'
-import { authenticate, type AccountUser } from '../api'
+import JourneyMark from './JourneyMark.vue'
+import { cityArtwork } from '../cityArt'
+import { authenticate, type AccountUser, type CityInfo } from '../api'
 
 // 登录页：全屏动态插画（左断桥北望、右雷峰夕照），左上垂挂竖排布幡，中间一张白色船票表单
 // gate：公网未登录时作为整站入口，不提供返回
-const props = defineProps<{ reason?: string; inviteRequired?: boolean; gate?: boolean }>()
+const props = defineProps<{ city: CityInfo; neutral?: boolean; reason?: string; inviteRequired?: boolean; gate?: boolean }>()
+const scene = computed(() => props.neutral ? undefined : cityArtwork(props.city.key))
 const invite = ref('')
 const emit = defineEmits<{ close: []; signedIn: [user: AccountUser] }>()
 const mode = ref<'login' | 'register'>('login')
@@ -40,19 +41,19 @@ async function submit() {
 
 <template>
   <section class="auth-page" aria-labelledby="auth-title" @keydown.esc="close">
-    <div class="auth-scene questionnaire-backdrop" aria-hidden="true">
-      <div class="auth-art auth-west" v-html="bridge" />
-      <div class="auth-art auth-south" v-html="sunset" />
+    <div class="auth-scene questionnaire-backdrop" :class="{ 'neutral-backdrop': !scene }" aria-hidden="true">
+      <div v-if="scene" class="auth-art auth-west" :data-scene="scene.leftLabel" v-html="scene.left" />
+      <div v-if="scene" class="auth-art auth-south" :data-scene="scene.rightLabel" v-html="scene.right" />
     </div>
     <div class="auth-banner" aria-hidden="true">
-      <div class="banner-text"><strong>杭州行记</strong><span>一程山水 · 一份行记</span></div>
+      <div class="banner-text"><strong>{{ neutral ? '行记' : city.brand }}</strong><span>一程山水 · 一份行记</span></div>
       <i class="auth-seal">行记</i>
     </div>
     <button v-if="!gate" type="button" class="auth-back" :disabled="busy" @click="close"><PhArrowLeft :size="16" />返回</button>
 
     <div class="auth-main">
       <div class="auth-ticket" :data-mode="mode">
-        <p class="ticket-head"><BrandMark /><span>西湖游船票</span><time>No.{{ ticketNo }}</time></p>
+        <p class="ticket-head"><component :is="neutral ? JourneyMark : BrandMark" :city="city.key" /><span>{{ neutral ? '旅行手记' : city.key === 'hangzhou' ? '西湖游船票' : `${city.name}旅行票` }}</span><time>No.{{ ticketNo }}</time></p>
         <h1 id="auth-title" ref="heading" tabindex="-1">{{ mode === 'login' ? '欢迎回来' : '领一张船票' }}</h1>
         <p v-if="reason" class="auth-reason">{{ reason }}</p>
         <div class="auth-tabs" role="tablist" aria-label="登录方式">

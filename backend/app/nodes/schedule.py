@@ -368,7 +368,7 @@ def route_greedy(day_ids: list[int], p: UserProfile, travel, must: set[int] | No
 
 def schedule(selected_ids: list[int], p: UserProfile, scores: dict[int, float], travel,
              use_solver: bool = True, must: set[int] | None = None) -> tuple[list[list[int]], list[int], list[str]]:
-    from ..planning_quality import CachedRoute, quality_key
+    from ..planning_quality import IDLE_HOUR_POINTS, CachedRoute, quality_key
     from .meals import build_itinerary
     from .validate import validate_itinerary
 
@@ -382,7 +382,11 @@ def schedule(selected_ids: list[int], p: UserProfile, scores: dict[int, float], 
     def key(proposal):
         itinerary = build_itinerary(proposal[0], p, [], route=travel, live=False)
         report = validate_itinerary(itinerary, p, travel_fn=CachedRoute(travel).leg)
-        return quality_key(itinerary, report)
+        hard, soft, tiebreak = quality_key(itinerary, report)
+        # 两种分天舍弃的景点不同时，舍掉的游玩时间每满一小时计 IDLE_HOUR_POINTS 分（与大段空档同价；2026-10-20 用户让按推荐修 17 号，取值为推断）；
+        # 否则只比交通，会选“路短但几乎没玩”的分法（南京 17 号：第 2 天只剩 30 分钟的杜比乐园）
+        lost = sum(service_min(load_pois()[identifier], p.pace) for identifier in proposal[1]) // 60 * IDLE_HOUR_POINTS
+        return hard, soft + lost, tiebreak
 
     if key(alternative) < key(result):
         result = alternative

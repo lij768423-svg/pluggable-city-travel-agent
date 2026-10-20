@@ -14,7 +14,9 @@ from .llm import LLM, Usage, get_llm
 from .nodes.meals import meals_node
 from .nodes.parse import parse_node
 from .nodes.repair import MAX_ROUNDS, repair_node
-from .poi_catalog import current_catalog, use_catalog
+from .cities import DEFAULT_CITY, ensure_enabled
+from .planning_context import poi_catalog
+from .poi_catalog import published_catalog, use_catalog
 from .refine import refine_node
 from .nodes.retrieve import retrieve_node
 from .nodes.schedule import schedule_node
@@ -138,8 +140,12 @@ def run_plan(query: str = "", form: dict[str, Any] | None = None, *, llm: LLM | 
     before.add(llm.usage)
     t0 = time.time()
     graph = build_graph(progress) if progress is not None else _GRAPH
-    # 整个任务固定同一目录版本；中途发布新版只影响下一次规划
-    catalog = current_catalog()
+    # 整个任务固定同一目录版本；中途发布新版只影响下一次规划。城市由表单决定，未启用的城市不能新建规划
+    city = (form or {}).get("city") or DEFAULT_CITY
+    ensure_enabled(city)
+    catalog = poi_catalog.get() or published_catalog(city)
+    if catalog.city != city:
+        raise ValueError("任务目录与所选城市不一致")
     with use_catalog(catalog):
         out = graph.invoke({"query": query, "form": form or {}, "llm": llm, "select_mode": select_mode,
                              "enable_repair": enable_repair, "enable_refine": enable_refine, "use_solver": use_solver, "meal_factor": 1.0,

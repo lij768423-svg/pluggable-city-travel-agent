@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .schemas import interest_tags
 
 import hashlib
 import json
@@ -6,6 +7,7 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
+from .cities import current_city
 from .data import load_pois
 from .schemas import Candidate, GuideCorpus, GuideSample, UserProfile
 
@@ -44,7 +46,11 @@ def validate_corpus(corpus: GuideCorpus) -> list[str]:
     return errors
 
 
-def load_corpus(path: Path = CORPUS_PATH) -> GuideCorpus:
+def load_corpus(path: Path | None = None) -> GuideCorpus:
+    implicit = path is None
+    path = path if path is not None else current_city().assets_dir / "guides" / "pilot-v1.json"
+    if implicit and current_city().key != "hangzhou" and not path.exists():
+        return GuideCorpus(version="empty", sources=[], samples=[], limitations=["本城市尚无核对过的攻略"])
     corpus = GuideCorpus.model_validate_json(path.read_text(encoding="utf-8"))
     errors = validate_corpus(corpus)
     if errors:
@@ -73,7 +79,7 @@ def retrieve_guides(candidates: list[Candidate], profile: UserProfile, limit: in
             continue
         if sample.months and (profile.start_date is None or profile.start_date.month not in sample.months):
             continue
-        score = len(matches) + 2 * len(set(sample.interests) & set(profile.interests))
+        score = len(matches) + 2 * len(interest_tags(sample.interests) & set(profile.interests))
         score += int(profile.companions in sample.audiences)
         score += int(sample.relation == "nearby" and len(matches) > 1)
         scored.append((score, sample))
@@ -101,7 +107,7 @@ def guide_context(evidence: list[dict]) -> str:
 
 def corpus_status() -> dict:
     corpus = load_corpus()
-    return {"version": corpus.version, "sha256": hashlib.sha256(CORPUS_PATH.read_bytes()).hexdigest(),
+    return {"version": corpus.version, "sha256": hashlib.sha256((current_city().assets_dir / "guides" / "pilot-v1.json").read_bytes()).hexdigest() if corpus.version != "empty" else None,
             "samples": len(corpus.samples), "sources": len(corpus.sources),
             "eligible": sum(eligible(sample, corpus) for sample in corpus.samples),
             "default_mode": "off", "promotion": "pending_human_evaluation", "training": False}

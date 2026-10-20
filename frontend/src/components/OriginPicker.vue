@@ -4,7 +4,7 @@ import { PhMagnifyingGlass, PhMapPin, PhX } from '@phosphor-icons/vue'
 import { searchPlaces, type Hotel, type OriginPlace } from '../api'
 
 // 起点：默认用第一个常用起点，以卡片显示；点“更换”后搜索酒店、地铁口或任意地点，空搜索时列出常用起点
-const props = defineProps<{ presets: Hotel[]; modelValue: Hotel | null; disabled: boolean }>()
+const props = defineProps<{ city: string; presets: Hotel[]; modelValue: Hotel | null; disabled: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Hotel | null] }>()
 const editing = ref(false)
 const query = ref('')
@@ -46,7 +46,7 @@ async function search() {
   searching.value = true
   error.value = ''
   try {
-    const response = await searchPlaces(query.value.trim(), controller.signal)
+    const response = await searchPlaces(query.value.trim(), props.city, controller.signal)
     if (currentId !== requestId) return
     places.value = response.places
     searched.value = true
@@ -63,6 +63,7 @@ function choose(place: Hotel) {
 }
 const detail = (place: Hotel) => [place.area, (place as OriginPlace).address].filter(Boolean).join(' · ')
 const same = (place: Hotel) => !!props.modelValue && place.name === props.modelValue.name && place.lat === props.modelValue.lat
+watch(() => props.city, stopEdit)
 onBeforeUnmount(cancelSearch)
 </script>
 

@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, Field, field_validator
 
 from . import config
+from .cities import current_city
 from .amap import AmapError, MissingSnapshotError, get_router, pt, straight_km
 from .amap_limits import RequestBudget
 
@@ -136,29 +137,38 @@ def fingerprint(url: str) -> str:
     return hashlib.sha1(normalize_url(url).encode()).hexdigest()[:12]
 
 
+def media_paths() -> tuple[Path, Path]:
+    if current_city().key == "hangzhou":
+        return REGISTRY_PATH, FILES_DIR
+    directory = current_city().assets_dir / "media"
+    return directory / "registry.json", directory / "files"
+
+
 def _registry_mtime() -> float:
-    return REGISTRY_PATH.stat().st_mtime if REGISTRY_PATH.exists() else 0.0
+    path, _ = media_paths()
+    return path.stat().st_mtime if path.exists() else 0.0
 
 
 @lru_cache(maxsize=4)
-def _load_registry(_mtime: float) -> Registry:
-    if not REGISTRY_PATH.exists():
+def _load_registry(path: Path, _mtime: float) -> Registry:
+    if not path.exists():
         return Registry()
-    return Registry.model_validate(json.loads(REGISTRY_PATH.read_text(encoding="utf-8")))
+    return Registry.model_validate(json.loads(path.read_text(encoding="utf-8")))
 
 
 def load_registry() -> Registry:
     """注册表按修改时间缓存：改完文件无需重启服务。"""
-    return _load_registry(_registry_mtime())
+    return _load_registry(media_paths()[0], _registry_mtime())
 
 
 def save_registry(registry: Registry) -> None:
-    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    registry_path, _ = media_paths()
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
     data = registry.model_dump(mode="json")
     data["places"] = dict(sorted(data["places"].items()))
-    tmp = REGISTRY_PATH.with_suffix(".json.tmp")
+    tmp = registry_path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    os.replace(tmp, REGISTRY_PATH)
+    os.replace(tmp, registry_path)
 
 
 def manual_photos(entry: RegistryEntry | None) -> list[Photo]:
@@ -166,7 +176,7 @@ def manual_photos(entry: RegistryEntry | None) -> list[Photo]:
         return []
     out = []
     for item in entry.photos:
-        url = PUBLIC_PREFIX + item.file
+        url = PUBLIC_PREFIX + (current_city().key + "/" if current_city().key != "hangzhou" else "") + item.file
         out.append(Photo(url=url, thumb_url=url, caption=item.caption, source="manual", source_label="人工补充",
                          attribution=f"{item.author} · {item.license}", license=item.license,
                          source_url=item.source_url, fingerprint=fingerprint(url)))
@@ -304,8 +314,9 @@ def add_manual_photo(kind: str, identifier: int, name: str, source_file: Path, *
         raise ValueError(f"{key} 已有 {MAX_PHOTOS} 张人工图片")
     digest = hashlib.sha1(source_file.read_bytes()).hexdigest()[:8]
     filename = f"{kind}{identifier}-{digest}{ext}"
-    FILES_DIR.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(source_file, FILES_DIR / filename)
+    _, files_dir = media_paths()
+    files_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source_file, files_dir / filename)
     photo = ManualPhoto(file=filename, caption=caption, author=author, license=license, source_url=source_url,
                         added_at=today or date.today())
     entry.photos.append(photo)
@@ -324,7 +335,7 @@ def remove_manual_photo(kind: str, identifier: int, filename: str) -> bool:
         registry.places.pop(place_key(kind, identifier))
     save_registry(registry)
     if not any(photo.file == filename for item in registry.places.values() for photo in item.photos):
-        (FILES_DIR / filename).unlink(missing_ok=True)
+        (media_paths()[1] / filename).unlink(missing_ok=True)
     return True
 
 
@@ -358,13 +369,13 @@ def check_registry() -> list[str]:
             problems.append(f"{key}: 名称「{entry.name}」与数据中的「{known.name}」不一致")
         for photo in entry.photos:
             referenced.add(photo.file)
-            path = FILES_DIR / photo.file
+            path = media_paths()[1] / photo.file
             if not path.exists():
                 problems.append(f"{key}: 缺少文件 files/{photo.file}")
             elif path.stat().st_size > MAX_FILE_BYTES:
                 problems.append(f"{key}: files/{photo.file} 超过 2 MB")
-    if FILES_DIR.exists():
-        for path in FILES_DIR.iterdir():
+    if media_paths()[1].exists():
+        for path in media_paths()[1].iterdir():
             if path.is_file() and not path.name.startswith(".") and path.name not in referenced:
                 problems.append(f"孤儿文件 files/{path.name}：注册表中没有登记")
     return problems

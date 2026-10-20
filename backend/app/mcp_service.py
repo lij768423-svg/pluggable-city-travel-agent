@@ -1,6 +1,7 @@
 """有界任务、账号和幂等业务；协议适配器不持有调度逻辑。"""
 from __future__ import annotations
 
+
 import hashlib
 import json
 import secrets
@@ -15,8 +16,9 @@ from urllib.parse import quote, urlparse
 from fastapi import HTTPException
 from pydantic import ValidationError
 
+from .cities import DEFAULT_CITY, CityDisabled, city_config, enabled_cities, ensure_enabled, reference_city
 from . import accounts, config
-from .amap_limits import RequestBudget, operation_budget
+from .amap_limits import PLAN_HTTP_LIMIT, RequestBudget, operation_budget
 from .mcp_domain import (MCPError, delivery_status, prepare_candidates,
                          public_candidates, run_selected)
 from .mcp_ledger import RequestLedger
@@ -45,7 +47,7 @@ class Job:
     # 准备时固定的景点目录；生成、后台线程和后续会话都使用它，而不是当时的全局发布版
     catalog: PlanningCatalog | None = None
     cancelled: threading.Event = field(default_factory=threading.Event)
-    budget: RequestBudget = field(default_factory=lambda: RequestBudget(120))
+    budget: RequestBudget = field(default_factory=lambda: RequestBudget(PLAN_HTTP_LIMIT))
     output: dict = field(default_factory=dict)
     plan_id: str | None = None
     progress: dict = field(default_factory=dict)
@@ -169,6 +171,12 @@ class MCPService:
                 job.profile = None
                 job.catalog = None
             data = deepcopy(profile_data)
+            city = data.get("city") or DEFAULT_CITY
+            try:
+                ensure_enabled(city)
+            except ValueError as error:  # 含 CityDisabled 与未知城市
+                raise MCPError("city_unavailable", str(error) if isinstance(error, CityDisabled) else "未知城市",
+                               enabled=list(enabled_cities())) from None
             missing = [key for key in ("days", "budget", "start_date") if data.get(key) is None]
             origins = []
             if origin_query:
@@ -178,8 +186,8 @@ class MCPService:
                 from .places import normalize_place
                 router = get_router().fork(job.budget)
                 try:
-                    raw = router._get("v3/place/text", {"keywords": origin_query, "city": "330100", "citylimit": "true", "offset": 10, "page": 1})
-                    origins = [p for item in raw.get("pois", []) if (p := normalize_place(item)) is not None]
+                    raw = router._get("v3/place/text", {"keywords": origin_query, "city": city_config(city).adcode, "citylimit": "true", "offset": 10, "page": 1})
+                    origins = [p for item in raw.get("pois", []) if (p := normalize_place(item, city)) is not None]
                 except Exception:
                     return {"status": "data_unavailable", "code": "origin_unavailable", "job_id": job.identifier,
                             "preparation_revision": job.revision, "amap_http_calls": job.budget.used}
@@ -194,7 +202,7 @@ class MCPService:
             profile = UserProfile.model_validate(data)
             job.profile = profile
             # 每次准备读一次当前发布版并固定；其他任务之后的发布不会让这次准备失效
-            catalog = published_catalog()
+            catalog = published_catalog(profile.city)
             with use_catalog(catalog):
                 job.candidates, job.report = prepare_candidates(profile)
                 candidates = public_candidates(job.candidates)
@@ -272,7 +280,7 @@ class MCPService:
                     raise MCPError("cancelled", "任务已取消")
             result = run_selected(job.profile, job.candidates, selected, job.report, progress=progress)
             outcome = delivery_status(result, allow_unverified_draft=self.allow_unverified_draft)
-            if job.budget.used >= 120 and outcome["status"] == "data_unavailable":
+            if job.budget.used >= PLAN_HTTP_LIMIT and outcome["status"] == "data_unavailable":
                 outcome["code"] = "quota_exhausted"
             if job.cancelled.is_set():
                 return
@@ -325,7 +333,7 @@ class MCPService:
     def get_job(self, owner: str, job_id: str) -> dict:
         job = self._job(owner, job_id)
         return {**deepcopy(job.output), "status": job.status, "job_id": job_id, "progress": deepcopy(job.progress),
-                "amap_http_calls": job.budget.used, "amap_http_limit": 120, "stage_http_calls": deepcopy(job.stage_calls),
+                "amap_http_calls": job.budget.used, "amap_http_limit": PLAN_HTTP_LIMIT, "stage_http_calls": deepcopy(job.stage_calls),
                 "server_llm_calls": 0, "server_llm_tokens": 0}
 
     def get_trip(self, owner: str, trip_id: str, expected_revision: int | None = None) -> dict:
@@ -356,6 +364,10 @@ class MCPService:
             session = self.sessions.get(trip_id)
             if session.owner != owner:
                 raise MCPError("not_found", "行程不存在")
+            try:
+                ensure_enabled(reference_city(session.result().get("poi_catalog")))
+            except CityDisabled as error:
+                raise MCPError("city_disabled", str(error)) from None
             if session.current != base_revision:
                 raise StaleRevision()
             request = MealEditPreviewRequest.model_validate({**edit, "revision": base_revision})
@@ -368,7 +380,7 @@ class MCPService:
                 raise MCPError("invalid_meal", "餐次不存在")
             if request.restaurant_id not in {a.ref_id for a in day.items[request.item_index].alternatives}:
                 raise MCPError("invalid_restaurant", "只能从当前餐次提供的备选ID选择")
-            budget = RequestBudget(120)
+            budget = RequestBudget(PLAN_HTTP_LIMIT)
             budget_token = operation_budget.set(budget)
             pool_token = allowed_pois.set(frozenset(session.result().get("mcp_candidate_ids", [])))
             try:
@@ -394,6 +406,10 @@ class MCPService:
             session = self.sessions.get(trip_id)
             if session.owner != owner:
                 raise MCPError("not_found", "行程不存在")
+            try:
+                ensure_enabled(reference_city(session.result().get("poi_catalog")))
+            except CityDisabled as error:
+                raise MCPError("city_disabled", str(error)) from None
             preview = self.sessions.get_preview(trip_id, base_revision, preview_id)
             updated = deepcopy(preview.result)
             updated["report"] = validate_preview(updated)

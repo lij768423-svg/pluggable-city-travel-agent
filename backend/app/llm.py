@@ -257,13 +257,17 @@ class OpenAICompatLLM:
         self._response_models = value
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None,
-                 cache: bool | None = None, retry_attempts: int = 3, sdk_max_retries: int = 2):
+                 cache: bool | None = None, retry_attempts: int = 3, sdk_max_retries: int = 2,
+                 reasoning_effort: str | None = None):
         from openai import OpenAI
 
         key = api_key or config.LLM_API_KEY or ("offline-placeholder" if os.environ.get("TTA_OFFLINE") == "1" else "")
         if not key:
             raise RuntimeError("LLM_API_KEY 未设置：请在 backend/.env 中配置（见 .env.example）")
         self.model = model or config.LLM_MODEL
+        if reasoning_effort not in (None, "low", "medium", "high", "xhigh", "max"):
+            raise ValueError("reasoning_effort 必须为 low/medium/high/xhigh/max")
+        self.reasoning_effort = reasoning_effort
         if retry_attempts < 1:
             raise ValueError("retry_attempts 必须大于 0")
         self.client = OpenAI(base_url=base_url or config.LLM_BASE_URL, api_key=key,
@@ -299,6 +303,8 @@ class OpenAICompatLLM:
             payload["extra_body"] = {"thinking": {"type": config.LLM_THINKING}, "reasoning_split": True}
             if config.LLM_THINKING == "adaptive":
                 payload["max_tokens"] = max(max_tokens, 12000)
+        if (effort := getattr(self, "reasoning_effort", None)) is not None:
+            payload["reasoning_effort"] = effort
         path = self._cache_path(payload)
         output = getattr(self, "on_output", None)
         if self.cache and path.exists():

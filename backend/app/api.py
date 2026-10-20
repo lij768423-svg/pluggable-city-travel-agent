@@ -4,6 +4,7 @@ uv run uvicorn app.api:app --host 127.0.0.1 --port 18600
 """
 from __future__ import annotations
 
+
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -16,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
+from .cities import current_city
 from . import config
 from . import accounts
 from . import access, stay_audit
@@ -23,16 +25,17 @@ from .data import load_pois, load_restaurants, tag_source
 from .geo import bd09_to_gcj02, hm
 from .graph import run_plan
 from .places import PlaceSearchError, search_places
-from .navigation import NavigationRequest, get_navigation
+from .navigation import NavigationRequest, NavigationBoundsError, get_navigation
 from .place_details import PlaceDetailsRequest, get_place_details
 from .schemas import AUDIENCES, DIETARY, INTERESTS, UserProfile, MealEditPreviewRequest, MealEditCommitRequest
 from .sessions import SESSIONS, SessionNotFound, StaleRevision, PreviewNotFound
 from .mcp_login import router as mcp_login_router
 from .progress import stream_plan_events
-from .presentation import serialize_plan
-from .poi_catalog import current_catalog, result_catalog, use_catalog
+from .presentation import serialize_plan, city_entry
+from .cities import CityDisabled, city_config, enabled_cities, ensure_enabled, reference_city
+from .poi_catalog import current_catalog, published_catalog, result_catalog, use_catalog
 
-app = FastAPI(title="杭州个性化行程规划 Agent", version="0.1.0")
+app = FastAPI(title=f"{current_city().name}个性化行程规划 Agent", version="0.1.0")
 app.include_router(accounts.router)
 app.include_router(mcp_login_router)
 app.include_router(stay_audit.router)
@@ -59,11 +62,16 @@ def gcj(lat: float, lon: float) -> dict[str, float]:
     return {"lat": round(la, 6), "lon": round(lo, 6)}
 
 
-@lru_cache(maxsize=1)
-def hotel_presets() -> list[dict[str, Any]]:
-    df = pd.read_parquet(config.CITY_DIR / "accommodations.parquet")
+@lru_cache(maxsize=None)
+def hotel_presets(city: str = "hangzhou") -> list[dict[str, Any]]:
+    from .cities import city_config
+    settings = city_config(city)
+    path = settings.data_dir / "accommodations.parquet"
+    if not path.exists():  # 新城市可能没有住宿数据：没有预设，用户自行搜索起点
+        return []
+    df = pd.read_parquet(path)
     out = []
-    for area in ["湖滨", "西溪", "武林", "钱江新城", "滨江", "灵隐"]:
+    for area in settings.hotel_areas:
         hit = df[df.name.str.contains(area)]
         if len(hit):
             r = hit.iloc[0]
@@ -88,7 +96,8 @@ class PlanRequest(BaseModel):
     @field_validator("form")
     @classmethod
     def validate_form(cls, value):
-        UserProfile.model_validate({"days":5,"day_start":0,"day_end":1440,**value})
+        profile = UserProfile.model_validate({"days":5,"day_start":0,"day_end":1440,**value})
+        ensure_enabled(profile.city)
         return value
 
 
@@ -98,9 +107,29 @@ def health() -> dict[str, Any]:
             "llm_model": config.LLM_MODEL, "llm_thinking": config.LLM_THINKING, "llm_key_set": bool(config.LLM_API_KEY)}
 
 
+def enabled_city(key: str) -> str:
+    try:
+        ensure_enabled(key)
+    except CityDisabled as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except ValueError:
+        raise HTTPException(status_code=404, detail="未知城市") from None
+    return key
+
+
+def ensure_editable(result: dict) -> None:
+    """停用城市的历史行程只读：可查看，不能换餐、撤销或提交修改。"""
+    try:
+        ensure_enabled(reference_city(result.get("poi_catalog")))
+    except CityDisabled as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+
+
 @app.get("/api/meta")
-def meta() -> dict[str, Any]:
-    return {"interests": INTERESTS, "dietary": DIETARY, "audiences": AUDIENCES, "hotels": hotel_presets(),
+def meta(city: str | None = Query(None, max_length=40)) -> dict[str, Any]:
+    city = enabled_city(city or ("hangzhou" if "hangzhou" in enabled_cities() else enabled_cities()[0]))
+    return {"city": city, "cities": [city_entry(key) for key in enabled_cities()],
+            "interests": INTERESTS, "dietary": DIETARY, "audiences": AUDIENCES, "hotels": hotel_presets(city),
             # Web端 key 本来就会出现在浏览器里；安全密钥不下发，由 /_AMapService 代理附加（A8）
             "map": {"provider": "amap" if config.AMAP_JS_KEY and config.AMAP_JS_SECURITY else "leaflet",
                     "amap_js_key": config.AMAP_JS_KEY or None},
@@ -116,18 +145,21 @@ def guides_status() -> dict[str, Any]:
 
 
 @app.get("/api/pois")
-def pois() -> list[dict[str, Any]]:
-    return [{**p.model_dump(include={"id", "name", "type", "price", "interests", "stamina", "summary"}),
-             **gcj(p.lat, p.lon)} for p in load_pois().values()]
+def pois(city: str = Query("hangzhou", max_length=40)) -> list[dict[str, Any]]:
+    with use_catalog(published_catalog(enabled_city(city))):
+        return [{**p.model_dump(include={"id", "name", "type", "price", "interests", "stamina", "summary"}),
+                 **gcj(p.lat, p.lon)} for p in load_pois().values()]
 
 
 @app.get("/api/places/search")
-async def places_search(request: Request, q: str = Query(min_length=2, max_length=80)) -> dict[str, Any]:
+async def places_search(request: Request, q: str = Query(min_length=2, max_length=80),
+                        city: str = Query("hangzhou", max_length=40)) -> dict[str, Any]:
     access.rate_limit(request, "places")
+    city = enabled_city(city)
     if len(q.strip()) < 2:
         raise HTTPException(status_code=422, detail="请输入至少两个字的地点名称。")
     try:
-        return {"places": await search_places(q)}
+        return {"places": await search_places(q, city)}
     except PlaceSearchError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
 
@@ -142,6 +174,8 @@ def plan(req: PlanRequest, request: Request, response: Response) -> dict[str, An
                      travel_source=req.travel_source, guide_mode=req.guide_mode)
     except ValidationError:
         raise HTTPException(status_code=422, detail="出游条件格式不正确，请检查日期、活动时段、预算和起点。") from None
+    except CityDisabled as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except Exception:
         raise HTTPException(status_code=502, detail="规划暂未完成，请保留条件后重试；外部数据或模型可能暂不可用。") from None
     request_meta = {"select_mode": req.select_mode, "enable_repair": req.enable_repair, "guide_mode": req.guide_mode, "input": req.model_dump()}
@@ -252,6 +286,7 @@ def preview_meal_endpoint(plan_id: str, req: MealEditPreviewRequest, request: Re
     try:
         session = SESSIONS.get(plan_id)
         accounts.authorize_session(session, request)
+        ensure_editable(session.result())
         if req.revision != session.current:
             raise StaleRevision()
         updated, change = build_preview(deepcopy(session.result(req.revision)), req)
@@ -286,6 +321,7 @@ def commit_meal_endpoint(plan_id: str, req: MealEditCommitRequest, request: Requ
     try:
         session = SESSIONS.get(plan_id)
         accounts.authorize_session(session, request)
+        ensure_editable(session.result())
         preview = SESSIONS.get_preview(plan_id, req.revision, req.preview_id)
         if not preview.result["report"].passed or preview.result["report"].hard:
             raise HTTPException(422, "这份预览含有硬约束冲突，原行程保持不变，请重新计算预览。")
@@ -333,6 +369,7 @@ def revert_endpoint(plan_id: str, req: RevertRequest, request: Request) -> dict[
     try:
         session = SESSIONS.get(plan_id)
         accounts.authorize_session(session, request)
+        ensure_editable(session.result())
         if session.request.get("source") == "mcp":
             from .mcp_domain import delivery_status
             if delivery_status(session.result(req.revision), allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"] not in {"ready", "draft"}:
@@ -345,7 +382,7 @@ def revert_endpoint(plan_id: str, req: RevertRequest, request: Request) -> dict[
     return deliver_plan(result, session, revision)
 
 
-def plan_catalog(plan_id: str | None, request: Request):
+def plan_catalog(plan_id: str | None, request: Request, city: str | None = None):
     """详情/图片按所属行程的目录版本解析；行程过期或不属于当前访问者时读当前发布版。"""
     if plan_id:
         try:
@@ -354,7 +391,7 @@ def plan_catalog(plan_id: str | None, request: Request):
             return result_catalog(session.result())
         except (SessionNotFound, HTTPException):
             pass
-    return use_catalog(current_catalog())
+    return use_catalog(published_catalog(city) if city else current_catalog())
 
 
 @app.get("/api/place-media")
@@ -375,7 +412,10 @@ def navigation(request: NavigationRequest, http: Request) -> dict[str, Any]:
     from .amap import AmapError
     access.rate_limit(http, "navigation")
     try:
-        return get_navigation(request)
+        with plan_catalog(request.plan_id, http, request.city):  # 有权访问的行程优先；过期历史按显式城市兜底
+            return get_navigation(request)
+    except NavigationBoundsError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
     except AmapError:
         raise HTTPException(status_code=503, detail="导航服务暂不可用，请稍后重试") from None
 
@@ -410,6 +450,13 @@ async def amap_proxy(path: str, request: Request) -> Response:
 from .media import FILES_DIR as _MEDIA_FILES  # noqa: E402
 
 _MEDIA_FILES.mkdir(parents=True, exist_ok=True)
+# 后续城市图片使用独立 URL；杭州既有 URL 和目录保持不变。
+from .cities import _definitions, city_config  # noqa: E402
+for _city_key in _definitions():
+    if _city_key != "hangzhou":
+        _city_files = city_config(_city_key).assets_dir / "media" / "files"
+        if _city_files.is_dir():
+            app.mount(f"/media/files/{_city_key}", StaticFiles(directory=_city_files), name=f"media-{_city_key}")
 app.mount("/media/files", StaticFiles(directory=_MEDIA_FILES), name="media-files")  # 人工补充的图片（随仓库管理）
 
 class FrontendFiles(StaticFiles):

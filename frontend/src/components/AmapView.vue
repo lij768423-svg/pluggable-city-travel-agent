@@ -10,6 +10,7 @@ import { createCamera, type Camera, type LngLat } from '../map/camera'
 declare global { interface Window { AMap?: any; _AMapSecurityConfig?: { serviceHost: string } } }
 
 const props = defineProps<{
+  mapCenter: { lat: number; lon: number }
   plan: PlanResponse | null; activeDay: number; selectedIndex: number | null; previewHotel?: Hotel | null; amapKey: string
   navigation: NavigationResponse | null; focusedPlace: MapFocus | null; focusRevision: number
   alternatives: AltMarker[]; alternativeAnchor: { lat: number; lon: number } | null; selectedAlternativeId: number | null
@@ -167,7 +168,7 @@ function highlight(move: boolean) {
 onMounted(async () => {
   try {
     const AMap = await loadAmap(props.amapKey)
-    map = new AMap.Map(el.value!, { zoom: 12, center: [120.16, 30.25], resizeEnable: true, viewMode: '2D' })
+    map = new AMap.Map(el.value!, { zoom: 12, center: [props.mapCenter.lon, props.mapCenter.lat], resizeEnable: true, viewMode: '2D' })
     map.addControl(new AMap.ToolBar({ position: 'RB' }))
     camera = createCamera({
       container: el.value!,

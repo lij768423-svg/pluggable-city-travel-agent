@@ -6,6 +6,7 @@ import type { Hotel, PlanResponse, NavigationResponse, MapFocus, AltMarker } fro
 import { createCamera, type Camera, type LngLat } from '../map/camera'
 
 const props = defineProps<{
+  mapCenter: { lat: number; lon: number }
   plan: PlanResponse | null; activeDay: number; selectedIndex: number | null; previewHotel?: Hotel | null
   navigation: NavigationResponse | null; focusedPlace: MapFocus | null; focusRevision: number
   alternatives: AltMarker[]; alternativeAnchor: { lat: number; lon: number } | null; selectedAlternativeId: number | null
@@ -115,7 +116,7 @@ function highlight(move: boolean) {
 
 onMounted(() => {
   // zoomSnap 0：允许小数缩放级，动画每一帧都能连续缩放
-  map = L.map(el.value!, { zoomControl: false, attributionControl: true, zoomSnap: 0 }).setView([30.25, 120.16], 12)
+  map = L.map(el.value!, { zoomControl: false, attributionControl: true, zoomSnap: 0 }).setView([props.mapCenter.lat, props.mapCenter.lon], 12)
   L.control.zoom({ position: 'bottomright' }).addTo(map)
   L.tileLayer(AMAP_TILES, { subdomains: '1234', maxZoom: 18, attribution: '底图 © 高德地图 · 数据 ChinaTravel (CC BY 4.0)' }).addTo(map)
   routes = L.layerGroup().addTo(map)

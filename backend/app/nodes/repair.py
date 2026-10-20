@@ -119,6 +119,17 @@ def _repair(state: dict) -> tuple[list[Selection], float, list[str], bool, set[i
             removed.add(worst)
             log.append(f"第 {d} 天{'减少跨区折返' if quality_day else '时间冲突修复'}：移除「{pois[worst].name}」")
             changed = True
+            if not any(identifier != worst and any(s.poi_id == identifier for s in sel) for identifier in day_ids):
+                # 底线：不把一天删空。换上离起点比被删地点更近、且之前没删过的候选
+                hotel = (p.hotel.lat, p.hotel.lon)
+                limit = haversine_km(*hotel, pois[worst].lat, pois[worst].lon)
+                chosen = {s.poi_id for s in sel}
+                nearer = [c for c in state["candidates"] if c.poi_id not in chosen | removed and not pois[c.poi_id].day_anchor
+                          and haversine_km(*hotel, pois[c.poi_id].lat, pois[c.poi_id].lon) < limit]
+                if nearer:
+                    replacement = max(nearer, key=lambda c: (c.score - haversine_km(*hotel, pois[c.poi_id].lat, pois[c.poi_id].lon) * 0.05, -c.poi_id))
+                    sel.append(Selection(poi_id=replacement.poi_id, reason="原地点时间冲突，换成离起点更近的候选，避免当天空白", source="repair"))
+                    log.append(f"第 {d} 天不留空：换上离起点更近的「{pois[replacement.poi_id].name}」")
 
     itinerary = state.get("itinerary")
     for d in sorted({v.day for v in report.violations if v.code == "area_scattered" and v.day}):

@@ -8,6 +8,7 @@ docs/计划合理性指标.md，尚未用人工评价标定。
 停留分只有在传入独立参考（references）时才有判别力；coverage 字段如实报告覆盖情况。
 """
 from __future__ import annotations
+from .schemas import interest_tags
 
 import itertools
 import csv
@@ -48,8 +49,16 @@ def _stay_interval(value: str) -> tuple[float, float]:
     return low, high
 
 
-def load_stay_references(path: Path = STAY_REFERENCE_PATH, audit_path: Path | None = STAY_AUDIT_PATH,
+def load_stay_references(path: Path | None = None, audit_path: Path | None = STAY_AUDIT_PATH,
                          pois: dict[int, POI] | None = None) -> dict[int, Reference]:
+    from .cities import current_city
+    settings = current_city()
+    if path is None:
+        path = settings.assets_dir / "stay_reference.json"
+        if audit_path == STAY_AUDIT_PATH and settings.key != "hangzhou":
+            audit_path = settings.data_dir / "stay_audit" / "top50.csv"
+        if settings.key != "hangzhou" and not path.exists():
+            return {}
     artifact = json.loads(Path(path).read_text(encoding="utf-8"))
     references: dict[int, Reference] = {}
     names: dict[int, str] = {}
@@ -215,7 +224,7 @@ def score_itinerary(itinerary: Itinerary, profile: UserProfile, pois: dict[int, 
                 value -= .5
                 flag("fit", "高体力项目与老人/舒缓节奏不符", day.day, item.name)
             if profile.interests:
-                value -= 0 if set(place.interests) & set(profile.interests) else .2
+                value -= 0 if interest_tags(place.interests) & set(profile.interests) else .2
             parts["fit"].append(clamp(value))
 
         # 4 节奏强度：体验数、出门时长、连续高体力

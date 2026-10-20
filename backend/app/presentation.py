@@ -13,6 +13,15 @@ def gcj(lat: float, lon: float) -> dict[str, float]:
     return {"lat": round(la, 6), "lon": round(lo, 6)}
 
 
+def city_entry(key: str) -> dict[str, Any]:
+    from .cities import city_config
+    settings = city_config(key)
+    return {"key": key, "name": settings.name, "brand": settings.brand,
+            "map_center": gcj(settings.map_center["lat"], settings.map_center["lon"]),
+            "default_origin": {**settings.default_origin,
+                               "gcj": gcj(settings.default_origin["lat"], settings.default_origin["lon"])}}
+
+
 def serialize_plan(r: dict[str, Any], request_meta: dict[str, Any], plan_id: str | None = None,
                    revision: int | None = None, change: dict[str, Any] | None = None) -> dict[str, Any]:
     """把规划结果转成前端格式（新规划、换餐厅、撤销共用）；地点按该结果自己的目录版本解析。"""
@@ -59,6 +68,7 @@ def _serialize_plan(r: dict[str, Any], request_meta: dict[str, Any], plan_id: st
     prof = r["profile"]
     from .guides import corpus_status
     return jsonable_encoder({
+        "city_info": city_entry(prof.city),
         "profile": prof.model_dump() | {"hotel_gcj": gcj(prof.hotel.lat, prof.hotel.lon)},
         "days": days,
         "report": r["report"].model_dump(),

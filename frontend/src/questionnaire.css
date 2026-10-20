@@ -259,3 +259,9 @@
   .question-options-trigger.with-art { min-height: 58px; padding-block: 8px; }
   .option-art { height: 40px; }
 }
+
+/* 无城市实景资产时使用抽象底纹，不把杭州地标当成其他城市。 */
+.neutral-backdrop { background: radial-gradient(ellipse at 8% 100%, #b9d0d94a, transparent 55%), radial-gradient(ellipse at 95% 100%, #d5c6a34a, transparent 52%); }
+.neutral-backdrop::before, .neutral-backdrop::after { content: ''; position: absolute; pointer-events: none; width: 42vw; height: 18vw; bottom: -8vw; border: 1px solid #7896a833; border-radius: 50%; transform: rotate(-15deg); }
+.neutral-backdrop::before { left: -12vw; box-shadow: 0 -14px 0 12px #96b1bd12, 0 -32px 0 25px #96b1bd0d; }
+.neutral-backdrop::after { right: -14vw; transform: rotate(15deg); box-shadow: 0 -14px 0 12px #b6a78512, 0 -32px 0 25px #b6a7850d; }

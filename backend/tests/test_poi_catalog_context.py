@@ -38,7 +38,7 @@ def test_base_only_default_keeps_original_catalog_and_identity():
     catalog = current_catalog()
     assert catalog is base_catalog() is published_catalog()
     assert catalog.version == base_digest() == data_version()
-    assert catalog.reference() == {"version": base_digest(), "base_digest": base_digest(), "supplement_digest": None}
+    assert catalog.reference() == {"city": "hangzhou", "version": base_digest(), "base_digest": base_digest(), "supplement_digest": None}
     # 旧结果没有目录记录时按原库解析
     assert resolve_catalog(None) is catalog and resolve_catalog({}) is catalog
 
@@ -149,13 +149,14 @@ def test_supplement_plan_records_catalog_in_output(tmp_path, monkeypatch, mock_l
     assert result["poi_catalog"]["supplement_digest"] == snapshot.digest
     shown = serialize_plan(result, REQUEST, "plan-supplement", 0)
     assert shown["poi_catalog"] == result["poi_catalog"]
-    assert set(shown["poi_catalog"]) == {"version", "base_digest", "supplement_digest"}
+    assert set(shown["poi_catalog"]) == {"city", "version", "base_digest", "supplement_digest"}
+    assert shown["poi_catalog"]["city"] == "hangzhou"
 
 
 def test_mcp_job_keeps_prepared_catalog_after_publish_and_worker_installs_it(service, monkeypatch):  # noqa: F811
     a, b = synthetic("A"), synthetic("B")
     published = {"catalog": a}
-    monkeypatch.setattr("app.mcp_service.published_catalog", lambda: published["catalog"])
+    monkeypatch.setattr("app.mcp_service.published_catalog", lambda city="hangzhou": published["catalog"])
     seen = {}
     done = threading.Event()
 

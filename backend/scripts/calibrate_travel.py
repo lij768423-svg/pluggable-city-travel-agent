@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from datetime import datetime, timezone
@@ -15,7 +16,8 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app.config import DATA_DIR  # noqa: E402
+from app.config import DATA_DIR
+from app.cities import city_config  # noqa: E402
 from app.geo import haversine_km  # noqa: E402
 
 
@@ -39,11 +41,25 @@ def fit(x, y):
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--city", default="hangzhou")
+    parser.add_argument("--cache", type=Path)
+    args = parser.parse_args()
+    settings = city_config(args.city)
+    cache_path = args.cache or (DATA_DIR / "amap_cache.jsonl" if settings.key == "hangzhou" else settings.data_dir / "amap_cache.jsonl")
     cache = {}
-    for line in (DATA_DIR / "amap_cache.jsonl").read_text(encoding="utf-8").splitlines():
+    for line in cache_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             r = json.loads(line)
-            cache[r["k"]] = r["v"]
+            parts = r["k"].split("|")
+            if len(parts) != 3 or parts[0] not in {"walk", "drive", "transit"}:
+                continue
+            try:
+                endpoints = [tuple(map(float, item.split(","))) for item in parts[1:]]
+                if all(settings.contains(lat, lon) for lon, lat in endpoints):
+                    cache[r["k"]] = r["v"]
+            except (TypeError, ValueError):
+                continue
     walk = [(gcj_km(k), v["m"] / 1000) for k, v in cache.items() if k.startswith("walk|") and v and v["m"] > 0]
     drive = [(gcj_km(k), v) for k, v in cache.items() if k.startswith("drive|") and v]
     transit = [(gcj_km(k), v["min"]) for k, v in cache.items() if k.startswith("transit|") and v]
@@ -57,7 +73,8 @@ def main() -> None:
         "taxi_cost": fit(np.array([a for a, v in drive if v.get("taxi_cost") is not None]),
                          np.array([v["taxi_cost"] for _, v in drive if v.get("taxi_cost") is not None])),
     }
-    (DATA_DIR / "travel_calibration.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    settings.calibration.parent.mkdir(parents=True, exist_ok=True)
+    settings.calibration.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 

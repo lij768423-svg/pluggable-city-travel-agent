@@ -147,3 +147,16 @@ def test_cached_improvement_rejected_if_final_recheck_breaks_budget(monkeypatch)
     chosen, itinerary, _ = choose_meal_aware_plan(orders, UserProfile(days=1), [], live=True)
     assert chosen == orders
     assert itinerary.days[0].items[0].name == "original"
+
+
+def test_best_plan_does_not_trade_visits_for_hours_of_idle():
+    # 南京 12 号：缺一顿午餐、空档 160 分的方案，应优于删掉景点、空档 552 分的方案
+    empty = Itinerary(days=[])
+    soft = lambda *codes: [Violation(code=code, severity="soft", message="", day=1) for code in codes]
+    lunch_missing = ValidationReport(passed=True, totals={"idle_min": 160}, violations=soft("early_finish", "long_idle", "missing_lunch"))
+    sparse = ValidationReport(passed=True, totals={"idle_min": 552}, violations=soft("early_finish", "long_idle", "early_finish", "long_idle"))
+    assert quality_key(empty, lunch_missing, count_idle=True) < quality_key(empty, sparse, count_idle=True)
+    assert quality_key(empty, sparse) < quality_key(empty, lunch_missing)  # 分天/餐序比较不计空档，行为不变
+    within = ValidationReport(passed=True, totals={"idle_min": 239}, violations=[])
+    assert quality_key(empty, within, count_idle=True)[1] == 0
+

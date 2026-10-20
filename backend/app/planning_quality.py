@@ -160,7 +160,14 @@ def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[l
     return [[identifier for block in day for identifier in block] for day in blocks]
 
 
-def quality_key(itinerary: Itinerary, report: ValidationReport) -> tuple[int, int, float]:
+# 修复回路挑最佳方案时：总空档超过 IDLE_FREE_MIN 的部分，每满一小时计 IDLE_HOUR_POINTS 分（2026-10-20 用户同意）。
+# 3 小时内不额外计分，保持“宁可空档也不片区折返”（area_scattered 10 > early_finish4＋long_idle3）；
+# 按整小时计，十几分钟的空档差不压过交通时间。分天/餐序比较时尚未补点，空档不是最终值，不计这一项。
+IDLE_FREE_MIN = 180
+IDLE_HOUR_POINTS = 4
+
+
+def quality_key(itinerary: Itinerary, report: ValidationReport, *, count_idle: bool = False) -> tuple[int, float, float]:
     weights = {"empty_day": 40, "missing_lunch": 20, "missing_dinner": 20,
                "excessive_transport": 12, "anchor_mixed": 30, "audience_mismatch": 30,
                "early_finish": 4, "long_idle": 3, "short_visit": 6, "interstop_ride_long": 2, "area_scattered": 10}
@@ -171,7 +178,9 @@ def quality_key(itinerary: Itinerary, report: ValidationReport) -> tuple[int, in
     zones = area_index(load_pois())
     sequences = [[zones.area_of(item.ref_id) for item in day.items if item.kind == "poi"] for day in itinerary.days]
     moves = sum(before != after for sequence in sequences for before, after in zip(sequence, sequence[1:]))
-    return (len(report.hard), sum(weights.get(item.code, 0) for item in report.violations),
+    # 删景点换来的大段空档不应比缺一餐更划算
+    idle = max(0, report.totals.get("idle_min", 0) - IDLE_FREE_MIN) // 60 * IDLE_HOUR_POINTS if count_idle else 0
+    return (len(report.hard), round(sum(weights.get(item.code, 0) for item in report.violations) + idle, 2),
             round(transport * 2 + long_legs + report.totals.get("idle_min", 0) * 0.5 + moves * 20, 2))
 
 

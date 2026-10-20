@@ -1,7 +1,16 @@
 export interface Hotel { area?: string; name: string; lat: number; lon: number; gcj?: { lat: number; lon: number } }
 export interface OriginPlace extends Hotel { id: string; address: string; source: 'amap'; coordinate_system: 'BD-09' }
 
+export interface CityInfo {
+  key: string
+  name: string
+  brand: string
+  map_center: { lat: number; lon: number }
+  default_origin: Hotel
+}
 export interface Meta {
+  city: string
+  cities: CityInfo[]
   interests: string[]
   dietary: string[]
   hotels: Hotel[]
@@ -87,12 +96,14 @@ export interface DayPlan { day: number; date?: string | null; items: PlanItem[];
 export interface Violation { code: string; severity: 'hard' | 'soft'; day: number | null; item: string | null; message: string }
 
 export interface PlanResponse {
+  city_info?: CityInfo
   history_id?: string
   history_error?: string
   delivery_status?: 'ready' | 'draft'
   verification_notice?: string | null
   history_readonly?: boolean
   profile: {
+    city?: string
     days: number; budget: number; pace: string; interests: string[]; dietary: string[]; companions: string; transport: 'taxi' | 'transit'
     must_visit: string[]; avoid: string[]; notes: string
     hotel: Hotel; hotel_gcj: { lat: number; lon: number }
@@ -137,16 +148,16 @@ async function j<T>(r: Response): Promise<T> {
     let msg = `${r.status}`
     try {
       const detail = (await r.json()).detail
-      msg = Array.isArray(detail) ? detail.map(item => item.msg).join('；') : detail ?? msg
+      msg = Array.isArray(detail) ? [...new Set(detail.map(item => item.msg))].join('；') : detail ?? msg
     } catch { /* ignore */ }
     throw new ApiError(msg, r.status)
   }
   return r.json() as Promise<T>
 }
 
-export const getMeta = () => fetch('/api/meta').then(r => j<Meta>(r))
-export const searchPlaces = (query: string, signal?: AbortSignal) =>
-  fetch(`/api/places/search?q=${encodeURIComponent(query)}`, { signal }).then(r => j<{ places: OriginPlace[] }>(r))
+export const getMeta = (city?: string, signal?: AbortSignal) => fetch(`/api/meta${city ? `?city=${encodeURIComponent(city)}` : ''}`, { signal }).then(r => j<Meta>(r))
+export const searchPlaces = (query: string, city: string, signal?: AbortSignal) =>
+  fetch(`/api/places/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`, { signal }).then(r => j<{ places: OriginPlace[] }>(r))
 export interface ModelOutputEvent { type: 'model'; tag: string; text: string; think?: string; source: 'live' | 'cache'; attempt: number; phase?: 'thinking' | 'answer'; thought?: number }
 export async function postPlan(req: PlanRequest, onProgress: (event: import('./planProgress').PlanProgressEvent | ModelOutputEvent) => void,
   signal: AbortSignal): Promise<PlanResponse> {
@@ -187,8 +198,8 @@ export async function postPlan(req: PlanRequest, onProgress: (event: import('./p
   }
 }
 
-export const getNavigation = (date: string | null, legs: NavigationLeg[], signal?: AbortSignal) =>
-  fetch('/api/navigation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, legs }), signal })
+export const getNavigation = (date: string | null, legs: NavigationLeg[], signal?: AbortSignal, context: { city?: string; plan_id?: string | null } = {}) =>
+  fetch('/api/navigation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, legs, ...context }), signal })
     .then(response => j<NavigationResponse>(response))
 export const getPlaceDetails = (places: { kind: 'poi' | 'meal'; id: number }[], signal?: AbortSignal, planId?: string | null) =>
   fetch('/api/place-details', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ places, plan_id: planId || null }), signal })

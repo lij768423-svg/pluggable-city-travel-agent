@@ -11,14 +11,16 @@ live:
 from __future__ import annotations
 
 import json
+import logging
 from functools import lru_cache
 from contextlib import contextmanager
 from datetime import timedelta
 from typing import Any
 
 from . import config
+from .cities import city_config, current_city
 from .geo import SAME_PLACE_KM, haversine_km, travel as estimate_travel
-from .amap_limits import RequestBudget, operation_budget
+from .amap_limits import PLAN_HTTP_LIMIT, RequestBudget, operation_budget
 from .rules import MAX_INTERSTOP_RIDE_MIN
 from .schemas import LegEvidence
 
@@ -32,12 +34,25 @@ TAXI_UPGRADE_SAVING_MIN = 10
 TAXI_UPGRADE_MIN_DAILY_BUDGET = 100
 # 只把短途换成打车；单段车费超过此值（如下沙到市中心）继续坐公交/地铁
 TAXI_UPGRADE_MAX_FARE = 30
+# 公交接驳步行多时改打车（2026-10-20 用户同意）：单段公交步行超过每日步行上限的这一比例才换，车费上限另设
+TAXI_UPGRADE_WALK_SHARE = 0.25
+TAXI_UPGRADE_WALK_MAX_FARE = 60
 
 
-@lru_cache(maxsize=1)
-def calibration() -> dict[str, Any]:
-    p = config.DATA_DIR / "travel_calibration.json"
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else DEFAULT_CAL
+def calibration(city: str | None = None) -> dict[str, Any]:
+    return _calibration(city or current_city().key)
+
+
+@lru_cache(maxsize=None)
+def _calibration(city: str) -> dict[str, Any]:
+    path = city_config(city).calibration
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    logging.getLogger(__name__).warning("城市 %s 缺少交通标定，使用 DEFAULT_CAL 估算", city)
+    return DEFAULT_CAL
+
+
+calibration.cache_clear = _calibration.cache_clear
 
 
 def calibrated(lat1: float, lon1: float, lat2: float, lon2: float, scenario: str, walk_limit_m: int = 1500) -> tuple[int, str, float]:
@@ -57,7 +72,7 @@ def calibrated(lat1: float, lon1: float, lat2: float, lon2: float, scenario: str
 
 
 class Travel:
-    def __init__(self, source: str = "amap", scenario: str = "taxi", router=None, live_budget: int | None = 120):
+    def __init__(self, source: str = "amap", scenario: str = "taxi", router=None, live_budget: int | None = PLAN_HTTP_LIMIT):
         self.source = source
         self.scenario = scenario if scenario in MODE_NAMES else "taxi"
         self.budget = operation_budget.get() or RequestBudget(live_budget)
@@ -76,6 +91,7 @@ class Travel:
         self.final_keys: set[tuple] | None = None
         self.allow_taxi_fallback = False
         self.taxi_upgrade = False
+        self.walk_upgrade_m: int | None = None
         self.service_date = None
         self.departure_time = "09:00"
         self.walk_limit_m = 1500
@@ -92,12 +108,13 @@ class Travel:
                 self.router.service_date, self.router.departure_time = previous
 
     def set_day(self, profile, day: int) -> None:
-        from .rules import activity_window
+        from .rules import activity_window, walking_limit
         self.service_date = profile.start_date + timedelta(days=day - 1) if profile.start_date else None
         window = activity_window(profile, day)
         self.departure_time = f"{window['start'] // 60:02d}:{window['start'] % 60:02d}"
         self.allow_taxi_fallback = profile.allow_taxi_fallback
         self.taxi_upgrade = profile.allow_taxi_fallback and profile.budget / profile.days >= TAXI_UPGRADE_MIN_DAILY_BUDGET
+        self.walk_upgrade_m = round(walking_limit(profile) * TAXI_UPGRADE_WALK_SHARE)
         self.walk_limit_m = min(1500 if profile.companions in {"family_kids", "elderly"} else 2500, profile.max_walking_m or 2500)
         if self.router:
             self.router.service_date, self.router.departure_time = self.service_date, self.departure_time
@@ -186,28 +203,35 @@ class Travel:
             cost = round(max(0.0, c["a"] + c["b"] * straight_km(o, d)), 1)
         return cost
 
-    def _taxi_upgrade(self, o, d, coordinates: tuple[float, float, float, float], transit_min: int, live: bool):
-        """公交超过舒适线且打车明显更快时，返回打车路段；否则 None。
+    def _taxi_upgrade(self, o, d, coordinates: tuple[float, float, float, float], transit_min: int, live: bool,
+                      walk_m: int | None = None, taxi_fare: float | None = None):
+        """公交超过舒适线且打车明显更快，或公交接驳步行过多且打车不更慢时，返回打车路段；否则 None。
 
         排程试探（不联网）时打车未缓存，就用标定模型估打车，来源如实标为估算；定稿路段会再联网核实。
+        taxi_fare 是公交接口顺带返回的高德打车估价，有就优先用（标定模型对南京 15 公里以上的路段偏高约两成）。
         """
         from .amap import TAXI_WAIT_MIN
-        if not self.taxi_upgrade or transit_min <= MAX_INTERSTOP_RIDE_MIN:
+        slow = transit_min > MAX_INTERSTOP_RIDE_MIN
+        walky = walk_m is not None and self.walk_upgrade_m is not None and walk_m > self.walk_upgrade_m
+        if not self.taxi_upgrade or not (slow or walky):
             return None
         drive = self.router.drive(o, d, live=live)
         if drive is not None:
-            minutes, fare, source = round(drive["min"]) + TAXI_WAIT_MIN, self._taxi_cost(drive, o, d), "amap"
+            minutes, fare, source = round(drive["min"]) + TAXI_WAIT_MIN, self._taxi_cost(drive, o, d) if taxi_fare is None else taxi_fare, "amap"
             fetched = self.router.records.get(f"drive|{o}|{d}", {}).get("fetched_at")
         elif not live:
             minutes, mode, fare = calibrated(*coordinates, "taxi", self.walk_limit_m)
             if mode != "打车":
                 return None
+            fare = fare if taxi_fare is None else taxi_fare
             source, fetched = "estimate", None
         else:
             return None
-        if minutes > transit_min - TAXI_UPGRADE_SAVING_MIN or fare > TAXI_UPGRADE_MAX_FARE:
-            return None
-        return minutes, "打车", fare, source, 0, f"公交约{transit_min}分钟，改打车更快", True, fetched
+        if slow and minutes <= transit_min - TAXI_UPGRADE_SAVING_MIN and fare <= TAXI_UPGRADE_MAX_FARE:
+            return minutes, "打车", fare, source, 0, f"公交约{transit_min}分钟，改打车更快", True, fetched
+        if walky and minutes <= transit_min and fare <= TAXI_UPGRADE_WALK_MAX_FARE:
+            return minutes, "打车", fare, source, 0, f"公交需步行约{walk_m}米，改打车少走路", True, fetched
+        return None
 
     def _resolve(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool):
         if self.source == "estimate":
@@ -236,7 +260,7 @@ class Travel:
                     raise LookupError
                 if t is not None:
                     minutes = round(t["min"])
-                    upgraded = self._taxi_upgrade(o, d, (lat1, lon1, lat2, lon2), minutes, live)
+                    upgraded = self._taxi_upgrade(o, d, (lat1, lon1, lat2, lon2), minutes, live, int(t.get("walk_m") or 0), t.get("taxi_cost"))
                     if upgraded:
                         return upgraded
                     return minutes, "公交/地铁", t["cost"] if t["cost"] is not None else 2.0, "amap", int(t.get("walk_m") or 0), None, True, r.records.get(r.transit_key(o, d), {}).get("fetched_at")

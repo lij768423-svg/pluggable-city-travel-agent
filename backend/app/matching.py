@@ -4,15 +4,16 @@ from __future__ import annotations
 import difflib
 import re
 
+from .cities import city_config, current_city
 from .geo import haversine_km
 from .schemas import POI
 
 _PUNCT = re.compile(r"[\s·•\-—()（）【】\[\]「」'\"“”,，。]")
 
 
-def norm(name: str) -> str:
+def norm(name: str, city: str | None = None) -> str:
     n = _PUNCT.sub("", name or "")
-    for prefix in ("杭州市", "杭州", "浙江省", "浙江"):
+    for prefix in (city_config(city) if city else current_city()).prefixes:
         if n.startswith(prefix) and len(n) > len(prefix) + 1:
             n = n[len(prefix):]
     return n

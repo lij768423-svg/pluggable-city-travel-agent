@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from .config import CITY_DIR
+from .cities import city_config, current_city
 from .geo import gcj02_to_bd09, parse_hm
 from .matching import norm
 from .schemas import POI, Restaurant, FieldEvidence, ExperienceCondition
@@ -45,18 +46,19 @@ def load_pois() -> dict[int, POI]:
     return current_catalog().pois
 
 
-@lru_cache(maxsize=1)
-def base_digest() -> str:
+@lru_cache(maxsize=None)
+def base_digest(city: str = "hangzhou") -> str:
     """原库（Parquet＋审阅/语义叠加）的内容摘要；补充目录发布和任务目录版本都以它为基准。"""
-    normalized = {str(key): value.model_dump(mode="json") for key, value in sorted(load_base_pois().items())}
+    normalized = {str(key): value.model_dump(mode="json") for key, value in sorted((load_base_pois() if city == "hangzhou" else load_base_pois(city)).items())}
     return hashlib.sha256(json.dumps(normalized, sort_keys=True, ensure_ascii=False,
                                      allow_nan=False).encode()).hexdigest()
 
 
-@lru_cache(maxsize=1)
-def load_base_pois() -> dict[int, POI]:
-    df = pd.read_parquet(CITY_DIR / "attractions.parquet")
-    tags_path = CITY_DIR / "attraction_tags.parquet"
+@lru_cache(maxsize=None)
+def load_base_pois(city: str = "hangzhou") -> dict[int, POI]:
+    settings = city_config(city)
+    df = pd.read_parquet(settings.data_dir / "attractions.parquet")
+    tags_path = settings.data_dir / "attraction_tags.parquet"
     tags = pd.read_parquet(tags_path).set_index("id") if tags_path.exists() else None
     out: dict[int, POI] = {}
     for r in df.itertuples():
@@ -80,10 +82,11 @@ def load_base_pois() -> dict[int, POI]:
             interests=interests, stamina=stamina, audience=audience, indoor=indoor, summary=summary,
             field_evidence=evidence,
         )
-    review = json.loads((Path(__file__).parent / "assets" / "poi_reviews.json").read_text())
+    review_path = settings.assets_dir / "poi_reviews.json"
+    review = json.loads(review_path.read_text()) if review_path.exists() or city == "hangzhou" else {"places": [], "sources": {}}
     for entry in review["places"]:
         poi = out.get(entry["id"])
-        if poi is None or norm(entry["name"]) != norm(poi.name):
+        if poi is None or norm(entry["name"], city) != norm(poi.name, city):
             raise ValueError(f"POI 审计身份不匹配：{entry['id']} {entry['name']}")
         changes = dict(entry["changes"])
         if "price" in changes and entry["sources"] and review["sources"][entry["sources"][0]].get("verification") == "observed":
@@ -100,42 +103,47 @@ def load_base_pois() -> dict[int, POI]:
             direct = observed and key in {"opening_hours", "price", "opening_rules"}
             source = review["sources"][entry["sources"][0]] if direct else {}
             evidence[key] = FieldEvidence(basis="observed" if direct else "curator_inference",
-                reference=source.get("url", f"app/assets/poi_reviews.json:places[id={poi.id}]; {entry['note']}"),
+                reference=source.get("url", f"{settings.asset_reference('poi_reviews.json')}:places[id={poi.id}]; {entry['note']}"),
                 source_date=source.get("published_at"), reviewed_at=review["reviewed_at"] if direct else None)
         if "opening_rules" in changes and "booking_required" in changes["opening_rules"]:
             evidence["booking_required"] = evidence["opening_rules"]
         out[poi.id] = POI.model_validate({**poi.model_dump(), **changes, "review_note":entry["note"], "field_evidence": evidence})
     # 用户核对的停留区间（scripts/apply_stay_audit.py 生成）；已在上面审阅过停留时长的景点不在其中
-    overrides = Path(__file__).parent / "assets" / "stay_overrides.json"
+    overrides = settings.assets_dir / "stay_overrides.json"
     if overrides.exists():
         reviewed = {entry["id"] for entry in review["places"] if {"min_hours", "max_hours"} & entry["changes"].keys()}
         for entry in json.loads(overrides.read_text(encoding="utf-8"))["places"]:
             poi = out.get(entry["poi_id"])
-            if poi is None or norm(entry["name"]) != norm(poi.name) or poi.id in reviewed:
+            if poi is None or norm(entry["name"], city) != norm(poi.name, city) or poi.id in reviewed:
                 raise ValueError(f"停留覆盖身份不匹配或与审阅冲突：{entry['poi_id']} {entry['name']}")
             out[poi.id] = poi.model_copy(update={"min_hours": entry["low_min"] / 60, "max_hours": entry["high_min"] / 60,
                 "duration_source": f"停留时长按{entry['reviewed_at']}人工核对结果：{entry['evidence']}",
                 "field_evidence": {**poi.field_evidence, "duration": FieldEvidence(basis="manual_review", reference=entry["evidence"], reviewed_at=entry["reviewed_at"])}})
-    semantics = json.loads((Path(__file__).parent / "assets" / "poi_semantics.json").read_text())
+    semantics_path = settings.assets_dir / "poi_semantics.json"
+    semantics = json.loads(semantics_path.read_text()) if semantics_path.exists() or city == "hangzhou" else {"places": []}
     for entry in semantics["places"]:
         poi = out.get(entry["id"])
-        if poi is None or norm(poi.name) != norm(entry["name"]):
+        if poi is None or norm(poi.name, city) != norm(entry["name"], city):
             raise ValueError(f"地点语义身份不匹配：{entry['id']}")
         conditions = [ExperienceCondition.model_validate(condition) for condition in entry["conditions"]]
         out[poi.id] = poi.model_copy(update={"experience_conditions": conditions,
-            "field_evidence": {**poi.field_evidence, "experience_conditions": FieldEvidence(basis="curator_inference", reference=f"app/assets/poi_semantics.json:{semantics['version']}")}})
+            "field_evidence": {**poi.field_evidence, "experience_conditions": FieldEvidence(basis="curator_inference", reference=f"{settings.asset_reference('poi_semantics.json')}:{semantics['version']}")}})
     from .poi_semantics import enrich_semantics
-    out = {identifier: enrich_semantics(poi) for identifier, poi in out.items()}
+    out = {identifier: enrich_semantics(poi, city) for identifier, poi in out.items()}
     return out
 
 
-def tag_source() -> str:
-    return "llm" if (CITY_DIR / "attraction_tags.parquet").exists() else "rule"
+def tag_source(city: str | None = None) -> str:
+    return "llm" if (city_config(city or current_city().key).data_dir / "attraction_tags.parquet").exists() else "rule"
 
 
-@lru_cache(maxsize=1)
-def load_restaurants() -> dict[int, Restaurant]:
-    df = pd.read_parquet(CITY_DIR / "restaurants.parquet")
+def load_restaurants(city: str | None = None) -> dict[int, Restaurant]:
+    return _load_restaurants(city or current_city().key)
+
+
+@lru_cache(maxsize=None)
+def _load_restaurants(city: str) -> dict[int, Restaurant]:
+    df = pd.read_parquet(city_config(city).data_dir / "restaurants.parquet")
     out: dict[int, Restaurant] = {}
     for r in df.itertuples():
         if (r.cuisine or "") in NON_MEAL_CUISINES:
@@ -157,6 +165,9 @@ def load_restaurants() -> dict[int, Restaurant]:
             restaurant = Restaurant.model_validate(record)
             out[restaurant.id] = restaurant
     return out
+
+
+load_restaurants.cache_clear = _load_restaurants.cache_clear
 
 
 def diet_ok(cuisine: str, dietary: list[str]) -> bool:

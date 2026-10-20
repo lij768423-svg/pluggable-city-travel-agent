@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+
 from collections import OrderedDict
 import re
 import threading
+from .cities import current_city
 from .amap import AmapError, MissingSnapshotError, get_router, pt, straight_km
 from .amap_limits import RequestBudget
 from .data import load_pois, load_restaurants
@@ -20,6 +22,7 @@ HIGHLIGHTS = {
     "自然风光": "沿开放的观景区域慢走，预留停留和拍照时间",
     "拍照出片": "选择不影响通行的拍摄点，现场光线与天气会影响效果",
     "茶文化": "结合茶文化介绍与茶园风景游览，体验项目以现场开放为准",
+    "特色文化": "留意当地特色技艺、风物与民俗，体验项目以现场开放为准",
     "购物街区": "以沿街散步和地方小店为主，消费按自己的预算选择",
     "亲子游乐": "优先选择孩子感兴趣的区域，留出休息时间",
     "夜景夜游": "适合安排夜间散步；灯光、演出和船班不作保证",
@@ -83,7 +86,7 @@ def describe_place(place, kind: str) -> dict:
 
 
 def normalized_name(value: str) -> str:
-    return re.sub(r"[\W_]", "", value).removeprefix("杭州市").removeprefix("杭州")
+    return re.sub(r"[\W_]", "", value).removeprefix(current_city().name_full).removeprefix(current_city().name)
 
 
 def match_place(place, pois: list[dict]) -> dict | None:
