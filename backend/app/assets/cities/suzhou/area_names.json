@@ -1,0 +1,174 @@
+{
+  "version": "2026-10-20-onboard-v1",
+  "scope": "自动聚类＋模型起草，待用户审阅；只影响展示名称，不是行政边界。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "拙政园"
+    },
+    {
+      "anchor_id": 1,
+      "name": "寒山寺"
+    },
+    {
+      "anchor_id": 3,
+      "name": "周庄"
+    },
+    {
+      "anchor_id": 5,
+      "name": "虎丘"
+    },
+    {
+      "anchor_id": 6,
+      "name": "山塘街"
+    },
+    {
+      "anchor_id": 8,
+      "name": "同里古镇"
+    },
+    {
+      "anchor_id": 10,
+      "name": "平江路"
+    },
+    {
+      "anchor_id": 11,
+      "name": "金鸡湖"
+    },
+    {
+      "anchor_id": 13,
+      "name": "观前街"
+    },
+    {
+      "anchor_id": 14,
+      "name": "木渎古镇"
+    },
+    {
+      "anchor_id": 15,
+      "name": "苏州古运河"
+    },
+    {
+      "anchor_id": 19,
+      "name": "华谊兄弟电影世界"
+    },
+    {
+      "anchor_id": 21,
+      "name": "甪直古镇"
+    },
+    {
+      "anchor_id": 24,
+      "name": "天平山"
+    },
+    {
+      "anchor_id": 26,
+      "name": "锦溪古镇"
+    },
+    {
+      "anchor_id": 28,
+      "name": "苏州乐园"
+    },
+    {
+      "anchor_id": 31,
+      "name": "沙家浜"
+    },
+    {
+      "anchor_id": 33,
+      "name": "西山"
+    },
+    {
+      "anchor_id": 35,
+      "name": "李公堤"
+    },
+    {
+      "anchor_id": 42,
+      "name": "尚湖"
+    },
+    {
+      "anchor_id": 45,
+      "name": "上方山"
+    },
+    {
+      "anchor_id": 50,
+      "name": "虞山·兴福禅寺"
+    },
+    {
+      "anchor_id": 58,
+      "name": "昆山·亭林园"
+    },
+    {
+      "anchor_id": 62,
+      "name": "吴中太湖"
+    },
+    {
+      "anchor_id": 64,
+      "name": "天池山"
+    },
+    {
+      "anchor_id": 66,
+      "name": "穹窿山"
+    },
+    {
+      "anchor_id": 69,
+      "name": "阳澄湖半岛"
+    },
+    {
+      "anchor_id": 70,
+      "name": "御窑金砖博物馆"
+    },
+    {
+      "anchor_id": 84,
+      "name": "阳澄湖·水之梦"
+    },
+    {
+      "anchor_id": 85,
+      "name": "洞庭东山"
+    },
+    {
+      "anchor_id": 90,
+      "name": "震泽古镇"
+    },
+    {
+      "anchor_id": 91,
+      "name": "吴文化博物馆"
+    },
+    {
+      "anchor_id": 98,
+      "name": "光福·香雪海"
+    },
+    {
+      "anchor_id": 102,
+      "name": "常熟·方塔园"
+    },
+    {
+      "anchor_id": 110,
+      "name": "苏州湾"
+    },
+    {
+      "anchor_id": 126,
+      "name": "苏州中国花卉植物园"
+    },
+    {
+      "anchor_id": 133,
+      "name": "万公堤"
+    },
+    {
+      "anchor_id": 159,
+      "name": "张家港·暨阳湖"
+    },
+    {
+      "anchor_id": 163,
+      "name": "独墅湖"
+    },
+    {
+      "anchor_id": 172,
+      "name": "旺山风景区"
+    },
+    {
+      "anchor_id": 173,
+      "name": "杨舍老街"
+    },
+    {
+      "anchor_id": 177,
+      "name": "青少年科技馆"
+    }
+  ]
+}

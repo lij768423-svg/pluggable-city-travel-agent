@@ -110,9 +110,16 @@ class RecordedRouter(AmapRouter):
             target.write(json.dumps(entry,ensure_ascii=False)+'\n')
 
 
-def profiles():
+def profiles(city='nanjing'):
     import pandas as pd
     from app.cities import city_config
+    if city!='nanjing':
+        # 新城市：同一组 20 个条件，起点按住宿分布自动取（scripts/onboard_city.py）
+        from app.data import load_base_pois
+        from scripts.onboard_city import generic_profiles
+        settings=city_config(city)
+        return generic_profiles(city,pd.read_parquet(settings.data_dir/'accommodations.parquet'),settings.default_origin,load_base_pois(city),
+                                (settings.name,settings.province.removesuffix('省')))
     rows=pd.read_parquet(city_config('nanjing').data_dir/'accommodations.parquet').set_index('id')
     def hotel(identifier):
         row=rows.loc[identifier]
@@ -152,7 +159,7 @@ def clean(value):
     return value
 
 
-def run(root:Path,replay=False,only=None,reuse_root:Path|None=None):
+def run(root:Path,replay=False,only=None,reuse_root:Path|None=None,city='nanjing'):
     from app import amap,config
     from app.graph import run_plan
     from app.poi_catalog import published_catalog
@@ -161,13 +168,13 @@ def run(root:Path,replay=False,only=None,reuse_root:Path|None=None):
     select.chat_json=lambda *a,**kw:chat_json(*a,**{**kw,'retries':0})
     root.mkdir(parents=True,exist_ok=True)
     from app.cities import city_config
-    settings=city_config('nanjing')
+    settings=city_config(city)
     source_files=[file for file in (Path(__file__).resolve().parent.parent/'app').rglob('*') if file.is_file() and file.suffix in {'.py','.json'}]
     source_hashes={str(file.relative_to(root_path)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_files for root_path in [Path(__file__).resolve().parents[2]]}
     data_files=[settings.data_dir/file for file in ('attractions.parquet','restaurants.parquet','accommodations.parquet','attraction_tags.parquet','travel_calibration.json')]
     data_hashes={file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in data_files}
-    design={'app_source_sha256':source_hashes,'city_data_sha256':data_hashes,'city':'nanjing','profiles':[{'id':name,'form':form} for name,form in profiles()],
-            'poi_catalog':published_catalog('nanjing').reference(),'model':config.LLM_MODEL,
+    design={'app_source_sha256':source_hashes,'city_data_sha256':data_hashes,'city':city,'profiles':[{'id':name,'form':form} for name,form in profiles(city)],
+            'poi_catalog':published_catalog(city).reference(),'model':config.LLM_MODEL,
             'thinking':'adaptive','reasoning_effort':'low','sdk_max_retries':0,'json_retries':0,
             'http_limit_per_case':__import__('app.amap_limits',fromlist=['PLAN_HTTP_LIMIT']).PLAN_HTTP_LIMIT,'online_restaurants':config.ONLINE_RESTAURANTS,
             'note':'酒店坐标为ChinaTravel历史参考，不保证当前酒店入口；跨城对照为描述统计，画像地点及来源条件不同。'}
@@ -180,7 +187,7 @@ def run(root:Path,replay=False,only=None,reuse_root:Path|None=None):
     rows=json.loads(output.read_text())['results'] if output.exists() else []
     done={row['id'] for row in rows}
     captured={row['id']:row for row in json.loads((root/'capture.json').read_text())['results']} if replay else {}
-    for name,form in profiles():
+    for name,form in profiles(city):
         if name in done or only and not any(name.startswith(prefix) for prefix in only):
             continue
         case=root/name
@@ -222,6 +229,7 @@ def main():
     parser.add_argument('mode',choices=('capture','replay','assess'))
     parser.add_argument('--root',type=Path,required=True)
     parser.add_argument('--only',nargs='*')
+    parser.add_argument('--city',default='nanjing')
     parser.add_argument('--reuse-root',type=Path,help='修订采集时只复用参数完全相同的已保存响应，记录来源及实际HTTP次数')
     args=parser.parse_args()
     if args.mode=='replay':
@@ -229,10 +237,10 @@ def main():
     if args.mode=='assess':
         from app.poi_catalog import published_catalog,use_catalog
         from eval import batch20
-        with use_catalog(published_catalog('nanjing')):
+        with use_catalog(published_catalog(args.city)):
             batch20.assess([args.root/'replay.json'],args.root/'assess.md')
     else:
-        run(args.root,args.mode=='replay',args.only,args.reuse_root)
+        run(args.root,args.mode=='replay',args.only,args.reuse_root,args.city)
 
 if __name__=='__main__':
     main()

@@ -30,7 +30,7 @@ def authenticated_owner() -> str:
 def create_mcp_app(service: MCPService, owner: str, credential: str, *, port: int, login=None):
     if not owner.startswith("user:") or len(credential) < 24:
         raise ValueError("需要有效的专用身份和至少24字符的私有凭据")
-    mcp = FastMCP("Hangzhou Travel", instructions=(
+    mcp = FastMCP("Xingji Travel", instructions=(
         "首次使用先connect_account获取登录授权链接，请用户在浏览器登录并授权，完成后再次connect_account确认。已绑定无需重复登录。账号密码只能在网站输入。"
         "使用当前聊天AI理解需求并挑选候选ID；服务不调用语言模型。先prepare_trip，向用户补齐缺项，"
         "再generate_trip并get_job查询。保留必去和预算等硬条件；needs_changes必须询问用户。"

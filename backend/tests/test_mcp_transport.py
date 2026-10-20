@@ -59,7 +59,7 @@ def test_dual_listener_auth_origin_tools_and_shutdown(tmp_path, monkeypatch):
                 async with streamable_http_client(url, http_client=http) as (read, write, _):
                     async with ClientSession(read, write) as client:
                         initialized = await client.initialize()
-                        assert initialized.serverInfo.name == "Hangzhou Travel"
+                        assert initialized.serverInfo.name == "Xingji Travel"
                         tools = await client.list_tools()
                         assert {t.name for t in tools.tools} == {"prepare_trip", "generate_trip", "get_job", "get_trip", "preview_meal_change", "confirm_meal_change", "cancel_job"}
                         response = await client.call_tool("prepare_trip", {"profile": PROFILE, "request_id": "protocol-prepare"})

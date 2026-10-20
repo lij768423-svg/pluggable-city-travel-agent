@@ -1,0 +1,162 @@
+{
+  "version": "2026-10-20-onboard-v1",
+  "reviewed_at": "2026-10-20",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    }
+  },
+  "places": [
+    {
+      "id": 19,
+      "name": "华谊兄弟电影世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 8.0,
+        "day_anchor": true,
+        "onsite_dining": true
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 4.0–8.0 小时；大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 28,
+      "name": "苏州乐园森林世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 7.0,
+        "day_anchor": true,
+        "onsite_dining": true
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 4.0–7.0 小时；大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 38,
+      "name": "苏州太湖国家湿地公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 40,
+      "name": "苏州湾梦幻水世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 0.5–2.0 小时明显偏短，按模型估计调为 3.0–6.0 小时"
+    },
+    {
+      "id": 42,
+      "name": "尚湖风景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 43,
+      "name": "虞山文化旅游度假区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 2.0–5.0 小时"
+    },
+    {
+      "id": 65,
+      "name": "苏州梦幻乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 8.0
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 4.0–8.0 小时"
+    },
+    {
+      "id": 150,
+      "name": "尚湖飞熊乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.5–5.0 小时"
+    },
+    {
+      "id": 160,
+      "name": "张家港市暨阳湖欢乐世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 171,
+      "name": "喜力®星电音 独家呈现 2024EDC雏菊电音嘉年华",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 179,
+      "name": "光福景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 247,
+      "name": "大阳山景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 2.0–5.0 小时"
+    }
+  ]
+}

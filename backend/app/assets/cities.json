@@ -105,5 +105,64 @@
       "reviewed_at": "2026-10-19",
       "reviewer": "Codex AI，未替代用户人工复核"
     }
+  },
+  "suzhou": {
+    "key": "suzhou",
+    "name": "苏州",
+    "name_full": "苏州市",
+    "province": "江苏省",
+    "amap_city": "苏州",
+    "adcode": "320500",
+    "bounds": [
+      30.708,
+      32.096,
+      119.87,
+      121.422
+    ],
+    "default_origin": {
+      "name": "苏州AC酒店附近（默认参考起点）",
+      "lat": 31.315103,
+      "lon": 120.619999
+    },
+    "map_center": {
+      "lat": 31.315103,
+      "lon": 120.619999
+    },
+    "data_dir": "data/suzhou",
+    "assets_dir": "app/assets/cities/suzhou",
+    "supplement_dir": "data/suzhou/poi_supplement",
+    "calibration": "data/suzhou/travel_calibration.json",
+    "local_cuisine": "苏帮|苏州菜|苏菜|江浙",
+    "local_cuisine_labels": {
+      "苏帮": "苏帮菜",
+      "苏州菜": "苏州菜",
+      "苏菜": "苏菜",
+      "江浙": "江浙菜"
+    },
+    "evening_streets": {
+      "217": "太平老街",
+      "30": "观前街",
+      "165": "石路美食街(金门商城店)",
+      "9": "山塘街"
+    },
+    "brand": "苏州行记",
+    "hotel_areas": [
+      "平江",
+      "观前",
+      "同里",
+      "山塘",
+      "博览",
+      "独墅湖"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-20T12:09:12.489278+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-20T13:02:36.206678+00:00"
+    }
   }
 }
