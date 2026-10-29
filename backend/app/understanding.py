@@ -185,7 +185,7 @@ def far_must_issue(profile: UserProfile, places: dict) -> Issue | None:
         return None
 
     def ride(a: int, b: int, transport: str) -> tuple[int, str]:
-        points = (*walk_center(places[a]), *walk_center(places[b]))
+        points = (*walk_center(places[a], near=(places[b].lat, places[b].lon)), *walk_center(places[b], near=(places[a].lat, places[a].lon)))
         return min(estimate_travel(*points)[:2], calibrated(*points, transport)[:2])
 
     def apart(transport: str) -> list[list[int]]:

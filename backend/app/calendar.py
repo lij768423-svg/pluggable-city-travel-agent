@@ -81,7 +81,9 @@ def date_notices(poi: POI, profile: UserProfile, day: int) -> list[str]:
     review = [text for text in (poi.review_note, poi.seasonal_note) if text]
     review.extend(experience_notices(poi, profile, day))
     if profile.start_date is None:
-        return review + ["未填写出游日期，尚未核验当天开放情况"]
+        # 预约要求与日期无关，没填日期也要说（2026-10-29 灵隐：免票但须实名预约，行程里一直没提）
+        booking = poi.opening_rules is not None and poi.opening_rules.booking_required is True
+        return review + (["需要提前预约，本计划未代为预约"] if booking else []) + ["未填写出游日期，尚未核验当天开放情况"]
     if poi.opening_rules is None:
         return review + ["仅有历史开放时段，具体日期与预约要求待确认"]
     notes = review

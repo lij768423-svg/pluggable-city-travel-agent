@@ -315,7 +315,7 @@ class Travel:
         drive = self.router.drive(o, d, live=live)
         if drive is not None:
             key = self.router.transit_key(o, d)
-            quote = (self.router.get(key) or {}).get("taxi_cost") if self.router.has(key) else None
+            quote = ((self.router.get(key) or {}).get("taxi_cost") or None) if self.router.has(key) else None  # 旧缓存里的 0 同样不算
             fetched = self.router.records.get(f"drive|{o}|{d}", {}).get("fetched_at")
             return (round(drive["min"]) + TAXI_WAIT_MIN, "打车", self._taxi_cost(drive, o, d) if quote is None else quote,
                     "amap", 0, FORCED_TAXI_REASON, True, fetched)
@@ -358,7 +358,7 @@ class Travel:
                     raise LookupError
                 if t is not None:
                     minutes = round(t["min"])
-                    upgraded = self._taxi_upgrade(o, d, (lat1, lon1, lat2, lon2), minutes, live, int(t.get("walk_m") or 0), t.get("taxi_cost"))
+                    upgraded = self._taxi_upgrade(o, d, (lat1, lon1, lat2, lon2), minutes, live, int(t.get("walk_m") or 0), t.get("taxi_cost") or None)
                     if upgraded:
                         return upgraded
                     return minutes, "公交/地铁", t["cost"] if t["cost"] is not None else 2.0, "amap", int(t.get("walk_m") or 0), None, True, r.records.get(r.transit_key(o, d), {}).get("fetched_at")

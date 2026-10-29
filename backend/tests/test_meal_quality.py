@@ -77,3 +77,12 @@ def test_three_day_gap_repair_preserves_meals(mock_llm):
     assert result["report"].passed
     for day in result["itinerary"].days:
         assert {item.meal for item in day.items if item.kind == "meal"} == {"lunch", "dinner"}
+
+
+def test_tea_rooms_are_not_meals_and_vague_places_come_last():
+    # 2026-10-29 杭州 4 日行程：午饭排在“韬光茶庵”，晚饭排在只标“餐饮相关”的 merrywannabe
+    profile = UserProfile()
+    assert meal_suitability(restaurant(1, "韬光茶庵", "餐饮相关"), profile) is None
+    assert meal_suitability(restaurant(2, "merrywannabe", "餐饮相关"), profile) == 40
+    assert meal_suitability(restaurant(3, "某某面馆", "餐饮相关"), profile) == 12
+    assert meal_suitability(restaurant(4, "某某茶楼", "粤菜"), profile) is not None

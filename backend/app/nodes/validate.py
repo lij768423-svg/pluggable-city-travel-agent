@@ -55,7 +55,8 @@ def far_must_partner(target: int, days: list[list[int]], must: set[int], leg: Tr
             for other in day:
                 if other == target or other not in must or other not in pois:
                     continue
-                legs = [leg(*walk_center(pois[a]), *walk_center(pois[b])) for a, b in ((other, target), (target, other))]
+                legs = [leg(*walk_center(pois[a], near=(pois[b].lat, pois[b].lon)), *walk_center(pois[b], near=(pois[a].lat, pois[a].lon)))
+                        for a, b in ((other, target), (target, other))]
                 if not any(interstop_ride_allowed(minutes, mode) for minutes, mode, _ in legs):
                     minutes, mode, _ = min(legs)
                     blocked.append((other, minutes, mode))

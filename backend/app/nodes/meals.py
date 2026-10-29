@@ -48,6 +48,9 @@ DRINK_BRANDS = (r"茶百道|喜茶|奈雪|蜜雪冰城|古茗|霸王茶姬|沪�
 
 NOT_MEAL_CUISINES = {"购物相关场所", "冷饮店", "糕饼店", "甜品店", "咖啡厅", "茶艺馆"}
 SHOP_NAMES = r"菓|水果|鲜果|果切|零食|超市|便利店|烘焙|蛋糕|伴手礼"
+TEA_ROOM_NAMES = r"茶庵|茶室|茶舍|茶寮"  # 只供茶点；茶楼、茶餐厅是吃饭的地方，不在其中
+GENERIC_CUISINES = {"餐饮相关", "餐饮相关场所"}
+MEAL_NAMES = r"菜|饭|面|粥|餐|馆|食府|食堂|酒家|酒楼|厨|锅|烧|烤|馄饨|饺|粉|包子|小笼|煲|料理|拌川"
 
 
 def meal_suitability(restaurant: Restaurant, profile: UserProfile) -> int | None:
@@ -59,6 +62,9 @@ def meal_suitability(restaurant: Restaurant, profile: UserProfile) -> int | None
         return None
     # 商店、零食水果店不当正餐（2026-10-28 “安之秀菓”被高德归在“购物相关场所”，两次被排成晚饭）
     if restaurant.cuisine in NOT_MEAL_CUISINES or re.search(SHOP_NAMES, name):
+        return None
+    # 茶室不当正餐（2026-10-29 杭州 4 日行程把“韬光茶庵”排成午饭）
+    if re.search(TEA_ROOM_NAMES, name):
         return None
     if restaurant.cuisine == "休闲餐饮场所" and not re.search(r"面|饭|粥|馄饨|饺子|米线|米粉|包子|小笼|煲", name + restaurant.dishes):
         return None
@@ -72,6 +78,9 @@ def meal_suitability(restaurant: Restaurant, profile: UserProfile) -> int | None
         return 24
     if profile.companions in {"family_kids", "elderly"} and restaurant.cuisine in {"烧烤", "火锅"}:
         return 32
+    # 高德笼统分类“餐饮相关”看不出是不是吃饭的店，名字也看不出时排到最后，附近没有别的餐馆才用（2026-10-29 merrywannabe 被排成晚饭）
+    if restaurant.cuisine in GENERIC_CUISINES and not re.search(MEAL_NAMES, name + restaurant.dishes):
+        return 40
     return 0 if restaurant.cuisine in {"杭帮菜", "江浙菜", "本帮菜", "农家菜"} else 12
 
 
@@ -244,10 +253,11 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                 notes.append(f"{poi.name}在所选日期按已知规则不开放，未安排")
                 continue
             loc, leave, walk_note = (poi.lat, poi.lon), None, None
-            if (direction := choose_direction(poi, pos if (items or p.origin_known) else None,
-                                              walk_center(pois[order[visit_index + 1]]) if visit_index + 1 < len(order)
-                                              else hotel if p.origin_known else None)):
-                loc, leave, walk_note = direction  # 长堤：从近的一头进，走完从另一头出
+            next_spot = (walk_center(pois[order[visit_index + 1]], near=walk_center(poi)) if visit_index + 1 < len(order)
+                         else hotel if p.origin_known else None)
+            if (direction := choose_direction(poi, pos if (items or p.origin_known) else None, next_spot,
+                                              (lambda *points: route.leg(*points, live=False)) if route else travel)):
+                loc, leave, walk_note = direction  # 长堤：从近的一头进，走完从另一头出；岛：从码头坐船往返
             svc = service_min(poi, p.pace)
             go, mode, cost = leg(pos, loc, t)
             start = max(t + go, visit_open_min(poi))

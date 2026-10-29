@@ -3,7 +3,7 @@ from app.data import load_pois
 from app.geo import haversine_km
 from app.nodes.meals import build_itinerary
 from app.schemas import Selection, UserProfile
-from app.walk_ends import choose_direction, walk_center, walk_ends
+from app.walk_ends import boat_piers, choose_direction, walk_center, walk_ends
 
 
 def by_name(name: str) -> int:
@@ -47,3 +47,40 @@ def test_other_cities_have_their_long_walks_and_the_cable_car_is_a_ride():
         enter, leave, note = choose_direction(cable, None, None)
         assert "坐到" in note
         assert walk_length_m(SimpleNamespace(name="长江索道", enter_point=enter, leave_point=leave)) == 0
+
+
+def test_a_walkable_exit_beats_a_ride_that_is_a_minute_faster():
+    # 2026-10-29 视频行程：北口坐车 15 分钟比南口步行 16 分钟“快”，于是从北口出，实际要打车折回南边
+    sudi = load_pois()[by_name("苏堤")]
+    south, north = [point for _, point in walk_ends(sudi)]
+
+    def leg(lat1, lon1, lat2, lon2):
+        return (15, "公交/打车", 4.0) if (lat1, lon1) == north else (16, "步行", 0.0)
+
+    enter, leave, _ = choose_direction(sudi, None, (30.24, 120.15), leg)
+    assert (enter, leave) == (north, south)
+
+
+def test_santan_is_reached_by_boat_from_the_nearest_pier():
+    pois = load_pois()
+    santan, leifeng = pois[by_name("三潭印月")], pois[by_name("雷峰塔")]
+    assert walk_ends(santan) is None
+    piers = [point for _, point in boat_piers(santan)]
+    enter, leave, note = choose_direction(santan, (leifeng.lat, leifeng.lon), (leifeng.lat, leifeng.lon))
+    assert enter == leave and enter in piers and "坐船上岛" in note
+    nearest = min(piers, key=lambda pier: haversine_km(*pier, leifeng.lat, leifeng.lon))
+    assert haversine_km(*enter, leifeng.lat, leifeng.lon) <= haversine_km(*nearest, leifeng.lat, leifeng.lon) + 0.5
+    assert walk_center(santan, near=(leifeng.lat, leifeng.lon)) == nearest
+
+
+def test_timeline_takes_the_boat_and_leaves_sudi_toward_the_pier():
+    pois = load_pois()
+    profile = UserProfile(days=1, pace="relaxed", origin_known=False)
+    order = [by_name("苏堤"), by_name("三潭印月"), by_name("雷峰塔")]
+    selection = [Selection(poi_id=identifier, reason="测试", source="rule") for identifier in order]
+    visits = [item for item in build_itinerary([order], profile, selection).days[0].items if item.kind == "poi"]
+    sudi, santan = visits[0], visits[1]
+    assert santan.name == "三潭印月" and santan.enter_point == santan.leave_point
+    assert tuple(santan.enter_point) in [point for _, point in boat_piers(pois[by_name("三潭印月")])]
+    assert any("坐船上岛" in notice for notice in santan.notices)
+    assert haversine_km(*sudi.leave_point, *santan.enter_point) < haversine_km(*sudi.enter_point, *santan.enter_point)

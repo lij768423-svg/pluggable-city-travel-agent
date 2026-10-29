@@ -218,10 +218,11 @@ class AmapRouter:
             if ts:
                 best = min(ts, key=lambda t: int(t["duration"]))
                 cost, taxi = best.get("cost"), route.get("taxi_cost")
-                # taxi_cost 是高德对同一起终点的打车估价；距离测量接口不给车费，改打车时优先用它
+                # taxi_cost 是高德对同一起终点的打车估价；距离测量接口不给车费，改打车时优先用它。
+                # 0 不是车费：2026-10-29 起实测杭州各段一律返回 "0"，当作没给，改用标定的车费模型
                 v = {"min": int(best["duration"]) / 60, "cost": float(cost) if cost not in (None, "", []) else None,
                      "walk_m": int(best.get("walking_distance") or 0),
-                     "taxi_cost": float(taxi) if taxi not in (None, "", []) else None}
+                     "taxi_cost": float(taxi) if taxi not in (None, "", []) and float(taxi) > 0 else None}
             self._put(k, v)
         return self.get(k)
 

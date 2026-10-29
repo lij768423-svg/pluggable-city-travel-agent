@@ -16,7 +16,7 @@ import numpy as np
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
 from ..bundles import visit_hours
-from ..walk_ends import walk_center
+from ..walk_ends import boat_piers, walk_center
 from ..areas import area_index, area_transition_cost
 from ..data import load_pois
 from ..experiences import experience_key, keep_walks_together
@@ -214,7 +214,9 @@ def split_days(ids: list[int], p: UserProfile, travel=None) -> list[list[int]]:
 
 def _nodes(day_ids: list[int], p: UserProfile, travel):
     pois = load_pois()
-    locs = [(p.hotel.lat, p.hotel.lon)] + [walk_center(pois[i]) for i in day_ids]  # 长堤取两端中点
+    plain = [walk_center(pois[i]) for i in day_ids if not boat_piers(pois[i])]
+    middle = tuple(sum(values) / len(plain) for values in zip(*plain)) if plain else (p.hotel.lat, p.hotel.lon)
+    locs = [(p.hotel.lat, p.hotel.lon)] + [walk_center(pois[i], near=middle) for i in day_ids]  # 长堤取两端中点，岛取离当天其他地点最近的码头
     T = travel.matrix(locs)  # 打车模式为高德真实矩阵；公交模式为缓存真实值 + 标定兜底
     svc = [0] + [service_min(pois[i], p.pace) for i in day_ids]
     allowed = [[True for _ in locs] for _ in locs]
