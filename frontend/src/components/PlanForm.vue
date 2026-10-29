@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import '@fontsource-variable/geist-mono'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { PhArrowRight, PhCheck, PhMountains, PhBuildings, PhCamera, PhLeaf, PhCoffee, PhScroll, PhSparkle, PhMoon, PhForkKnife, PhBank, PhPersonSimpleWalk, PhCompass, PhLightning, PhFish, PhFlame, PhStar, PhBowlFood } from '@phosphor-icons/vue'
+import { PhArrowRight, PhCheck, PhMountains, PhBuildings, PhCamera, PhLeaf, PhCoffee, PhScroll, PhSparkle, PhMoon, PhForkKnife, PhBank, PhPersonSimpleWalk, PhCompass, PhLightning, PhFlame } from '@phosphor-icons/vue'
 import type { Meta, PlanRequest, Hotel, CityInfo } from '../api'
 import OriginPicker from './OriginPicker.vue'
 import QuestionOptions from './QuestionOptions.vue'
 import QuestionnaireArt from './QuestionnaireArt.vue'
 
-const props = defineProps<{ city: CityInfo; notifyCityChange: boolean; meta: Meta | null; loading: boolean; initialQuery?: string; initialRequest?: PlanRequest | null; quota?: { limit: number; remaining: number } | null; needsLogin?: boolean }>()
+const props = defineProps<{ city: CityInfo; meta: Meta | null; loading: boolean; initialQuery?: string; initialRequest?: PlanRequest | null; quota?: { limit: number; remaining: number } | null; needsLogin?: boolean }>()
 const outOfQuota = computed(() => !!props.quota && props.quota.remaining <= 0)
 const emit = defineEmits<{ submit: [req: PlanRequest]; hotelChange: [hotel: Hotel | null] }>()
 
@@ -18,7 +19,8 @@ const form = reactive({
   pace: 'normal',
   companions: '',
   interests: [] as string[],
-  dietary: [] as string[],
+  spice: 'any' as 'no' | 'any' | 'love',
+  familiarity: 'first' as 'first' | 'visited' | 'local',
   must_visit: '',
   avoid: '',
   transport: 'transit' as '' | 'taxi' | 'transit',
@@ -38,13 +40,11 @@ const selectMode = ref<'llm' | 'rule' | 'jev'>('llm')
 const enableRepair = ref(true)
 const useGuides = ref(false)
 const origin = ref<Hotel | null>(null)
-const cityNotice = ref('')
 const originPresets = computed(() => props.meta?.city === props.city.key ? props.meta.hotels : [])
 watch(() => props.city.key, () => {
   step.value = 0
-  origin.value = props.city.default_origin
+  origin.value = null  // 起点默认不定（2026-10-28 用户决定），住酒店的人再选
   query.value = ''; form.must_visit = ''; form.avoid = ''
-  cityNotice.value = props.notifyCityChange ? `已切换至${props.city.name}，起点已重置；请重新填写必去、不想去和补充说明。` : ''
 })
 const queryPlaceholder = computed(() => props.city.key === 'hangzhou'
   ? '一定要去、不想去的地方和其他要求都写在这里，例如：一定要去灵隐寺，不去宋城；想在西湖边喝杯咖啡。'
@@ -64,7 +64,7 @@ const stepDirection = ref('forward')
 // 三步：先选兴趣（最直观），再定餐饮预算，最后一页集中填天数、同行、日期、起点与补充
 const steps = [
   { label: '游玩偏好', hint: '兴趣、节奏、出行与夜间' },
-  { label: '餐饮与预算', hint: '预算、口味、忌口' },
+  { label: '餐饮与预算', hint: '预算、口味' },
   { label: '出行与补充', hint: '天数、同行、起点、必去' },
 ]
 const LAST = steps.length - 1
@@ -79,8 +79,9 @@ const selectedSummary = computed(() => {
   const parts = [props.meta && props.meta.cities.length > 1 ? props.city.name : '', form.days ? `${form.days} 天` : '按描述安排', companions, paceLabel.value]
   if (form.interests.length) parts.push(form.interests.join('、'))
   if (form.budget !== '') parts.push(`预算 ¥${form.budget} / 人`)
-  if (form.dietary.length) parts.push(form.dietary.join('、'))
-  if (origin.value) parts.push(`从${origin.value.name}出发`)
+  if (form.spice !== 'any') parts.push(spiceOptions.find(option => option.value === form.spice)?.label)
+  if (form.familiarity !== 'first') parts.push(familiarityOptions.find(option => option.value === form.familiarity)?.label)
+  parts.push(origin.value ? `从${origin.value.name}出发` : '起点不定')
   return parts.filter(Boolean).join(' · ')
 })
 const interestTiles = [
@@ -102,7 +103,10 @@ const paceOptions = [
   { value: 'normal', label: '刚刚好', hint: '游玩与休息兼顾', icon: PhPersonSimpleWalk },
   { value: 'intense', label: '多看一点', hint: '充实紧凑', icon: PhLightning },
 ]
-const dietaryIcons = { '不吃辣': PhFlame, '只吃中餐': PhBowlFood, '清真': PhStar, '不吃海鲜': PhFish }
+// 口味（辣度）单选：不吃辣会排除辣味菜系，爱吃辣只是优先推荐；2026-10-26 起替代原来的饮食忌口
+const spiceOptions = [{ value: 'no', label: '不吃辣', icon: PhLeaf }, { value: 'any', label: '微辣都行', icon: PhForkKnife }, { value: 'love', label: '爱吃辣', icon: PhFlame }] as const
+// 对城市的熟悉程度：第一次来更看重地标，本地人少推热门；默认第一次来
+const familiarityOptions = [{ value: 'first', label: '第一次来' }, { value: 'visited', label: '来过' }, { value: 'local', label: '本地人' }] as const
 const formError = ref('')
 function goStep(target: number) {
   formError.value = ''
@@ -119,12 +123,12 @@ function goStep(target: number) {
 const timeText = (value: unknown) => typeof value === 'number' ? `${Math.floor(value / 60).toString().padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}` : ''
 watch(() => props.initialRequest, request => {
   if (!request) return
-  cityNotice.value = ''
   query.value = request.query
   const fields = request.form
-  Object.assign(form, { days: 2, budget: '', pace: 'normal', companions: '', interests: [], dietary: [], must_visit: '', avoid: '', transport: 'transit', start_date: '', day_start: '', day_end: '', max_walking_m: '', allow_taxi_fallback: true, include_evening: '', food_preference: '', meal_budget_min: '', meal_budget_max: '' })
+  Object.assign(form, { days: 2, budget: '', pace: 'normal', companions: '', interests: [], spice: 'any', familiarity: 'first', must_visit: '', avoid: '', transport: 'transit', start_date: '', day_start: '', day_end: '', max_walking_m: '', allow_taxi_fallback: true, include_evening: '', food_preference: '', meal_budget_min: '', meal_budget_max: '' })
+  // 确认后规划带的是整份画像，没填的项是 null：当成没填，否则数字框会被当成 0
   for (const key of Object.keys(form)) {
-    if (fields[key] !== undefined && !['must_visit', 'avoid', 'day_start', 'day_end', 'include_evening'].includes(key)) Object.assign(form, { [key]: fields[key] })
+    if (fields[key] != null && !['must_visit', 'avoid', 'day_start', 'day_end', 'include_evening'].includes(key)) Object.assign(form, { [key]: fields[key] })
   }
   const carried = [Array.isArray(fields.must_visit) && fields.must_visit.length ? `一定要去${fields.must_visit.join('、')}` : '',
     Array.isArray(fields.avoid) && fields.avoid.length ? `不去${fields.avoid.join('、')}` : ''].filter(Boolean).join('；')
@@ -133,8 +137,8 @@ watch(() => props.initialRequest, request => {
   form.avoid = ''
   form.day_start = timeText(fields.day_start)
   form.day_end = timeText(fields.day_end)
-  form.include_evening = fields.include_evening === undefined ? '' : fields.include_evening ? 'yes' : 'no'
-  origin.value = fields.hotel ? fields.hotel as Hotel : originPresets.value[0] || props.city.default_origin
+  form.include_evening = fields.include_evening == null ? '' : fields.include_evening ? 'yes' : 'no'
+  origin.value = fields.hotel && fields.origin_known !== false ? fields.hotel as Hotel : null
   dailyWindows.forEach(window => {
     const saved = (fields.daily_windows as { day: number; start: number; end: number }[] | undefined)?.find(item => item.day === window.day)
     window.enabled = !!saved; window.start = saved ? timeText(saved.start) : '09:00'; window.end = saved ? timeText(saved.end) : '20:00'
@@ -158,7 +162,6 @@ function submit() {
   if (form.day_start && form.day_end && minutes(form.day_start) >= minutes(form.day_end)) { formError.value = '返回时间需要晚于出发时间。'; return }
   if (dailyWindows.some(window => window.enabled && window.day <= Number(form.days) && minutes(window.start) >= minutes(window.end))) { formError.value = '每天的返回时间需要晚于出发时间。'; return }
   if (mealBudgetError.value) { formError.value = mealBudgetError.value; return }
-  if (!origin.value) { formError.value = '先选择一个出发地点。'; return }
   if (budgetError.value) return
   const f: Record<string, unknown> = { city: props.city.key }
   if (form.days !== '') f.days = Number(form.days)
@@ -178,7 +181,8 @@ function submit() {
   f.daily_windows = dailyWindows.filter(window => window.enabled && form.days && window.day <= form.days)
     .map(window => ({ day: window.day, start: minutes(window.start), end: minutes(window.end) }))
   if (form.interests.length) f.interests = [...form.interests]
-  if (form.dietary.length) f.dietary = [...form.dietary]
+  if (form.spice !== 'any') f.spice = form.spice
+  if (form.familiarity !== 'first') f.familiarity = form.familiarity
   if (form.must_visit.trim()) f.must_visit = form.must_visit.split(/[,，、\n]/).map(name => name.trim()).filter(Boolean)
   if (form.avoid.trim()) f.avoid = form.avoid.split(/[,，、\n]/).map(name => name.trim()).filter(Boolean)
   const h = origin.value
@@ -195,7 +199,6 @@ function submit() {
       </ol>
       <header class="qform-head"><QuestionnaireArt :step="[1, 2, 0][step] ?? 0" /><h2 ref="stepHeading" tabindex="-1">{{ headings[step] }}</h2><div class="qform-track" aria-hidden="true"><span :style="{ transform: `scaleX(${(step + 1) / steps.length})` }" /></div></header>
       <div ref="questionBody" class="qform-body" :data-step="step">
-        <p v-if="cityNotice" class="field-help city-change-notice" role="status">{{ cityNotice }}</p>
         <fieldset v-show="step === 0" :disabled="loading" class="qstep" :class="{ entering: step === 0 }"><legend class="sr-only">游玩偏好</legend>
           <div class="qfield">
             <div class="interest-heading"><span class="field-label">想做些什么 <span class="optional">可多选</span></span><QuestionOptions title="更多兴趣" :trigger="moreSelected.length ? `更多兴趣 · 已选 ${moreSelected.length}` : '更多兴趣'">
@@ -209,13 +212,14 @@ function submit() {
         <fieldset v-show="step === 1" :disabled="loading" class="qstep" :class="{ entering: step === 1 }"><legend class="sr-only">餐饮与预算</legend>
           <div class="qfield"><span class="field-label">人均总预算 <span class="optional">选填</span></span><div class="pick-row"><button v-for="v in [300, 500, 800, 1200, 1800, 2500]" :key="v" type="button" class="pick" :aria-pressed="form.budget === v" :class="{ on: form.budget === v }" :disabled="loading" @click="form.budget = v">¥{{ v }}</button><input class="pick-input" aria-label="人均总预算" type="number" v-model.number="form.budget" min="1" max="100000" placeholder="自定义" :disabled="loading" /></div><p class="field-help" :class="{ 'budget-error': budgetError }">{{ budgetError ? '总预算需在 1–100000 元之间，不确定时请留空。' : `含门票、餐饮、市内交通；不含住宿与往返${city.name}交通。` }}</p></div>
           <div class="qfield"><span class="field-label">怎么吃</span><div class="pick-row"><button v-for="opt in foodOptions" :key="opt.value" type="button" class="pick" :aria-pressed="form.food_preference === opt.value" :class="{ on: form.food_preference === opt.value }" :disabled="loading" @click="form.food_preference = opt.value">{{ opt.label }}</button></div></div>
-          <div class="qfield"><span class="field-label">饮食忌口 <span class="optional">可多选</span></span><div class="dietary-tile-grid"><button v-for="diet in meta?.dietary" :key="diet" type="button" class="dietary-tile" :class="{ on: form.dietary.includes(diet) }" :aria-pressed="form.dietary.includes(diet)" :disabled="loading" @click="toggle(form.dietary, diet)"><component :is="dietaryIcons[diet as keyof typeof dietaryIcons] || PhForkKnife" :size="25" aria-hidden="true" /><span>{{ diet }}</span><span class="dietary-check" aria-hidden="true"><PhCheck v-if="form.dietary.includes(diet)" :size="11" /></span></button></div></div>
+          <div class="qfield"><span class="field-label">口味</span><div class="dietary-tile-grid spice-grid" role="radiogroup" aria-label="口味"><button v-for="opt in spiceOptions" :key="opt.value" type="button" role="radio" class="dietary-tile" :class="{ on: form.spice === opt.value }" :aria-checked="form.spice === opt.value" :disabled="loading" @click="form.spice = opt.value"><component :is="opt.icon" :size="25" aria-hidden="true" /><span>{{ opt.label }}</span><span class="dietary-check" aria-hidden="true"><PhCheck v-if="form.spice === opt.value" :size="11" /></span></button></div></div>
           <div class="qfield"><QuestionOptions title="每餐预算" trigger="单独设置每餐预算" description="给午餐、晚餐留出合适的花费" art="meal"><div class="qfield"><span class="field-label">每餐预算下限</span><input type="number" v-model.number="form.meal_budget_min" aria-label="每餐预算下限" min="0" max="2000" placeholder="¥" /></div><div class="qfield"><span class="field-label">每餐预算上限</span><input type="number" v-model.number="form.meal_budget_max" aria-label="每餐预算上限" min="1" max="2000" placeholder="¥" /></div><p v-if="mealBudgetError" role="alert" class="notice bad">{{ mealBudgetError }}</p></QuestionOptions></div>
         </fieldset>
         <fieldset v-show="step === 2" :disabled="loading" class="qstep" :class="{ entering: step === 2 }"><legend class="sr-only">出行与补充</legend>
           <div class="qfield-half travel-picks">
             <div><span id="days-label" class="field-label">玩几天</span><div class="pick-row compact-picks" role="group" aria-labelledby="days-label"><button v-for="opt in dayOptions" :key="opt.value" type="button" class="pick" :class="{ on: String(form.days) === opt.value }" :aria-pressed="String(form.days) === opt.value" :disabled="loading" @click="form.days = opt.value ? Number(opt.value) : ''">{{ opt.short }}</button></div></div>
             <div><span id="companions-label" class="field-label">和谁同行</span><div class="pick-row compact-picks" role="group" aria-labelledby="companions-label"><button v-for="opt in companionOptions" :key="opt.value" type="button" class="pick" :class="{ on: form.companions === opt.value }" :aria-pressed="form.companions === opt.value" :disabled="loading" @click="form.companions = opt.value">{{ opt.short }}</button></div></div>
+            <div><span id="familiarity-label" class="field-label">对这座城市</span><div class="pick-row compact-picks" role="radiogroup" aria-labelledby="familiarity-label"><button v-for="opt in familiarityOptions" :key="opt.value" type="button" role="radio" class="pick" :class="{ on: form.familiarity === opt.value }" :aria-checked="form.familiarity === opt.value" :disabled="loading" @click="form.familiarity = opt.value">{{ opt.label }}</button></div></div>
           </div>
           <div class="qfield-pair">
             <div class="qfield"><span class="field-label">出游日期 <span class="optional">选填</span></span><input v-model="form.start_date" aria-label="出游日期" type="date" class="qinput-date" /></div>
@@ -226,7 +230,7 @@ function submit() {
         </fieldset>
       </div>
       <p v-if="formError" class="notice bad" role="alert">{{ formError }}</p>
-      <footer class="qform-foot"><div class="qform-recap"><span>已选</span><p :title="selectedSummary">{{ selectedSummary }}</p></div><div class="qform-actions"><span v-if="step === LAST && quota" class="qform-quota" :class="{ empty: outOfQuota }">{{ outOfQuota ? '今天的生成次数已用完' : `今天还可生成 ${quota.remaining}/${quota.limit} 次` }}</span><button v-if="step > 0" type="button" class="journey-secondary" :disabled="loading" @click="goStep(step - 1)">上一步</button><button type="submit" class="journey-primary" :disabled="loading || !meta || (step === LAST && (!origin || budgetError || outOfQuota))">{{ step !== LAST ? '继续' : needsLogin ? '登录并生成' : '生成行程' }}<PhArrowRight :size="18" /></button></div></footer>
+      <footer class="qform-foot"><div class="qform-recap"><span>已选</span><p :title="selectedSummary">{{ selectedSummary }}</p></div><div class="qform-actions"><span v-if="step === LAST && quota" class="qform-quota" :class="{ empty: outOfQuota }">{{ outOfQuota ? '今天的生成次数已用完' : `今天还可生成 ${quota.remaining}/${quota.limit} 次` }}</span><button v-if="step > 0" type="button" class="journey-secondary" :disabled="loading" @click="goStep(step - 1)">上一步</button><button type="submit" class="journey-primary" :disabled="loading || !meta || (step === LAST && (budgetError || outOfQuota))">{{ step !== LAST ? '继续' : needsLogin ? '登录并生成' : '生成行程' }}<PhArrowRight :size="18" /></button></div></footer>
     </div>
   </form>
 </template>

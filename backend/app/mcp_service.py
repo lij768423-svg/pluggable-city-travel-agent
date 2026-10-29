@@ -18,14 +18,15 @@ from pydantic import ValidationError
 
 from .cities import DEFAULT_CITY, CityDisabled, city_config, enabled_cities, ensure_enabled, reference_city
 from . import accounts, config
-from .amap_limits import PLAN_HTTP_LIMIT, RequestBudget, operation_budget
-from .mcp_domain import (MCPError, delivery_status, prepare_candidates,
+from .amap_limits import PLAN_HTTP_LIMIT, RequestBudget, operation_budget, plan_http_limit
+from .mcp_domain import (MCPError, candidate_overview, delivery_status, prepare_candidates,
                          public_candidates, run_selected)
 from .mcp_ledger import RequestLedger
+from .understanding import explain
 from .planning_context import allowed_pois, poi_catalog
 from .poi_catalog import PlanningCatalog, published_catalog, use_catalog
 from .presentation import serialize_plan
-from .schemas import ExternalSelection, MealEditPreviewRequest, UserProfile
+from .schemas import ExternalSelection, MealEditPreviewRequest, TripContext, UserProfile
 from .sessions import SESSIONS, SessionNotFound, StaleRevision, PreviewNotFound
 
 TTL = 6 * 3600
@@ -53,6 +54,19 @@ class Job:
     progress: dict = field(default_factory=dict)
     stage_calls: dict = field(default_factory=dict)
     observed_calls: int = 0
+
+
+def understanding_payload(data: dict, context: dict | None) -> dict | None:
+    """宿主 AI 给的画像逐项标明来源（宿主给的、按上下文推断、默认）并预检，不调用模型；画像不完整时按默认值补全再解释。
+    推断项可直接用，只有 issues 里的才需要问用户（2026-10-28 用户：一直追问很烦）。"""
+    city = data.get("city") or DEFAULT_CITY
+    try:
+        trip_context = TripContext.model_validate(context) if context else None
+        with use_catalog(published_catalog(city)):
+            result = explain(data, context=trip_context)  # 宿主给了城市就算“说的”，没给按默认城市
+    except (ValidationError, ValueError):
+        return None
+    return {"fields": [field.model_dump() for field in result.fields], "issues": [issue.model_dump() for issue in result.issues]}
 
 
 class MCPService:
@@ -144,8 +158,8 @@ class MCPService:
             return job
 
     def prepare(self, owner: str, profile_data: dict, request_id: str, job_id: str | None = None,
-                origin_query: str | None = None) -> dict:
-        body = {"profile": profile_data, "job_id": job_id, "origin_query": origin_query}
+                origin_query: str | None = None, context: dict | None = None) -> dict:
+        body = {"profile": profile_data, "job_id": job_id, "origin_query": origin_query, "context": context}
         def action():
             with self.lock:
                 for identifier, old in list(self.jobs.items()):
@@ -178,6 +192,7 @@ class MCPService:
                 raise MCPError("city_unavailable", str(error) if isinstance(error, CityDisabled) else "未知城市",
                                enabled=list(enabled_cities())) from None
             missing = [key for key in ("days", "budget", "start_date") if data.get(key) is None]
+            understanding = understanding_payload(data, context)
             origins = []
             if origin_query:
                 if not 2 <= len(origin_query) <= 80:
@@ -191,12 +206,12 @@ class MCPService:
                 except Exception:
                     return {"status": "data_unavailable", "code": "origin_unavailable", "job_id": job.identifier,
                             "preparation_revision": job.revision, "amap_http_calls": job.budget.used}
-            if "hotel" not in data or not all(key in data["hotel"] for key in ("name", "lat", "lon")):
+            if data.get("origin_known") is not False and ("hotel" not in data or not all(key in data["hotel"] for key in ("name", "lat", "lon"))):
                 missing.append("hotel")
             if missing or origins:
                 job.status = "needs_input"
                 return {"status": job.status, "job_id": job.identifier, "preparation_revision": job.revision,
-                        "missing_fields": sorted(set(missing)), "origin_options": origins,
+                        "missing_fields": sorted(set(missing)), "origin_options": origins, "understanding": understanding,
                         "coordinate_system": "BD-09", "profile_schema": UserProfile.model_json_schema(),
                         "amap_http_calls": job.budget.used}
             profile = UserProfile.model_validate(data)
@@ -206,6 +221,7 @@ class MCPService:
             with use_catalog(catalog):
                 job.candidates, job.report = prepare_candidates(profile)
                 candidates = public_candidates(job.candidates)
+                overview = candidate_overview(job.candidates, profile)
             job.catalog, job.version = catalog, catalog.version
             job.candidate_set_id = secrets.token_urlsafe(18)
             job.status = "preparing"
@@ -213,9 +229,10 @@ class MCPService:
             return {"status": "needs_changes" if gaps else "prepared", "job_id": job.identifier,
                     "preparation_revision": job.revision, "candidate_set_id": job.candidate_set_id,
                     "expires_at": job.created + TTL, "profile": profile.model_dump(mode="json"),
-                    "candidates": candidates, "retrieval_report": job.report,
-                    "required_gaps": gaps, "amap_http_calls": job.budget.used,
-                    "instructions": "仅选择当前候选ID并写偏好理由，不编排时间；包含所有必去。候选资料为历史资料，不能宣称实时核验。"}
+                    "candidates": candidates, **overview, "retrieval_report": job.report,
+                    "required_gaps": gaps, "understanding": understanding, "amap_http_calls": job.budget.used,
+                    "instructions": "仅选择当前候选ID并写偏好理由，不编排时间；包含所有必去。候选资料为历史资料，不能宣称实时核验。"
+                                    "按 selection_guide 选约 suggested_count 个，以 areas 的片区为单位挑，每天一个主片区、至多加一个相邻片区。"}
         return self._once(owner, "prepare", request_id, body, action)
 
     def generate(self, owner: str, job_id: str, preparation_revision: int, candidate_set_id: str,
@@ -263,6 +280,8 @@ class MCPService:
         return self._once(owner, "generate", request_id, body, action)
 
     def _run(self, job: Job, selected: list):
+        if job.budget.used == 0 and job.profile is not None:
+            job.budget.limit = plan_http_limit(job.profile.days)  # 按行程天数放宽，与网页规划同一规则
         token = operation_budget.set(job.budget)
         # 线程池不复制ContextVar：显式安装该任务准备时固定的目录
         catalog_token = poi_catalog.set(job.catalog)
@@ -280,7 +299,7 @@ class MCPService:
                     raise MCPError("cancelled", "任务已取消")
             result = run_selected(job.profile, job.candidates, selected, job.report, progress=progress)
             outcome = delivery_status(result, allow_unverified_draft=self.allow_unverified_draft)
-            if job.budget.used >= PLAN_HTTP_LIMIT and outcome["status"] == "data_unavailable":
+            if job.budget.used >= job.budget.limit and outcome["status"] == "data_unavailable":
                 outcome["code"] = "quota_exhausted"
             if job.cancelled.is_set():
                 return
@@ -333,7 +352,7 @@ class MCPService:
     def get_job(self, owner: str, job_id: str) -> dict:
         job = self._job(owner, job_id)
         return {**deepcopy(job.output), "status": job.status, "job_id": job_id, "progress": deepcopy(job.progress),
-                "amap_http_calls": job.budget.used, "amap_http_limit": PLAN_HTTP_LIMIT, "stage_http_calls": deepcopy(job.stage_calls),
+                "amap_http_calls": job.budget.used, "amap_http_limit": job.budget.limit, "stage_http_calls": deepcopy(job.stage_calls),
                 "server_llm_calls": 0, "server_llm_tokens": 0}
 
     def get_trip(self, owner: str, trip_id: str, expected_revision: int | None = None) -> dict:

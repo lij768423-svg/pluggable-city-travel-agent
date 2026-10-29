@@ -29,7 +29,7 @@ let labels: string[] = []
 let kinds: string[] = []
 let altMarkers = new Map<number, any>()
 
-const ROUTE = '#2f5bd3'
+const ROUTE = '#b93b28'
 const MEAL = '#a0662a'
 // 左上角有行程浮层，四周留出边距，保证点不会被遮住
 const PADDING = { top: 120, right: 70, bottom: 70, left: 70 }
@@ -122,7 +122,7 @@ function drawRoutes() {
   clear(routeLayer)
   if (!props.plan) return
   for (const leg of props.navigation?.legs || []) for (const segment of leg.segments) {
-    routeLayer.push(new AMap.Polyline({ path: segment.path, strokeColor: segment.mode === '步行' ? '#6e8ec8' : ROUTE,
+    routeLayer.push(new AMap.Polyline({ path: segment.path, strokeColor: segment.mode === '步行' ? '#696b64' : ROUTE,
       strokeWeight: segment.mode === '步行' ? 4 : 5, strokeOpacity: 0.9, outlineColor: '#ffffff', borderWeight: 1,
       isOutline: true, showDir: true, lineJoin: 'round', lineCap: 'round', zIndex: 50 }))
   }

@@ -31,9 +31,10 @@ def test_restaurant_cannot_start_after_meal_window(monkeypatch):
     assert pick_restaurant((30.25, 120.16), None, 720, UserProfile(), set(), 100, latest_start=810) is None
 
 
-def test_menu_does_not_recommend_known_diet_conflicts():
+def test_menu_skips_spicy_dishes_only_for_no_spicy():
     place = restaurant(1, "餐厅", dishes="辣椒炒肉,龙井虾仁,油焖春笋,清蒸鱼,番茄炒蛋")
-    assert menu_suggestions(place, UserProfile(dietary=["不吃辣", "不吃海鲜"])) == ["油焖春笋", "番茄炒蛋"]
+    assert menu_suggestions(place, UserProfile(spice="no")) == ["龙井虾仁", "油焖春笋", "清蒸鱼"]
+    assert menu_suggestions(place, UserProfile(spice="love")) == ["辣椒炒肉", "龙井虾仁", "油焖春笋"]
 
 
 @needs_data

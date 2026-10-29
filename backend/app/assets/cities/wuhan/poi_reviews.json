@@ -1,0 +1,933 @@
+{
+  "version": "2026-10-21-onboard-v1",
+  "reviewed_at": "2026-10-21",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。；待核清单经 Codex 上网核对（AI 核对，未做人工或现场核验）。；清单外条目经 Claude 上网补核（check-zero-price.csv，AI 核对，未做人工或现场核验）。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    },
+    "check-1": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/qingchuan-pavilion-park-90434//",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-11": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/hubu-lane-10524156?locale=zh-HK&poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-26": {
+      "url": "https://jtj.wuhan.gov.cn/jtzx/zwdt/202607/t20260701_2815488_slhxq.shtml",
+      "published_at": "2026-07-01",
+      "verification": "observed",
+      "facts": "市交通局2026报道长江荣耀号线下挂牌158元、线上早场138/晚场158；按普通挂牌158元预算，不沿用2025年11月节假日238元历史促销口径"
+    },
+    "check-34": {
+      "url": "https://my.trip.com/travel-guide/attraction/wuhan/the-east-lake-eye-ferris-wheel-102563012?locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–45分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.75小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-35": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/lihuangpi-rd-18087019/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-52": {
+      "url": "https://you.ctrip.com/sight/wuhan145/144904893.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "明确武汉观光游船三码头循环停靠；策展判断暂停泛称52与晴川101，保留信息更明确的114中华路1号码头，避免同一日游循环船被重复安排；泛称页混入多种夜游/东湖产品，未用其价目作证"
+    },
+    "check-75": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/yingwuzhou-yangtze-river-bridge-18097388/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–60 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-81": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/changchun-taoist-temple-77587/?curr=HKD&locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-101": {
+      "url": "https://you.ctrip.com/sight/wuhan145/144904893.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "晴川码头与中华路1号码头为同一观光循环航线登船点；保留114，暂停101独立推荐以免重复体验，船价仍须按实际航线核对"
+    },
+    "check-114": {
+      "url": "https://my.trip.com/travel-guide/attraction/wuhan/wuhan-sightseeing-cruise-144904893?curr=MYR&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "保留为三码头循环观光船代表点，52及101暂停推荐；未找到该航线现行成人全价，搜索出的60元属木兰湖观光船、不是武汉关/中华路循环船，不能挪用；Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；另一依据：https://you.ctrip.com/sight/wuhan145/144904893.html"
+    },
+    "check-116": {
+      "url": "https://www.trip.com/travel-guide/attraction/wuhan/wuhan-pass-of-the-yangtze-river-56808287",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-128": {
+      "url": "https://www.trip.com/travel-guide/attraction/wuhan/nongjiangsuo-site-memorial-hall-13797797?curr=&locale=en-US&poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-133": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/the-former-site-of-the-wuhan-national-government-77670/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-151": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/shouyi-culture-park-31658163/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2 - 3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-158": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/song-qingling-hankou-former-residence-memorial-hall-22866951?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-170": {
+      "url": "https://my.trip.com/travel-guide/attraction/wuhan/panlongcheng-site-museum-79438700/?curr=JPY&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-175": {
+      "url": "https://share1.chaoxing.com/share/mobile/mooc/tocard/86891969?appId=0&code=null&courseId=86891102&name=%E8%AF%BB%E8%80%85%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9%E2%96%B6",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "校图书馆新生指南载服务师生和获准读者、凭校园卡门禁入馆；本条非校外游客可自由参观景点，暂不自动推荐，外观观赏不受此项结论证明"
+    },
+    "check-178": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/baqi-conference-site-77687",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-184": {
+      "url": "https://www.trip.com/travel-guide/attraction/wuhan/han-river-beach-park-124908153/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-203": {
+      "url": "https://oldwww.lib.whu.edu.cn/web/quickpath/g_uselib.asp",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官方访客规则为有借阅证或单位介绍信的查资料读者服务，不是一般游客入内参观；策展判断暂不独立推荐新图书馆，可在武大校园游览外观，不声称整个学校不开放"
+    },
+    "check-213": {
+      "url": "https://pecg.hust.edu.cn/wescms/175",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官方为师生按时段付费运动场地预约，网络要求校园卡账户，不能当免费旅游场馆随到随进；暂不独立推荐，不把某日主馆暂停误当永久停业"
+    },
+    "check-217": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/uprising-gate-18100908",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-218": {
+      "url": "https://gs.ctrip.com/html5/you/sight/wuhan145/5037446.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "地址明确为武汉欢乐谷渔光岛内漂流子项目；策展判断随id=3欢乐谷整园游览，不作为独立0元景点推荐，不重复计整园门票"
+    },
+    "check-219": {
+      "url": "https://my.trip.com/travel-guide/attraction/wuhan/hubei-military-governor-s-mansion-56810012?curr=MYR&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-221": {
+      "url": "https://id.trip.com/travel-guide/attraction/wuhan/tongxingli-10522815?curr=IDR&locale=en-ID",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议10–30 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-223": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/quyuan-memorial-hall-18080728?curr=&locale=zh-TW&poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-224": {
+      "url": "https://you.ctrip.com/sight/wuhan145/134049315.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程标注暂停营业、恢复时间待定且季节至8月末；暂退出推荐，不认定永久停业，不用夏季价推全年"
+    },
+    "check-227": {
+      "url": "https://hk.trip.com/travel-guide/attraction/wuhan/wuhan-erqi-memorial-hall-79042554?curr=THB&locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-230": {
+      "url": "https://sg.trip.com/travel-guide/attraction/wuhan/huguang-pavilion-18073011",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议10–15 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-241": {
+      "url": "https://sg.trip.com/travel-guide/attraction/wuhan/yuji-xinggong-90433",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-255": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/dalin-museum-for-sexology-18097371/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-264": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/luxun-square-18072959",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议10–20分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-272": {
+      "url": "https://www.trip.com/travel-guide/attraction/wuhan/lianxi-temple-77683/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-284": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/desheng-bridge-10522804?curr=KRW&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-293": {
+      "url": "https://my.trip.com/travel-guide/attraction/wuhan/gebi-pavilion-22866952?curr=MYR&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-296": {
+      "url": "https://tw.trip.com/travel-guide/attraction/wuhan/chuwangtai-heritage-park-31660560?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-298": {
+      "url": "https://us.trip.com/travel-guide/attraction/wuhan/yangsigang-yangtze-river-bridge-73103799/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-302": {
+      "url": "https://sg.trip.com/travel-guide/attraction/wuhan/city-98282370?curr=SGD&locale=zh-SG",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-311": {
+      "url": "https://ae.trip.com/travel-guide/attraction/wuhan/liushaoqi-former-residence-85875/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-325": {
+      "url": "data/wuhan/onboarding-review/check.csv",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "数据名称为武汉大学校内风雨操场，属校园子设施；策展判断随8武汉大学校园游览，不作为单独旅游目的地自动推荐，未声称校方禁止外观参观"
+    },
+    "check-326": {
+      "url": "https://sg.trip.com/travel-guide/attraction/wuhan/hankou-new-fourth-army-headquarters-site-31659868?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-zero-price-47": {
+      "url": "https://www.ctdsb.net/c1734_202602/2661469.html",
+      "published_at": "2026-02",
+      "verification": "curator_inference",
+      "facts": "楚天都市报2026年春节公告报道：线上购票每张10元，不设现场售票点；旧指南称节假日20元"
+    },
+    "check-zero-price-131": {
+      "url": "https://www.dahepiao.com/lvyounews1/20250912529961.html",
+      "published_at": "2025-09",
+      "verification": "curator_inference",
+      "facts": "大河票务网：成人票39.9元起；去哪儿称东湖海洋世界成人票含冰雪大世界"
+    }
+  },
+  "places": [
+    {
+      "id": 1,
+      "name": "晴川阁",
+      "sources": [
+        "check-1"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 3,
+      "name": "武汉欢乐谷",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "day_anchor": true,
+        "onsite_dining": true,
+        "min_hours": 5.0,
+        "max_hours": 7.0
+      },
+      "note": "大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 11,
+      "name": "户部巷",
+      "sources": [
+        "check-11"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 22,
+      "name": "武汉植物园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 3.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–3.0 小时"
+    },
+    {
+      "id": 26,
+      "name": "长江荣耀游船",
+      "sources": [
+        "check-26"
+      ],
+      "changes": {
+        "price": 158
+      },
+      "note": "2026-10-21 AI核对（Codex）：市交通局2026报道长江荣耀号线下挂牌158元、线上早场138/晚场158；按普通挂牌158元预算，不沿用2025年11月节假日238元历史促销口径"
+    },
+    {
+      "id": 34,
+      "name": "东湖之眼摩天轮",
+      "sources": [
+        "check-34"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.75
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–45分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.75小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 35,
+      "name": "黎黄陂路",
+      "sources": [
+        "check-35"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 45,
+      "name": "木兰花乡景区(木兰不夜城)",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 47,
+      "name": "归元禅寺",
+      "sources": [
+        "check-zero-price-47"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Claude）：楚天都市报2026年春节公告报道：线上购票每张10元，不设现场售票点；旧指南称节假日20元"
+    },
+    {
+      "id": 52,
+      "name": "武汉观光游船",
+      "sources": [
+        "check-52"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：明确武汉观光游船三码头循环停靠；策展判断暂停泛称52与晴川101，保留信息更明确的114中华路1号码头，避免同一日游循环船被重复安排；泛称页混入多种夜游/东湖产品，未用其价目作证"
+    },
+    {
+      "id": 62,
+      "name": "2024东风岚图·武汉网球公开赛",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 70,
+      "name": "木兰清凉寨",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 2.0–5.0 小时"
+    },
+    {
+      "id": 75,
+      "name": "鹦鹉洲长江大桥",
+      "sources": [
+        "check-75"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–60 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 81,
+      "name": "长春观",
+      "sources": [
+        "check-81"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 90,
+      "name": "锦里沟",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 101,
+      "name": "武汉观光游船(晴川码头)",
+      "sources": [
+        "check-101"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：晴川码头与中华路1号码头为同一观光循环航线登船点；保留114，暂停101独立推荐以免重复体验，船价仍须按实际航线核对"
+    },
+    {
+      "id": 114,
+      "name": "武汉观光游船(中华路1号码头)",
+      "sources": [
+        "check-114"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：保留为三码头循环观光船代表点，52及101暂停推荐；未找到该航线现行成人全价，搜索出的60元属木兰湖观光船、不是武汉关/中华路循环船，不能挪用；Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；另一依据：https://you.ctrip.com/sight/wuhan145/144904893.html"
+    },
+    {
+      "id": 116,
+      "name": "长江武汉关",
+      "sources": [
+        "check-116"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 122,
+      "name": "欢乐丛林樱花主题乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 128,
+      "name": "农讲所旧址纪念馆",
+      "sources": [
+        "check-128"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 129,
+      "name": "木兰水镇",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 2.5–5.0 小时"
+    },
+    {
+      "id": 131,
+      "name": "东湖冰雪大世界",
+      "sources": [
+        "check-zero-price-131"
+      ],
+      "changes": {
+        "price": 39.9
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：成人票39.9元起；去哪儿称东湖海洋世界成人票含冰雪大世界"
+    },
+    {
+      "id": 133,
+      "name": "武汉国民政府旧址",
+      "sources": [
+        "check-133"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 137,
+      "name": "金龙水寨生态乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 140,
+      "name": "桃源集亲子小镇",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 2.0–5.0 小时"
+    },
+    {
+      "id": 151,
+      "name": "首义公园",
+      "sources": [
+        "check-151"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2 - 3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 158,
+      "name": "宋庆龄汉口旧居纪念馆",
+      "sources": [
+        "check-158"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 170,
+      "name": "盘龙城遗址博物院",
+      "sources": [
+        "check-170"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 175,
+      "name": "华中科技大学-图书馆",
+      "sources": [
+        "check-175"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：校图书馆新生指南载服务师生和获准读者、凭校园卡门禁入馆；本条非校外游客可自由参观景点，暂不自动推荐，外观观赏不受此项结论证明"
+    },
+    {
+      "id": 178,
+      "name": "八七会议会址",
+      "sources": [
+        "check-178"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 184,
+      "name": "汉江江滩公园",
+      "sources": [
+        "check-184"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 203,
+      "name": "武汉大学-新图书馆",
+      "sources": [
+        "check-203"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：官方访客规则为有借阅证或单位介绍信的查资料读者服务，不是一般游客入内参观；策展判断暂不独立推荐新图书馆，可在武大校园游览外观，不声称整个学校不开放"
+    },
+    {
+      "id": 213,
+      "name": "华中科技大学光谷体育馆",
+      "sources": [
+        "check-213"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：官方为师生按时段付费运动场地预约，网络要求校园卡账户，不能当免费旅游场馆随到随进；暂不独立推荐，不把某日主馆暂停误当永久停业"
+    },
+    {
+      "id": 217,
+      "name": "起义门",
+      "sources": [
+        "check-217"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 218,
+      "name": "渔光岛-野人谷漂流",
+      "sources": [
+        "check-218"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：地址明确为武汉欢乐谷渔光岛内漂流子项目；策展判断随id=3欢乐谷整园游览，不作为独立0元景点推荐，不重复计整园门票"
+    },
+    {
+      "id": 219,
+      "name": "鄂军都督府",
+      "sources": [
+        "check-219"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 221,
+      "name": "同兴里",
+      "sources": [
+        "check-221"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议10–30 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 223,
+      "name": "屈原纪念馆",
+      "sources": [
+        "check-223"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 224,
+      "name": "武汉桃源集水乐园",
+      "sources": [
+        "check-224"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：携程标注暂停营业、恢复时间待定且季节至8月末；暂退出推荐，不认定永久停业，不用夏季价推全年"
+    },
+    {
+      "id": 227,
+      "name": "武汉二七纪念馆",
+      "sources": [
+        "check-227"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 230,
+      "name": "湖光阁",
+      "sources": [
+        "check-230"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议10–15 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 241,
+      "name": "禹稷行宫",
+      "sources": [
+        "check-241"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 255,
+      "name": "武汉达临性学博物馆",
+      "sources": [
+        "check-255"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 264,
+      "name": "鲁迅广场",
+      "sources": [
+        "check-264"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议10–20分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 269,
+      "name": "武汉汉口北嘉年华主题乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 272,
+      "name": "莲溪禅寺",
+      "sources": [
+        "check-272"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 284,
+      "name": "得胜桥",
+      "sources": [
+        "check-284"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 293,
+      "name": "搁笔亭",
+      "sources": [
+        "check-293"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 296,
+      "name": "楚望台",
+      "sources": [
+        "check-296"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 298,
+      "name": "杨泗港长江大桥",
+      "sources": [
+        "check-298"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 302,
+      "name": "辛亥革命武昌起义史迹陈列",
+      "sources": [
+        "check-302"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 309,
+      "name": "盛世欢乐世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 311,
+      "name": "刘少奇同志旧居",
+      "sources": [
+        "check-311"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 322,
+      "name": "火星2035 沉浸式科学艺术展 武汉站",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 325,
+      "name": "武汉大学-风雨操场",
+      "sources": [
+        "check-325"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：数据名称为武汉大学校内风雨操场，属校园子设施；策展判断随8武汉大学校园游览，不作为单独旅游目的地自动推荐，未声称校方禁止外观参观"
+    },
+    {
+      "id": 326,
+      "name": "汉口新四军军部旧址",
+      "sources": [
+        "check-326"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    }
+  ]
+}

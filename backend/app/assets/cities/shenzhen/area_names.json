@@ -1,0 +1,202 @@
+{
+  "version": "2026-10-21-codex-review-v1",
+  "scope": "自动聚类；2026-10-21 Codex 对照全部聚类成员审阅展示名，非用户逐项认可，非行政边界，不验证坐标或重做聚类。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "世界之窗·欢乐谷"
+    },
+    {
+      "anchor_id": 1,
+      "name": "锦绣中华"
+    },
+    {
+      "anchor_id": 2,
+      "name": "平安金融中心"
+    },
+    {
+      "anchor_id": 5,
+      "name": "东部华侨城"
+    },
+    {
+      "anchor_id": 6,
+      "name": "欢乐港湾"
+    },
+    {
+      "anchor_id": 7,
+      "name": "大梅沙"
+    },
+    {
+      "anchor_id": 8,
+      "name": "招商蛇口邮轮母港"
+    },
+    {
+      "anchor_id": 9,
+      "name": "东门老街"
+    },
+    {
+      "anchor_id": 12,
+      "name": "深圳湾公园"
+    },
+    {
+      "anchor_id": 13,
+      "name": "甘坑古镇"
+    },
+    {
+      "anchor_id": 14,
+      "name": "小梅沙·背仔角"
+    },
+    {
+      "anchor_id": 15,
+      "name": "桔钓沙·杨梅坑"
+    },
+    {
+      "anchor_id": 16,
+      "name": "大鹏半岛·七娘山"
+    },
+    {
+      "anchor_id": 20,
+      "name": "西涌·深圳天文台"
+    },
+    {
+      "anchor_id": 22,
+      "name": "中英街·盐田"
+    },
+    {
+      "anchor_id": 23,
+      "name": "海上世界·蛇口"
+    },
+    {
+      "anchor_id": 24,
+      "name": "观澜古墟"
+    },
+    {
+      "anchor_id": 28,
+      "name": "市民中心·莲花山"
+    },
+    {
+      "anchor_id": 31,
+      "name": "南山公园"
+    },
+    {
+      "anchor_id": 34,
+      "name": "大鹏所城"
+    },
+    {
+      "anchor_id": 36,
+      "name": "金色海岸"
+    },
+    {
+      "anchor_id": 37,
+      "name": "仙湖植物园"
+    },
+    {
+      "anchor_id": 42,
+      "name": "南头古城"
+    },
+    {
+      "anchor_id": 43,
+      "name": "大芬油画村"
+    },
+    {
+      "anchor_id": 50,
+      "name": "华强北"
+    },
+    {
+      "anchor_id": 52,
+      "name": "人才公园·后海"
+    },
+    {
+      "anchor_id": 57,
+      "name": "光明农场"
+    },
+    {
+      "anchor_id": 70,
+      "name": "西湾红树林"
+    },
+    {
+      "anchor_id": 75,
+      "name": "前海石公园"
+    },
+    {
+      "anchor_id": 77,
+      "name": "南澳·蓝宝石沙滩"
+    },
+    {
+      "anchor_id": 84,
+      "name": "东家湾沙滩"
+    },
+    {
+      "anchor_id": 89,
+      "name": "碧海湾·铁仔山"
+    },
+    {
+      "anchor_id": 96,
+      "name": "福田红树林"
+    },
+    {
+      "anchor_id": 97,
+      "name": "红立方·龙园"
+    },
+    {
+      "anchor_id": 101,
+      "name": "官湖·沙鱼涌"
+    },
+    {
+      "anchor_id": 108,
+      "name": "求水山·淘金山"
+    },
+    {
+      "anchor_id": 109,
+      "name": "东涌沙滩"
+    },
+    {
+      "anchor_id": 110,
+      "name": "白石龙"
+    },
+    {
+      "anchor_id": 112,
+      "name": "四海公园"
+    },
+    {
+      "anchor_id": 114,
+      "name": "大鹏金沙湾"
+    },
+    {
+      "anchor_id": 120,
+      "name": "大沙河"
+    },
+    {
+      "anchor_id": 125,
+      "name": "马峦山"
+    },
+    {
+      "anchor_id": 128,
+      "name": "沙井·清平古墟"
+    },
+    {
+      "anchor_id": 131,
+      "name": "东湖公园"
+    },
+    {
+      "anchor_id": 164,
+      "name": "龙华公园"
+    },
+    {
+      "anchor_id": 176,
+      "name": "香蜜湖·梅林水库"
+    },
+    {
+      "anchor_id": 190,
+      "name": "宝安公园"
+    },
+    {
+      "anchor_id": 192,
+      "name": "洪湖公园"
+    },
+    {
+      "anchor_id": 212,
+      "name": "坪山·大万世居"
+    }
+  ]
+}

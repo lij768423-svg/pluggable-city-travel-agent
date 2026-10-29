@@ -6,8 +6,17 @@
     <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>行记 · 选择你的下一程</title>
+    <style>
+      /* 脚本下载期间的预载画面，与 App.vue 的启动页（.destination-boot）同位置同样式；挂载后由 main.ts 移除 */
+      #boot-splash { position: fixed; inset: 64px 0 0; display: grid; place-content: center; justify-items: center; gap: 18px; background: #fff; animation: boot-in .8s ease-out both; }
+      #boot-splash svg { width: 48px; height: 48px; }
+      #boot-splash small { font: 11px/1.5 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; color: #9a9c95; letter-spacing: .15em; }
+      @keyframes boot-in { 0%, 25% { opacity: 0; } 100% { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { #boot-splash { animation: none; } }
+    </style>
   </head>
   <body>
+    <div id="boot-splash" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x=".5" y=".5" width="31" height="31" rx="6" fill="#fff" stroke="#dedfda" /><circle cx="16" cy="16" r="9" stroke="#c9cac4" stroke-width="1" /><path d="M16 5.6v2.2M16 24.2v2.2M5.6 16h2.2M24.2 16h2.2" stroke="#9a9c95" stroke-width="1" stroke-linecap="round" /><path d="M19.8 9.6 18.2 18.2 13.8 13.8Z" fill="#b93b28" /><path d="M18.2 18.2 9.6 22.4 13.8 13.8Z" fill="#151613" /><circle cx="16" cy="16" r="1.3" fill="#fff" /></svg><small>行记 · 正在展开下一程</small></div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

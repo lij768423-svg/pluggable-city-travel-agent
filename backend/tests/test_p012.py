@@ -14,7 +14,7 @@ from app.llm import OpenAICompatLLM
 from app.meal_ranking import rank_restaurants
 from app.nodes.meals import build_itinerary
 from app.nodes.validate import validate_itinerary, validate_node
-from app.restaurants import RestaurantCatalog, dietary_status, meal_start, normalize_restaurant, opening_periods
+from app.restaurants import RestaurantCatalog, meal_start, normalize_restaurant, opening_periods, spice_conflict
 from app.rules import activity_window, required_meals
 from app.schemas import DayPlan, Hotel, Item, Itinerary, LegEvidence, OpeningRules, POI, Restaurant, Selection, UserProfile, ValidationReport, Violation
 from app.amap import pt as router_pt
@@ -100,16 +100,17 @@ def test_shared_request_budget_is_atomic_under_concurrency(tmp_path):
 
 def test_planning_leaves_budget_for_final_routes(tmp_path):
     router = fake_router(tmp_path, lambda *_: {"status":"1"})
-    route = Travel("amap",router=router,live_budget=8)
+    route = Travel("amap",router=router,live_budget=8)  # 餐厅预留 2，定稿余量 2，排程试探 4
     with route.planning_limits():
-        for index in range(6):
+        for index in range(4):
             route.router._get("test", {})
         assert not route._can_go_live()
         with pytest.raises(AmapBudgetExceeded):
             route.router._get("test", {})
-    assert route._can_go_live()
-    route.router._get("test", {})
-    assert route.live_calls == 7
+    for index in range(2):
+        assert route._can_go_live()
+        route.router._get("test", {})
+    assert route.live_calls == 6 and not route._can_go_live() and route._can_go_live(restaurant=True)
 
 
 def test_online_cache_expires_and_is_not_persisted_by_default():
@@ -251,20 +252,13 @@ def test_split_and_overnight_opening_does_not_cross_closed_interval():
     assert opening_periods("周一至周五 09:00-22:00") == []
 
 
-def test_halal_is_not_inferred_from_northwest_cuisine():
-    """清真不能靠菜系推断；附近只有未核验的店时照样排进去，但必须写明须到店确认。"""
-    restaurant = Restaurant(id=1,name="西北菜馆",cuisine="西北菜",lat=30.25,lon=120.16,price=60,open_min=600,close_min=1320)
-    assert dietary_status(restaurant, UserProfile(dietary=["清真"])) == "unknown"
-    relaxed = rank_restaurants((30.25,120.16),None,720,UserProfile(dietary=["清真"]),set(),100,810,{1:restaurant})
-    assert [option["restaurant"].id for option in relaxed] == [1]
-    assert any("须到店确认" in notice for notice in relaxed[0]["notices"])
-    # 有核验过的店时就不放宽，也不再出现这条提示
-    verified = restaurant.model_copy(update={"id": 2, "dietary_verified": ["清真"]})
-    both = rank_restaurants((30.25,120.16),None,720,UserProfile(dietary=["清真"]),set(),100,810,{1:restaurant,2:verified})
-    assert [option["restaurant"].id for option in both] == [2]
-    assert not any("须到店确认" in notice for notice in both[0]["notices"])
-    restaurant.cuisine = "西餐"
-    assert dietary_status(restaurant, UserProfile(dietary=["只吃中餐"])) == "conflict"
+def test_spice_levels_exclude_or_prefer_spicy_cuisines():
+    """不吃辣排除辣味菜系；爱吃辣只是把辣味菜系排在前面；微辣都行不干预。"""
+    spicy = Restaurant(id=1,name="川味馆",cuisine="川菜",lat=30.25,lon=120.16,price=60,open_min=600,close_min=1320)
+    mild = Restaurant(id=2,name="杭帮馆",cuisine="杭帮菜",lat=30.25,lon=120.16,price=60,open_min=600,close_min=1320)
+    rank = lambda spice: [o["restaurant"].id for o in rank_restaurants((30.25,120.16),None,720,UserProfile(spice=spice),set(),100,810,{1:spicy,2:mild})]  # noqa: E731
+    assert rank("no") == [2] and rank("any")[0] == 2 and rank("love")[0] == 1
+    assert spice_conflict(spicy, UserProfile(spice="no")) and not spice_conflict(spicy, UserProfile(spice="love"))
 
 
 def test_ranking_uses_real_detour_and_avoids_used_brand():
@@ -394,3 +388,47 @@ def test_24_meal_regression_scenarios(anchor, preference, expected, transport):
     ranked = rank_restaurants(anchor,None,720,profile,set(),150,810,places,route=Route())
     assert ranked[0]["restaurant"].id == expected
     assert len(ranked) == 3 and all(option["start"] + 60 <= 1200 for option in ranked)
+
+
+def test_route_queries_leave_restaurant_reserve():
+    # 路线查询用到“总额度减餐厅预留”就停；餐厅搜索仍可用预留，用完预留后与路线共用剩余
+    from app.amap_limits import RequestBudgetExceeded, restaurant_requests
+    budget = RequestBudget(6, reserve=2)
+    for _ in range(4):
+        budget.consume()
+    with pytest.raises(RequestBudgetExceeded):
+        budget.consume()
+    with restaurant_requests():
+        budget.consume()
+        budget.consume()
+        with pytest.raises(RequestBudgetExceeded):
+            budget.consume()
+    assert budget.used == 6 and budget.reserve_used == 2
+
+
+def test_restaurant_search_still_runs_after_routes_hit_their_cap(tmp_path):
+    router = fake_router(tmp_path, lambda *_: {"status":"1","pois":[raw_restaurant()]})
+    route = Travel("amap", router=router, live_budget=40)
+    assert route.budget.reserve == 10
+    route.budget.used = 30  # 路线已用到 40-10
+    assert not route._can_go_live() and route._can_go_live(restaurant=True)
+    catalog = RestaurantCatalog(route, initial={}, online=True)
+    catalog.nearby((30.25,120.16))
+    assert catalog.online_count == 1 and route.budget.used == 31 and route.budget.reserve_used == 1
+    assert not route._can_go_live()  # 预留只给餐厅
+
+
+def test_estimated_restaurant_legs_use_hard_limit_not_comfort_line():
+    # 额度紧时到店路线退回估算：估算 33 分钟的公交不淘汰（会带“含估算”提示），实测 33 分钟仍按舒适线淘汰
+    places = {1: Restaurant(id=1, name="稍远饭店", cuisine="江浙菜", lat=30.25, lon=120.19, price=60, open_min=600, close_min=1320)}
+    def route_with(source):
+        class Route:
+            source = "amap"  # 联网路线，个别路段因额度退回估算
+            def detail(self, lat1, lon1, lat2, lon2, live=True):
+                return LegEvidence(minutes=33, mode="公交/地铁", cost=2, source=source)
+            def leg(self, *args, **kwargs):
+                return (10, "公交/地铁", 2)
+        return Route()
+    estimated = rank_restaurants((30.25,120.16), None, 720, UserProfile(), set(), 100, 810, places, route=route_with("estimate"))
+    assert [option["restaurant"].id for option in estimated] == [1] and "到店或续程交通含估算" in estimated[0]["notices"]
+    assert rank_restaurants((30.25,120.16), None, 720, UserProfile(), set(), 100, 810, places, route=route_with("amap")) == []

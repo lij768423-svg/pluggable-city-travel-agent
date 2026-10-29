@@ -3,11 +3,12 @@ from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 
+from .walk_ends import stop_points
 from .data import load_pois
 from .nodes.validate import validate_itinerary
 from .poi_catalog import result_catalog
 from .replan import ReplanError, day_end, swap_meal
-from .restaurants import dietary_status
+from .restaurants import spice_conflict
 from .schemas import MealEditPreviewRequest
 
 
@@ -46,9 +47,9 @@ class FrozenMealTravel:
                     raise ReplanError(422, "预览缺少完整路线证据，请重新计算预览")
                 if locations.get(f"{item.kind}:{item.ref_id}") != [place.lat, place.lon]:
                     raise ReplanError(422, "地点位置已变化，请重新计算预览")
-                destination = (place.lat, place.lon)
+                destination, leave = stop_points(item, place)
                 records.append((origin, destination, item.travel_evidence))
-                origin = destination
+                origin = leave
             if day.items:
                 if day.return_leg is None:
                     raise ReplanError(422, "预览缺少返程证据，请重新计算预览")
@@ -103,16 +104,14 @@ def meal_metrics(result: dict) -> dict:
     slots = [slot for day in result["itinerary"].days for slot in day.reserved_meals]
     expected = int(result["report"].totals.get("expected_meals", 0))
     covered = int(result["report"].totals.get("covered_meals", 0))
-    confirmed = sum(item.ref_id in restaurants and dietary_status(restaurants[item.ref_id], profile) == "confirmed" for item in meals)
+    spicy = sum(item.ref_id in restaurants and spice_conflict(restaurants[item.ref_id], profile) for item in meals)
     return {"expected_meals": expected, "restaurant_meals": len(meals),
             "covered_restaurant_meals": covered,
             "restaurant_coverage": covered / expected if expected else None,
             "self_arranged_meals": sum(slot.status == "self_arranged" for slot in slots),
             "onsite_pending": sum(slot.inside_poi_id is not None and slot.status == "pending" for slot in slots),
             "park_exit_meals": sum(item.meal_context == "park_exit" for item in meals),
-            "dietary_confirmed": confirmed if profile.dietary else 0,
-            "dietary_denominator": len(meals) if profile.dietary else 0,
-            "dietary_rate": confirmed / len(meals) if profile.dietary and meals else None,
+            "spice": profile.spice, "spice_conflicts": spicy,
             "detour_min": sum(item.meal_detour_min or 0 for item in meals),
             "detour_known": sum(item.meal_detour_min is not None for item in meals),
             "meal_budget": result["report"].totals.get("meals", 0)}

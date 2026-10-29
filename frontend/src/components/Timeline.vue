@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { PhBus, PhCar, PhHouseLine, PhPersonSimpleWalk } from '@phosphor-icons/vue'
 import type { DayPlan, MealAlternative } from '../api'
 
-const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; selectedAlternativeId: number | null }>()
+const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; selectedAlternativeId: number | null; openEnds?: boolean }>()
 const emit = defineEmits<{ focus: [index: number]; details: [index: number]; focusAlternative: [index: number, alternative: MealAlternative]; detailsAlternative: [index: number, alternative: MealAlternative]; alternativesToggle: [index: number, open: boolean] }>()
 const startsGroup = (index: number) => props.day.items[index]?.visit_group && !props.day.items.slice(0, index).some(item => item.visit_group === props.day.items[index]?.visit_group)
 
@@ -30,16 +30,16 @@ const labels = computed(() => {
     <li class="endpoint">
       <span class="t">{{ clock(day.items[0]!.start - day.items[0]!.travel_min) }}</span>
       <span class="dot home"><PhHouseLine :size="13" weight="bold" /></span>
-      <span class="ep-text">从 {{ hotelName }} 出发</span>
+      <span class="ep-text">{{ openEnds ? '从第一站开始（去这里的路程没算）' : `从 ${hotelName} 出发` }}</span>
     </li>
     <template v-for="(item, i) in day.items" :key="i">
       <li v-if="startsGroup(i)" class="walk-group"><PhPersonSimpleWalk :size="15" /><span>{{ item.visit_group_label }}<small>同一段漫步 · 下列地点为沿途停留</small></span></li>
-      <li class="leg">
+      <li v-if="!(openEnds && i === 0)" class="leg">
         <component :is="item.travel_mode === '步行' ? PhPersonSimpleWalk : item.travel_mode === '打车' ? PhCar : PhBus" :size="13" />
         {{ item.travel_mode || '步行' }} {{ item.travel_min }} 分钟
         <span v-if="item.travel_evidence?.source === 'estimate'" class="source-note">估算</span>
         <span v-if="enters(i)" class="area-change">· 前往{{ enters(i) }}</span>
-        <em v-if="gapBefore(i) >= 30">· 空档 {{ dur(gapBefore(i)) }}</em>
+        <em v-if="gapBefore(i) >= 30">· {{ item.meal === 'dinner' ? `饭前空 ${dur(gapBefore(i))}，可在附近走走` : `空档 ${dur(gapBefore(i))}` }}</em>
       </li>
       <li :id="`stop-${day.day}-${i}`" class="stop" :class="[item.kind, { on: selectedIndex === i }]"
         tabindex="0" :aria-label="`在地图上定位${item.name}`" @click="emit('focus', i)" @keydown.enter.self="emit('focus', i)" @keydown.space.self.prevent="emit('focus', i)">
@@ -73,11 +73,11 @@ const labels = computed(() => {
         </div>
       </li>
     </template>
-    <li class="leg">返回起点 {{ day.return_travel_min }} 分钟 <span v-if="day.return_leg?.source === 'estimate'" class="source-note">估算</span></li>
+    <li v-if="!openEnds" class="leg">返回起点 {{ day.return_travel_min }} 分钟 <span v-if="day.return_leg?.source === 'estimate'" class="source-note">估算</span></li>
     <li class="endpoint">
       <span class="t">{{ clock(returnAt) }}</span>
       <span class="dot home"><PhHouseLine :size="13" weight="bold" /></span>
-      <span class="ep-text">回到 {{ hotelName }}</span>
+      <span class="ep-text">{{ openEnds ? '行程在这里结束（回去的路程没算）' : `回到 ${hotelName}` }}</span>
     </li>
   </ol>
   <p v-else class="notice">当前条件下这一天没有排出景点，可以放宽预算或减少必去地点后重试。</p>

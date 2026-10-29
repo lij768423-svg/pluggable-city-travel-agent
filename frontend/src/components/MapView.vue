@@ -25,7 +25,7 @@ let lastFramedKey = ''
 
 // 高德公开瓦片（GCJ-02）；后端已把 BD-09 数据坐标转为 GCJ-02。仅用于开发演示（docs/设计决策记录.md A8）
 const AMAP_TILES = 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}'
-const ROUTE = '#2f5bd3'
+const ROUTE = '#b93b28'
 const MEAL = '#a0662a'
 const PADDING = { top: 120, right: 70, bottom: 70, left: 70 }
 
@@ -58,8 +58,10 @@ function drawStops(animate: boolean) {
   }
   const day = p.days.find(d => d.day === props.activeDay)
   const home: LngLat = [p.profile.hotel_gcj.lon, p.profile.hotel_gcj.lat]
-  L.marker([home[1], home[0]], { icon: pin('起', 'home'), zIndexOffset: 1000 }).bindTooltip(p.profile.hotel.name).addTo(stops)
-  const points: LngLat[] = [home]
+  // 起点不定时默认点不是真的起点，不画“起”，取景也不算它
+  const open = p.profile.origin_known === false
+  if (!open) L.marker([home[1], home[0]], { icon: pin('起', 'home'), zIndexOffset: 1000 }).bindTooltip(p.profile.hotel.name).addTo(stops)
+  const points: LngLat[] = open ? [] : [home]
   let n = 0
   day?.items.forEach((it, i) => {
     const label = it.kind === 'meal' ? '餐' : String(++n)
@@ -84,7 +86,7 @@ function drawRoutes() {
   if (!props.plan) return
   for (const leg of props.navigation?.legs || []) for (const segment of leg.segments) {
     const geometry: L.LatLngExpression[] = segment.path.map(([longitude, latitude]) => [latitude, longitude])
-    L.polyline(geometry, { color: segment.mode === '步行' ? '#6e8ec8' : ROUTE, weight: segment.mode === '步行' ? 4 : 5, opacity: 0.9 }).addTo(routes)
+    L.polyline(geometry, { color: segment.mode === '步行' ? '#696b64' : ROUTE, weight: segment.mode === '步行' ? 4 : 5, opacity: 0.9 }).addTo(routes)
   }
 }
 

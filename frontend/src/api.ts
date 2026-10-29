@@ -12,7 +12,8 @@ export interface Meta {
   city: string
   cities: CityInfo[]
   interests: string[]
-  dietary: string[]
+  spice_levels: Record<string, string>
+  familiarity_levels?: Record<string, string>
   hotels: Hotel[]
   paces: Record<string, string>
   companions: Record<string, string>
@@ -22,6 +23,8 @@ export interface Meta {
 
 export interface PlanItem {
   area?: string
+  enter?: { lat: number; lon: number } | null  // 长堤：进入处
+  leave?: { lat: number; lon: number } | null  // 长堤：离开处
   is_alternative?: boolean
   guide_evidence?: { id: string; title: string; facts: string; url: string; publisher: string; source_date: string | null; attribution: string; permission: string; duration_scope: string | null; queue_note: string | null; season_note: string | null; caveats: string[] }[]
   evening?: boolean
@@ -104,7 +107,7 @@ export interface PlanResponse {
   history_readonly?: boolean
   profile: {
     city?: string
-    days: number; budget: number; pace: string; interests: string[]; dietary: string[]; companions: string; transport: 'taxi' | 'transit'
+    days: number; budget: number; pace: string; interests: string[]; spice?: 'no' | 'any' | 'love'; familiarity?: 'first' | 'visited' | 'local'; origin_known?: boolean; dietary?: string[]; companions: string; transport: 'taxi' | 'transit'
     must_visit: string[]; avoid: string[]; notes: string
     hotel: Hotel; hotel_gcj: { lat: number; lon: number }
     start_date?: string | null
@@ -129,6 +132,10 @@ export interface PlanRequest {
   select_mode: 'llm' | 'rule' | 'jev'
   enable_repair: boolean
 }
+
+export interface UnderstandingField { key: string; label: string; display: string; source: 'said' | 'form' | 'inferred' | 'default'; note: string }
+export interface UnderstandingIssue { code: string; level: 'blocker' | 'warning' | 'info'; message: string; fields: string[]; fixes: { label: string; patch: Record<string, unknown> }[] }
+export interface Understanding { profile: Record<string, unknown>; fields: UnderstandingField[]; issues: UnderstandingIssue[] }
 
 export interface AccountUser { id: string; username: string }
 export interface PlanQuota { limit: number; used: number; remaining: number }
@@ -155,10 +162,12 @@ async function j<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>
 }
 
+export const understandPlan = async (query: string, form: Record<string, unknown>, places: Hotel[] = []) =>
+  j<Understanding>(await fetch('/api/plan/understand', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, form, places }) }))
 export const getMeta = (city?: string, signal?: AbortSignal) => fetch(`/api/meta${city ? `?city=${encodeURIComponent(city)}` : ''}`, { signal }).then(r => j<Meta>(r))
 export const searchPlaces = (query: string, city: string, signal?: AbortSignal) =>
   fetch(`/api/places/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`, { signal }).then(r => j<{ places: OriginPlace[] }>(r))
-export interface ModelOutputEvent { type: 'model'; tag: string; text: string; think?: string; source: 'live' | 'cache'; attempt: number; phase?: 'thinking' | 'answer'; thought?: number }
+export interface ModelOutputEvent { type: 'model'; tag: string; text: string; think?: string; source: 'live' | 'cache'; attempt: number; phase?: 'waiting' | 'thinking' | 'answer'; thought?: number }
 export async function postPlan(req: PlanRequest, onProgress: (event: import('./planProgress').PlanProgressEvent | ModelOutputEvent) => void,
   signal: AbortSignal): Promise<PlanResponse> {
   const response = await fetch('/api/plan/stream', {

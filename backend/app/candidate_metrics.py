@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .bundles import umbrella_of
 from .schemas import interest_tags
 
 from .data import load_pois
@@ -18,7 +19,8 @@ def candidate_metrics(state: dict) -> dict:
     def ratio(numerator: int, denominator: int) -> dict:
         return {"numerator": numerator, "denominator": denominator,
                 "rate": numerator / denominator if denominator else None}
-    required = {name: match_place(name, places) for name in dict.fromkeys(profile.must_visit)}
+    required = {name: (None if (hit := match_place(name, places)) is None else umbrella_of(hit))  # 同一景区的成员算作景区本身
+                for name in dict.fromkeys(profile.must_visit)}
     return {"must_visit_recall": ratio(sum(identifier in initial_candidates for identifier in required.values()), len(required)),
         "must_visit_delivered": ratio(sum(identifier in delivered for identifier in required.values()), len(required)),
         "selected_to_scheduler_drop": ratio(len(selected - scheduled), len(selected)),

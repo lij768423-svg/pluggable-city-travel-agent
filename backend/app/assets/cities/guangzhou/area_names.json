@@ -1,0 +1,150 @@
+{
+  "version": "2026-10-21-codex-review-v1",
+  "scope": "自动聚类；2026-10-21 Codex 对照全部聚类成员审阅展示名，非用户逐项认可，非行政边界，不验证坐标或重做聚类。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "长隆野生动物世界"
+    },
+    {
+      "anchor_id": 2,
+      "name": "广州塔·花城广场"
+    },
+    {
+      "anchor_id": 5,
+      "name": "珠江夜游"
+    },
+    {
+      "anchor_id": 7,
+      "name": "广东科学中心"
+    },
+    {
+      "anchor_id": 8,
+      "name": "陈家祠·越秀公园"
+    },
+    {
+      "anchor_id": 10,
+      "name": "沙面·上下九"
+    },
+    {
+      "anchor_id": 12,
+      "name": "广州动物园"
+    },
+    {
+      "anchor_id": 13,
+      "name": "正佳广场"
+    },
+    {
+      "anchor_id": 18,
+      "name": "白云山"
+    },
+    {
+      "anchor_id": 19,
+      "name": "广州融创文旅城"
+    },
+    {
+      "anchor_id": 23,
+      "name": "海珠桥"
+    },
+    {
+      "anchor_id": 25,
+      "name": "永庆坊"
+    },
+    {
+      "anchor_id": 27,
+      "name": "沙湾古镇"
+    },
+    {
+      "anchor_id": 32,
+      "name": "岭南印象园"
+    },
+    {
+      "anchor_id": 33,
+      "name": "黄埔军校旧址"
+    },
+    {
+      "anchor_id": 34,
+      "name": "宝墨园"
+    },
+    {
+      "anchor_id": 35,
+      "name": "南沙天后宫"
+    },
+    {
+      "anchor_id": 41,
+      "name": "莲花山旅游区"
+    },
+    {
+      "anchor_id": 46,
+      "name": "二沙岛·中山大学"
+    },
+    {
+      "anchor_id": 48,
+      "name": "海珠国家湿地公园"
+    },
+    {
+      "anchor_id": 61,
+      "name": "太古仓"
+    },
+    {
+      "anchor_id": 76,
+      "name": "云台花园·玻璃桥"
+    },
+    {
+      "anchor_id": 79,
+      "name": "南沙湿地"
+    },
+    {
+      "anchor_id": 99,
+      "name": "赤岗塔"
+    },
+    {
+      "anchor_id": 102,
+      "name": "长洲岛"
+    },
+    {
+      "anchor_id": 104,
+      "name": "黄埔古港"
+    },
+    {
+      "anchor_id": 109,
+      "name": "黄埔军事主题园"
+    },
+    {
+      "anchor_id": 112,
+      "name": "白云新城"
+    },
+    {
+      "anchor_id": 118,
+      "name": "麓湖公园"
+    },
+    {
+      "anchor_id": 122,
+      "name": "琶洲塔"
+    },
+    {
+      "anchor_id": 124,
+      "name": "东山湖公园"
+    },
+    {
+      "anchor_id": 188,
+      "name": "西坊大院"
+    },
+    {
+      "anchor_id": 192,
+      "name": "番禺欢乐森林"
+    },
+    {
+      "anchor_id": 206,
+      "name": "花都湖"
+    },
+    {
+      "anchor_id": 218,
+      "name": "石头记矿物园"
+    },
+    {
+      "anchor_id": 247,
+      "name": "创客公园"
+    }
+  ]
+}

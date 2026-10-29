@@ -53,3 +53,23 @@ def test_theme_only_profile_adds_family_places_when_few_parks_nearby(monkeypatch
         candidates, report = retrieve.retrieve_with_report(profile)
         assert report["theme_relaxed"] is expected
         assert (9 in {c.poi_id for c in candidates}) is expected
+
+
+
+def test_missing_meal_removes_the_visit_blocking_that_meal():
+    from app.nodes.repair import meal_blocker
+    from app.schemas import DayPlan, Item, Itinerary, POI, ValidationReport, Violation
+    pois = {i: POI(id=i, name=f"景点{i}", type="公园", lat=31.3, lon=120.6, open_min=480, close_min=1260, price=0,
+                   min_hours=1, max_hours=2, interests=["自然风光"], day_anchor=(i == 4)) for i in range(1, 6)}
+    def visit(i, start, end):
+        return Item(kind="poi", ref_id=i, name=f"景点{i}", start=start, end=end)
+    itinerary = Itinerary(days=[DayPlan(day=1, items=[visit(1, 540, 660), visit(2, 700, 840), visit(3, 900, 1000)]),
+                                DayPlan(day=2, items=[visit(5, 600, 900)])])
+    lunch = ValidationReport(passed=True, violations=[Violation(code="missing_lunch", severity="soft", message="", day=1)])
+    dinner = ValidationReport(passed=True, violations=[Violation(code="missing_dinner", severity="soft", message="", day=1)])
+    alone = ValidationReport(passed=True, violations=[Violation(code="missing_lunch", severity="soft", message="", day=2)])
+    ids = {1, 2, 3, 5}
+    assert meal_blocker(itinerary, lunch, ids, set(), pois) == 2  # 11:40–14:00 跨过午餐末
+    assert meal_blocker(itinerary, dinner, ids, set(), pois) == 3  # 当天最后一个
+    assert meal_blocker(itinerary, lunch, ids, {2}, pois) is None  # 必去不删
+    assert meal_blocker(itinerary, alone, ids, set(), pois) is None  # 当天只剩一个不删

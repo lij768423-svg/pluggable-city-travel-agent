@@ -47,7 +47,7 @@ PROFILES = [
     ("12-xixi-2d-hiking", profile(XIXI, 2, "transit", 1000, "normal", "solo", ["自然风光", "户外徒步"])),
     ("13-xixi-1d-temples", profile(XIXI, 1, "taxi", 600, "relaxed", "elderly", ["宗教寺庙"])),
     ("14-qianjiang-2d-night", profile(QIANJIANG, 2, "transit", 1200, "normal", "couple", ["夜景夜游", "拍照出片"])),
-    ("15-chengzhan-1d-nospicy", profile(CHENGZHAN, 1, "transit", 300, "intense", "solo", ["人文历史"], dietary=["不吃辣"])),
+    ("15-chengzhan-1d-nospicy", profile(CHENGZHAN, 1, "transit", 300, "intense", "solo", ["人文历史"], spice="no")),
     ("16-chengzhan-2d-tea-must", profile(CHENGZHAN, 2, "taxi", 2000, "normal", "friends", ["特色文化", "园林古镇"], must_visit=["龙井村"])),
     ("17-xiaoshan-2d-themepark", profile(XIAOSHAN, 2, "transit", 1500, "normal", "family_kids", ["主题乐园"])),
     ("18-zijingang-2d-museum-monday", profile(ZIJINGANG, 2, "transit", 800, "normal", "solo", ["博物馆展览", "艺术文创"], start_date="2026-10-26")),

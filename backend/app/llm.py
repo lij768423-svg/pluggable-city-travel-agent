@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import threading
@@ -23,6 +24,7 @@ import httpx
 from . import config
 
 T = TypeVar("T", bound=BaseModel)
+log = logging.getLogger(__name__)
 
 
 def evaluate_jev(state: dict, questions: dict, *, cache: bool = True) -> dict:
@@ -180,6 +182,8 @@ class Usage:
     completion_tokens: int = 0
     seconds: float = 0.0
     by_tag: dict[str, int] = field(default_factory=dict)
+    # 每次调用一条：首字等待、总耗时（含重试与退避）、尝试次数与各次失败原因，供行程元数据与排查用
+    timings: list[dict[str, Any]] = field(default_factory=list)
 
     def add(self, other: "Usage") -> None:
         self.calls += other.calls
@@ -189,6 +193,7 @@ class Usage:
         self.seconds += other.seconds
         for k, v in other.by_tag.items():
             self.by_tag[k] = self.by_tag.get(k, 0) + v
+        self.timings.extend(other.timings)
 
     def as_dict(self) -> dict[str, Any]:
         return {"calls": self.calls, "cached_calls": self.cached_calls, "prompt_tokens": self.prompt_tokens,
@@ -258,7 +263,7 @@ class OpenAICompatLLM:
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None,
                  cache: bool | None = None, retry_attempts: int = 3, sdk_max_retries: int = 2,
-                 reasoning_effort: str | None = None):
+                 reasoning_effort: str | None = None, stream: bool = False):
         from openai import OpenAI
 
         key = api_key or config.LLM_API_KEY or ("offline-placeholder" if os.environ.get("TTA_OFFLINE") == "1" else "")
@@ -268,6 +273,8 @@ class OpenAICompatLLM:
         if reasoning_effort not in (None, "low", "medium", "high", "xhigh", "max"):
             raise ValueError("reasoning_effort 必须为 low/medium/high/xhigh/max")
         self.reasoning_effort = reasoning_effort
+        # 没有页面订阅也走流式：长回答（思考两万多 token）若一次性返回，连接会静默十几分钟，可能被网络中途丢弃
+        self.stream = stream
         if retry_attempts < 1:
             raise ValueError("retry_attempts 必须大于 0")
         self.client = OpenAI(base_url=base_url or config.LLM_BASE_URL, api_key=key,
@@ -295,6 +302,20 @@ class OpenAICompatLLM:
         h = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         return config.LLM_CACHE_DIR / h[:2] / f"{h}.json"
 
+    def _record(self, tag: str, attempts: list[dict[str, Any]], started: float, outcome: str, model: str | None = None) -> None:
+        """记下一次调用的耗时：成功写 INFO，失败或中途停止写 WARNING（systemd 收进用户日志）。"""
+        first = attempts[-1]["first_chunk_s"] if attempts else None
+        entry = {"tag": tag, "outcome": outcome, "attempts": len(attempts), "first_chunk_s": first,
+                 "seconds": round(time.time() - started, 2), "model": model, "attempt_log": attempts}
+        with self._lock:
+            self.usage.timings.append(entry)
+        if outcome == "cache":
+            return
+        errors = "; ".join(f"#{a['attempt']} {a['error']}" for a in attempts if a.get("error"))
+        log.log(logging.INFO if outcome == "ok" else logging.WARNING,
+                "LLM %s tag=%s attempts=%d first_chunk=%s total=%.1fs model=%s%s", outcome, tag, len(attempts),
+                "-" if first is None else f"{first:.1f}s", entry["seconds"], model or "-", f" errors=[{errors}]" if errors else "")
+
     def complete(self, messages, *, tag="misc", temperature=0.2, max_tokens=4096):
         payload: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": temperature,
                                    "max_tokens": max_tokens}
@@ -307,26 +328,33 @@ class OpenAICompatLLM:
             payload["reasoning_effort"] = effort
         path = self._cache_path(payload)
         output = getattr(self, "on_output", None)
+        if output is None and getattr(self, "stream", False):
+            output = lambda event: None  # noqa: E731 —— 只要流式传输，片段不转发给任何人
         if self.cache and path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
             with self._lock:
                 self.usage.cached_calls += 1
                 self.usage.by_tag[tag] = self.usage.by_tag.get(tag, 0) + 1
                 self.response_models.add(data.get("model", self.model))
+            self._record(tag, [], time.time(), "cache", data.get("model", self.model))
             if output:
                 output({"type": "model", "tag": tag, "text": strip_think(data["content"]), "source": "cache", "attempt": 1})
             return data["content"]
         if os.environ.get("TTA_OFFLINE") == "1":
             raise RuntimeError(f"离线评测缺少 LLM 快照：{path.name}（{tag}），已禁止联网")
         last_err: Exception | None = None
+        attempts: list[dict[str, Any]] = []
+        started = time.time()
         for attempt in range(self.retry_attempts):
+            t0 = time.time()
+            first_chunk: float | None = None  # 流式时第一个片段（思考或回答）到达的时间；非流式无从得知
             try:
                 with self._lock:
                     self.request_attempts += 1
-                t0 = time.time()
                 response_model = self.model
                 if output:
-                    output({"type": "model", "tag": tag, "text": "", "think": "", "source": "live", "attempt": attempt + 1, "phase": "thinking", "thought": 0})
+                    # 发出请求、还没收到任何片段：前端显示"等待模型服务响应"，而不是"思考中 · 0 字"
+                    output({"type": "model", "tag": tag, "text": "", "think": "", "source": "live", "attempt": attempt + 1, "phase": "waiting", "thought": 0})
                     content, usage = "", None
                     public = PublicOutput()
                     # 思考内容随 think 字段下发，前端只保留最近一段展示
@@ -336,6 +364,8 @@ class OpenAICompatLLM:
                                 "phase": "answer" if answering else "thinking", "thought": thought})
                     with self.client.chat.completions.create(**payload, stream=True, stream_options={"include_usage": True}) as stream:
                         for chunk in stream:
+                            if first_chunk is None:
+                                first_chunk = time.time() - t0
                             response_model = getattr(chunk, "model", None) or response_model
                             if chunk.usage:
                                 usage = chunk.usage
@@ -375,15 +405,24 @@ class OpenAICompatLLM:
                 if self.cache:
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(json.dumps({"content": content, "tag": tag, "model": response_model}, ensure_ascii=False), encoding="utf-8")
+                attempts.append({"attempt": attempt + 1, "first_chunk_s": None if first_chunk is None else round(first_chunk, 2),
+                                 "seconds": round(dt, 2)})
+                self._record(tag, attempts, started, "ok", response_model)
                 return content
             except Exception as e:  # 网络/限流：指数退避
                 from .progress import PlanningStopped
+                attempts.append({"attempt": attempt + 1, "first_chunk_s": None if first_chunk is None else round(first_chunk, 2),
+                                 "seconds": round(time.time() - t0, 2), "error": f"{type(e).__name__}: {str(e)[:200]}"})
                 if isinstance(e, PlanningStopped):
+                    self._record(tag, attempts, started, "stopped")
                     raise
                 last_err = e
                 if self.retry_attempts == 1:
+                    self._record(tag, attempts, started, "failed")
                     raise
-                time.sleep(2 * (attempt + 1))
+                if attempt + 1 < self.retry_attempts:
+                    time.sleep(2 * (attempt + 1))
+        self._record(tag, attempts, started, "failed")
         raise RuntimeError(f"LLM 调用失败（{tag}）：{last_err}")
 
 

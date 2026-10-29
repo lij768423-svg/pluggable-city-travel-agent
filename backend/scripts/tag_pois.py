@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.config import BACKEND_DIR
@@ -44,6 +44,12 @@ class _Tag(BaseModel):
     audience: list[str] = Field(default_factory=list)
     indoor: bool = False
     summary: str = ""
+
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _join_summary(cls, value):
+        # 模型偶尔把一句话简介写成列表（2026-10-21 北京第 11 批），合并成一句，不让整批失败
+        return "；".join(str(part) for part in value) if isinstance(value, list) else value
 
 
 class _Out(BaseModel):

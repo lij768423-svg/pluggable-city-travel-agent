@@ -70,13 +70,18 @@ def create_mcp_app(service: MCPService, owner: str, credential: str, *, port: in
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True))
     def prepare_trip(profile: dict, request_id: str, job_id: str | None = None,
-                     origin_query: str | None = None) -> dict[str, Any]:
+                     origin_query: str | None = None, context: dict | None = None) -> dict[str, Any]:
         """准备画像和有限候选，不生成行程。days/budget/start_date须用户确认；hotel坐标为BD-09。
         profile.city为城市键（如hangzhou），只能是已启用城市，默认hangzhou；一次行程只在一个城市内。
         起点不明确时用origin_query返回当前城市的起点选项，用户选择后以同job_id重新prepare；不可猜坐标。
+        用户不定起点（常见于本地人）时传origin_known=false、不传hotel：每天从第一站开始，去第一站和回去的路程不计。
         request_id为8–100字符，重试复用；改变内容须新request_id。缺字段会给profile_schema。
+        候选附带与网站内部选点相同的资料（类型、体力、适合人群、晚间型、季节限制等）；
+        areas给出片区分组与相邻片区，suggested_count为建议景点数，selection_guide为选点规则。
+        context可选，填你知道的用户情况：home_city常住城市、usual_transport平时出行（taxi/transit）；暂不支持自驾。
+        understanding逐项标明来源（said/inferred/default）并给出issues：推断与默认项可一句话告知用户，只有issues需要询问或请用户选fixes。
         """
-        return invoke(service.prepare, profile, request_id, job_id, origin_query)
+        return invoke(service.prepare, profile, request_id, job_id, origin_query, context)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True))
     def generate_trip(job_id: str, preparation_revision: int, candidate_set_id: str,

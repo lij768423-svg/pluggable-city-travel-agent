@@ -3,18 +3,89 @@
 - 某天出现 营业时间/交通时间/超时 → 删掉该天得分最低的非必去景点
 - 超预算 → 先把门票最贵的景点换成同兴趣、更便宜的未选候选；没有可换的就降低每餐预算（×0.7）
 - 求解器舍弃的景点 → 从选点中移除；若舍弃的是必去景点，改为删掉得分最低的非必去景点
+  （每天都有一处必去离它超过单段乘车封顶时不删：删了也排不进，交统一校验说明原因）
+- 缺午餐/晚餐 → 删掉缺餐那天挡住这一餐的景点（跨过午餐时段的、或当天最后一个），没有才删全程得分最低的
+- 当天步行超上限且允许打车 → 先把当天走路最多的几段改打车（哪怕更慢或更贵）；没有可改的路段才删景点
 无法再改动时返回 changed=False，由图结束循环。
 """
 from __future__ import annotations
 
 from ..areas import area_fill_conflicts, area_index
 from ..data import load_pois
-from ..geo import haversine_km
+from ..geo import haversine_km, travel
+from ..rules import HARD_INTERSTOP_RIDE_MIN, LUNCH, transport_dominates, walking_limit
 from ..schemas import Selection
+from ..travel import Travel, depart_at
 from .select import rule_reason
+from .validate import far_must_partner
 
+# 步行超限改打车时，短于此距离的纯步行段不值得打车；同一连续游览组内部的路段也不改
+MIN_TAXI_WALK_M = 800
 TIME_CODES = {"opening_hours", "travel_time", "day_overlong", "walking_limit", "transport_unavailable", "date_closed", "excessive_transport", "interstop_ride_limit", "anchor_mixed", "audience_mismatch"}
 MAX_ROUNDS = 3
+
+
+def meal_blocker(itinerary, report, sel_ids: set[int], must: set[int], pois: dict) -> int | None:
+    """缺餐那天挡住这一餐的景点（2026-10-20 用户：缺餐“先修这个”）。
+
+    午餐：跨过午餐时段末的景点，否则最后一个在午餐末之前开始的；晚餐：当天最后一个景点（离酒店远、拖到太晚）。
+    当天只有一个景点、或是必去/整日锚点时不删，交给原有逻辑。
+    """
+    for violation in sorted((v for v in report.violations if v.code in {"missing_lunch", "missing_dinner"} and v.day),
+                            key=lambda v: (v.day, v.code)):
+        visits = [item for item in itinerary.days[violation.day - 1].items if item.kind == "poi" and item.ref_id in pois]
+        if len(visits) < 2:
+            continue
+        if violation.code == "missing_lunch":
+            spanning = [item for item in visits if item.start < LUNCH[1] < item.end]
+            before = [item for item in visits if item.start < LUNCH[1]]
+            ordered = spanning or before[-1:]
+        else:
+            ordered = visits[-1:]
+        for item in ordered:
+            if item.ref_id in sel_ids and item.ref_id not in must and not pois[item.ref_id].day_anchor:
+                return item.ref_id
+    return None
+
+
+def walking_taxi_overrides(state: dict) -> tuple[set[int], list[str]]:
+    """当天步行超上限时，把走路最多的路段加入强制打车，直到预计步行不超过上限（2026-10-22 用户决定）。
+
+    园内步行改不了，只计入预计值。返回这一轮新加了路段的天和日志；不允许打车或无路段可改时返回空集合。
+    """
+    route, profile, itinerary = state.get("travel"), state["profile"], state.get("itinerary")
+    if route is None or itinerary is None or not profile.allow_taxi_fallback or not hasattr(route, "taxi_overrides"):
+        return set(), []
+    catalog = state.get("catalog")
+    if catalog is not None:
+        restaurants = catalog.restaurants
+    else:
+        from ..data import load_restaurants
+        restaurants = load_restaurants()
+    limit, days, log = walking_limit(profile), set(), []
+    for d in sorted({v.day for v in state["report"].violations if v.code == "walking_limit" and v.day}):
+        day = itinerary.days[d - 1]
+        with route.for_day(profile, d):
+            legs, previous = [], None
+            for item, place, origin, destination, depart in route.day_legs(day, profile, restaurants):
+                with depart_at(route, depart):
+                    detail = route.detail(*origin, *destination, live=False)
+                same_walk = bool(getattr(previous, "visit_group", "")) and getattr(previous, "visit_group", "") == getattr(place, "visit_group", "")
+                short_walk = detail.mode == "步行" and detail.walking_m < MIN_TAXI_WALK_M
+                if detail.walking_m > 0 and not same_walk and not short_walk and route.pair(*origin, *destination) not in route.taxi_overrides:
+                    legs.append((detail.walking_m, item.name if item else "返回住处", route.pair(*origin, *destination)))
+                previous = place
+        projected, added = day.walking_m, []
+        for walked, name, pair in sorted(legs, key=lambda leg: (-leg[0], leg[1])):
+            if projected <= limit:
+                break
+            route.taxi_overrides.add(pair)
+            projected -= walked
+            added.append(f"前往{name}" if name != "返回住处" else name)
+        if added:
+            days.add(d)
+            log.append(f"第 {d} 天步行约 {day.walking_m / 1000:.1f} 公里超上限：{len(added)} 段改打车（{'、'.join(added)}）")
+    return days, log
 
 
 def _repair(state: dict) -> tuple[list[Selection], float, list[str], bool, set[int]]:
@@ -27,11 +98,20 @@ def _repair(state: dict) -> tuple[list[Selection], float, list[str], bool, set[i
     must = {c.poi_id for c in state["candidates"] if c.breakdown.get("must_visit")}
     removed = set(state.get("repair_removed_ids", [])) - must
     meal_factor = state.get("meal_factor", 1.0)
-    log: list[str] = []
-    changed = False
+    taxi_days, log = walking_taxi_overrides(state)
+    changed = bool(taxi_days)
 
     quality_codes = {violation.code for violation in report.violations}
-    if report.passed and not quality_codes & {"excessive_transport", "anchor_mixed", "audience_mismatch", "area_scattered"} and quality_codes & {"early_finish", "long_idle", "empty_day"}:
+    # 缺餐优先于补点：缺一餐计 20 分，远重于偏空（4＋3）；能找到挡住这一餐的景点就先删它
+    blocker = None
+    if report.passed and quality_codes & {"missing_lunch", "missing_dinner"} and state.get("itinerary") and len(sel) > p.days:
+        blocker = meal_blocker(state["itinerary"], report, {selection.poi_id for selection in sel}, must, pois)
+    if blocker is not None:
+        sel = [selection for selection in sel if selection.poi_id != blocker]
+        removed.add(blocker)
+        log.append(f"为用餐腾出时间：移除缺餐当天的{pois[blocker].name}")
+        changed = True
+    if report.passed and not changed and not quality_codes & {"excessive_transport", "anchor_mixed", "audience_mismatch", "area_scattered"} and quality_codes & {"early_finish", "long_idle", "empty_day"}:
         chosen = {selection.poi_id for selection in sel}
         alternatives = [candidate for candidate in state["candidates"] if candidate.poi_id not in chosen | removed
                         and pois[candidate.poi_id].stamina <= (2 if p.companions in {"family_kids", "elderly"} else 3)]
@@ -74,7 +154,14 @@ def _repair(state: dict) -> tuple[list[Selection], float, list[str], bool, set[i
         sel = [s for s in sel if s.poi_id not in dropped - must]
         log.append("移除求解器舍弃的：" + "、".join(pois[x].name for x in dropped - must))
         changed = True
+    route = state.get("travel")
+    quiet_leg = (lambda *points: route.leg(*points, live=False)) if isinstance(route, Travel) else getattr(route, "leg", travel)
     for m in dropped & must:  # 必去被舍弃：改为腾出时间——删掉得分最低的非必去景点
+        partner = far_must_partner(m, state.get("day_orders", []), must, quiet_leg)
+        if partner is not None:  # 卡在两处必去之间的单段乘车封顶，不是时间不够：删别的景点也排不进，交统一校验说明
+            log.append(f"必去「{pois[m].name}」和「{pois[partner[0]].name}」之间{partner[2]}约{partner[1]}分钟，"
+                       f"超过单段{HARD_INTERSTOP_RIDE_MIN}分钟上限，删别的景点也排不进同一天，不再为它删点")
+            continue
         removable = [s.poi_id for s in sel if s.poi_id not in must]
         if removable:
             worst = min(removable, key=lambda x: scores.get(x, 0))
@@ -83,7 +170,9 @@ def _repair(state: dict) -> tuple[list[Selection], float, list[str], bool, set[i
             log.append(f"必去「{pois[m].name}」放不下：删去得分最低的「{pois[worst].name}」腾出时间")
             changed = True
 
-    bad_days = sorted({v.day for v in report.violations if v.code in TIME_CODES and v.day})
+    # 已为步行超限改了打车的天，这一轮不再为步行删景点；同一天其他时间类违例照旧处理
+    bad_days = sorted({v.day for v in report.violations if v.code in TIME_CODES and v.day
+                       and not (v.code == "walking_limit" and v.day in taxi_days)})
     for d in bad_days:
         day_ids = [i.ref_id for i in state["itinerary"].days[d - 1].items if i.kind == "poi"]
         removable = [x for x in day_ids if x not in must and any(s.poi_id == x for s in sel)]
@@ -184,7 +273,12 @@ def _repair(state: dict) -> tuple[list[Selection], float, list[str], bool, set[i
                 log.append(f"超预算：用「{pois[new.poi_id].name}」替换门票更贵的「{old.name}」")
                 swapped = changed = True
                 break
-        if not swapped and meal_factor > 0.3:
+        totals = report.totals or {}
+        transport = totals.get("transport", 0.0)
+        if not swapped and transport_dominates(transport, totals.get("tickets", 0.0) + totals.get("meals", 0.0)):
+            # 2026-10-28 用户：预算紧时打车去远处吃便宜饭。钱主要花在路上时，压低餐标只会把饭推得更远，留给用户决定
+            log.append(f"超预算主要来自交通（{transport:.0f} 元），不再压低每餐预算")
+        elif not swapped and meal_factor > 0.3:
             meal_factor = round(meal_factor * 0.7, 3)
             log.append(f"超预算：每餐预算下调到原来的 {meal_factor:.0%}")
             changed = True
@@ -199,7 +293,8 @@ def repair(state: dict) -> tuple[list[Selection], float, list[str], bool]:
 
 def repair_node(state: dict) -> dict:
     sel, mf, log, changed, removed = _repair(state)
-    fingerprint = str((sorted(selection.poi_id for selection in sel), mf))
+    route = state.get("travel")
+    fingerprint = str((sorted(selection.poi_id for selection in sel), mf, sorted(getattr(route, "taxi_overrides", ()))))
     fingerprints = list(state.get("repair_fingerprints", []))
     if fingerprint in fingerprints:
         changed = False

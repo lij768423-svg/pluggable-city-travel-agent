@@ -4,6 +4,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 import time
 
+from ..bundles import visit_hours
 from ..areas import area_index
 from ..data import load_pois
 from ..llm import LLM, chat_json, evaluate_jev
@@ -13,7 +14,8 @@ from ..geo import haversine_km
 from ..poi_semantics import safe_reason, evening_only
 from ..prompts import SELECT_SYSTEM, profile_to_text, select_system
 from ..rules import PACE, activity_window
-from ..schemas import Candidate, Selection, UserProfile, interest_list, interest_tags
+from ..schemas import POPULARITY_LABELS, Candidate, Selection, UserProfile, interest_list, interest_tags
+from .retrieve import needs_landmark
 
 
 class _Pick(BaseModel):
@@ -48,29 +50,48 @@ def select_rule(cands: list[Candidate], p: UserProfile, n: int) -> list[Selectio
             for c in picked]
 
 
-def candidate_lines(cands: list[Candidate]) -> str:
+def candidate_groups(cands: list[Candidate]) -> list[dict]:
+    """按片区分组的候选资料：网页选点提示词（candidate_lines）与 MCP prepare_trip 共用，两边看到的信息一致。"""
     pois = load_pois()
     areas = area_index(pois)
     groups: dict[str, list[Candidate]] = {}
     for c in cands:
         groups.setdefault(c.area_id or areas.area_of(c.poi_id), []).append(c)
+    return [{"area_id": area, "label": areas.label(area),
+             "adjacent": [areas.label(other) for other in groups if other != area and areas.adjacent(area, other)],
+             "nearest_km": min(c.breakdown.get("distance_km", 0) for c in members),
+             "candidates": [candidate_facts(c, pois, areas.label(area)) for c in members]}
+            for area, members in groups.items()]
+
+
+def candidate_facts(c: Candidate, pois, area_label: str) -> dict:
+    x = pois[c.poi_id]
+    return {"id": x.id, "name": x.name, "type": x.type, "interests": interest_list(x.interests), "stamina": x.stamina,
+            "price": x.price, "price_free_verified": x.price == 0 and x.price_verified,
+            "min_hours": visit_hours(x)[0], "max_hours": visit_hours(x)[1], "distance_km": c.breakdown.get("distance_km"),
+            "open": f"{x.open_min // 60:02d}:{x.open_min % 60:02d}", "close": f"{x.close_min // 60:02d}:{x.close_min % 60:02d}",
+            "summary": x.summary, "visit_group": x.visit_group_label or "独立地点", "experience_kind": x.experience_kind,
+            "onsite_dining": x.onsite_dining, "evening_only": evening_only(x), "area": area_label, "audience": list(x.audience),
+            "available_days": c.available_days, "duration_source": x.duration_source,
+            "seasonal_note": x.seasonal_note or "未提供，不推断当日花期或天气", "notices": c.notices,
+            "popularity": POPULARITY_LABELS[x.popularity]}
+
+
+def candidate_lines(cands: list[Candidate]) -> str:
     lines = []
-    for area, members in groups.items():
-        near = [areas.label(other) for other in groups if other != area and areas.adjacent(area, other)]
-        nearest = min(c.breakdown.get("distance_km", 0) for c in members)
-        lines.append(f"【片区：{areas.label(area)}｜相邻片区：{'、'.join(near) or '无'}｜距起点最近约 {nearest} km】")
-        lines.extend(_candidate_line(c, pois, areas.label(area)) for c in members)
+    for group in candidate_groups(cands):
+        lines.append(f"【片区：{group['label']}｜相邻片区：{'、'.join(group['adjacent']) or '无'}｜距起点最近约 {group['nearest_km']} km】")
+        lines.extend(_candidate_line(facts) for facts in group["candidates"])
     return "\n".join(lines)
 
 
-def _candidate_line(c: Candidate, pois, area_label: str) -> str:
-    x = pois[c.poi_id]
-    return (f"id={x.id} | {x.name} | {x.type} | 标签:{'、'.join(interest_list(x.interests))} | 体力:{x.stamina} | "
-                     f"门票参考:{x.price:.0f}元(免费已核验:{x.price == 0 and x.price_verified}) | 建议:{x.min_hours}-{x.max_hours}h | 距起点:{c.breakdown['distance_km']}km | "
-                     f"开放:{x.open_min // 60:02d}:{x.open_min % 60:02d}-{x.close_min // 60:02d}:{x.close_min % 60:02d} | {x.summary} | "
-                     f"同段游览:{x.visit_group_label or '独立地点'} | 体验粒度:{x.experience_kind} | 园内用餐:{x.onsite_dining} | "
-                     f"安排:{'晚间型，仅17:00以后，不作白天主项目' if evening_only(x) else '白天可安排'} | 片区:{area_label} | 适合人群:{'、'.join(x.audience)} | 可安排天:{c.available_days} | "
-                     f"停留依据:{x.duration_source} | 季节限制:{x.seasonal_note or '未提供，不推断当日花期或天气'} | {'；'.join(c.notices)}")
+def _candidate_line(f: dict) -> str:
+    return (f"id={f['id']} | {f['name']} | {f['type']} | 知名度:{f['popularity']} | 标签:{'、'.join(f['interests'])} | 体力:{f['stamina']} | "
+            f"门票参考:{f['price']:.0f}元(免费已核验:{f['price_free_verified']}) | 建议:{f['min_hours']}-{f['max_hours']}h | 距起点:{f['distance_km']}km | "
+            f"开放:{f['open']}-{f['close']} | {f['summary']} | "
+            f"同段游览:{f['visit_group']} | 体验粒度:{f['experience_kind']} | 园内用餐:{f['onsite_dining']} | "
+            f"安排:{'晚间型，仅17:00以后，不作白天主项目' if f['evening_only'] else '白天可安排'} | 片区:{f['area']} | 适合人群:{'、'.join(f['audience'])} | 可安排天:{f['available_days']} | "
+            f"停留依据:{f['duration_source']} | 季节限制:{f['seasonal_note']} | {'；'.join(f['notices'])}")
 
 
 def select_llm(cands: list[Candidate], p: UserProfile, n: int, llm: LLM, evidence: list[dict] | None = None) -> list[Selection]:
@@ -178,6 +199,32 @@ def complete_experiences(selected: list[Selection], candidates: list[Candidate],
     return result
 
 
+def ensure_landmark(selected: list[Selection], candidates: list[Candidate], profile: UserProfile) -> tuple[list[Selection], str | None]:
+    """首访地标保证（2026-10-25 用户决定）：第一次来且行程不少于 2 天时，选点里至少有一处城市地标。
+
+    没选上时，用候选里分数最高的地标替换分数最低的非必去选点；必去始终保留。返回（选点, 日志或 None）。
+    """
+    if not needs_landmark(profile):
+        return selected, None
+    places = load_pois()
+    if any(places[selection.poi_id].popularity == "landmark" for selection in selected):
+        return selected, None
+    landmark = next((candidate for candidate in sorted(candidates, key=lambda c: (-c.score, c.poi_id))
+                     if places[candidate.poi_id].popularity == "landmark"), None)
+    if landmark is None:
+        return selected, None
+    scores = {candidate.poi_id: candidate.score for candidate in candidates}
+    must = {candidate.poi_id for candidate in candidates if candidate.breakdown.get("must_visit")}
+    replaceable = [selection for selection in selected if selection.poi_id not in must]
+    kept = list(selected)
+    removed = min(replaceable, key=lambda s: (scores.get(s.poi_id, 0), s.poi_id)) if replaceable else None
+    if removed is not None:
+        kept.remove(removed)
+    kept.append(Selection(poi_id=landmark.poi_id, reason="第一次来，安排一处城市地标", source="rule"))
+    name = places[landmark.poi_id].name
+    return kept, f"首访地标：补上「{name}」" + (f"，替换「{places[removed.poi_id].name}」" if removed else "")
+
+
 def select_node(state: dict) -> dict:
     p, cands = state["profile"], state["candidates"]
     n = target_count(p, len(cands))
@@ -197,6 +244,7 @@ def select_node(state: dict) -> dict:
     else:
         sel = select_llm(cands, p, n, state["llm"], evidence) if mode == "llm" else select_rule(cands, p, n)
     sel = complete_experiences(sel, cands, p)
+    sel, landmark_log = ensure_landmark(sel, cands, p)
     places = load_pois()
     for selection in sel:
         selection.reason = safe_reason(selection.reason, places[selection.poi_id], p)
@@ -205,4 +253,5 @@ def select_node(state: dict) -> dict:
     detail = f"；Jev {stats['seconds']}秒，{'回退原模型' if stats['status'] == 'fallback' else '缓存命中' if stats.get('cached') else '结构化评分'}" if stats else ""
     return {"selected": sel, "initial_selected_ids": [selection.poi_id for selection in sel],
             "guide_evidence": evidence, "selection_stats": stats,
-            "log": [f"选点（{mode}）：目标 {n} 个，选中 {len(sel)} 个（LLM {n_llm} / Jev {n_jev} / 规则 {len(sel) - n_llm - n_jev}）{detail}"]}
+            "log": [f"选点（{mode}）：目标 {n} 个，选中 {len(sel)} 个（LLM {n_llm} / Jev {n_jev} / 规则 {len(sel) - n_llm - n_jev}）{detail}"]
+                   + ([landmark_log] if landmark_log else [])}

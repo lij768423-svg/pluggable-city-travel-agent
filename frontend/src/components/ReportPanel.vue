@@ -7,14 +7,19 @@ const t = computed(() => props.plan.report.totals)
 const isMealSwap = computed(() => props.plan.meta.operation === 'meal_swap' || Boolean(props.plan.change))
 const CODE: Record<string, string> = {
   unknown_place: '库外地点', opening_hours: '营业时间', travel_time: '交通时间不足', time_order: '时间倒置',
-  duplicate_poi: '景点重复', over_budget: '超预算', diet_conflict: '饮食冲突', diet_unverified: '饮食要求待确认', day_overlong: '超出每日活动时间',
+  duplicate_poi: '景点重复', over_budget: '超预算', diet_conflict: '口味不符（不吃辣）', diet_unverified: '饮食要求待确认', day_overlong: '超出每日活动时间',
   avoid_visited: '去了不想去的', must_visit_missing: '漏掉必去', missing_lunch: '缺午餐', missing_dinner: '缺晚餐',
   short_visit: '游玩时间偏短', early_finish: '下午安排偏少', long_idle: '空档过长',
   date_closed: '日期闭馆', walking_limit: '步行超限', transport_unavailable: '交通不可用', empty_day: '当日无景点',
   excessive_transport: '交通时间偏长', anchor_mixed: '大型园区混排', audience_mismatch: '人群不匹配', onsite_meal_unconfirmed: '园内用餐待确认',
-  interstop_ride_limit: '单段乘车超过45分钟', interstop_ride_long: '单段乘车超过25分钟',
+  interstop_ride_limit: '单段乘车超过45分钟', interstop_ride_long: '单段乘车超过25分钟', route_unverified: '路段未核验',
 }
 const paces: Record<string, string> = { relaxed: '舒缓', normal: '均衡', intense: '充实' }
+// 2026-10-26 以前保存的行程只有 dietary：含“不吃辣”即按不吃辣显示
+const SPICE: Record<string, string> = { no: '不吃辣', any: '微辣都行', love: '爱吃辣' }
+const FAMILIARITY: Record<string, string> = { first: '第一次来', visited: '来过', local: '本地人' }
+const familiarityText = computed(() => FAMILIARITY[props.plan.profile.familiarity ?? 'first'])
+const spiceText = computed(() => SPICE[props.plan.profile.spice ?? (props.plan.profile.dietary?.includes('不吃辣') ? 'no' : 'any')])
 const rows = computed(() => [
   ['门票', t.value.tickets], ['餐饮（含园内预留）', t.value.meals], [props.plan.meta.travel?.source === 'amap' ? '市内交通' : '市内交通（估算）', t.value.transport],
 ] as [string, number][])
@@ -41,7 +46,7 @@ const rows = computed(() => [
     <h4>系统理解的需求</h4>
     <p class="muted">
       {{ plan.profile.days }} 天 · {{ paces[plan.profile.pace] }} · 兴趣 {{ plan.profile.interests.join('、') || '无' }} ·
-      饮食 {{ plan.profile.dietary.join('、') || '无' }} · 必去 {{ plan.profile.must_visit.join('、') || '无' }}
+      口味 {{ spiceText }} · {{ familiarityText }} · 必去 {{ plan.profile.must_visit.join('、') || '无' }}
     </p>
 
     <h4>路程来源</h4>

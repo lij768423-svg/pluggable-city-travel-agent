@@ -1,0 +1,1643 @@
+{
+  "version": "2026-10-21-onboard-v1",
+  "reviewed_at": "2026-10-21",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。；待核清单经 Codex 上网核对（AI 核对，未做人工或现场核验）。；清单外条目经 Claude 上网补核（check-zero-price.csv，AI 核对，未做人工或现场核验）。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    },
+    "check-15": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/118017",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-44": {
+      "url": "https://www.dpm.org.cn/subject_booking/index.html",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；同条清单景点补核票价：故宫官网珍宝馆、钟表馆分别另售10元/人，仍须先持故宫大门票；时长保留前述导览/Trip.com项目参考，来源分级不把时长当官方事实；另一依据：https://tw.trip.com/travel-guide/attraction/beijing/the-treasure-gallery-10521079/?curr=HKD&locale=zh-TW"
+    },
+    "check-45": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/120826",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1个小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-46": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/101728",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-47": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120916",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-50": {
+      "url": "https://www.artmuseum.tsinghua.edu.cn/cgfw/wsgp/",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官网普通门票50元/人；实名购票，经东四门艺博专用通道入馆；艺博门票不能作为清华校园参观凭证，特展另购"
+    },
+    "check-61": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101466",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-68": {
+      "url": "https://hk.trip.com/travel-guide/attraction/beijing/yayun-panda-house-69133535?curr=TWD&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5 - 1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-77": {
+      "url": "https://tw.trip.com/travel-guide/attraction/beijing/hall-of-prayer-for-good-harvests-15297536/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-79": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101363",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-84": {
+      "url": "https://s.visitbeijing.com.cn/attraction/117822",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-92": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101415",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-98": {
+      "url": "https://www.trip.com/travel-guide/attraction/beijing/echo-wall-15271550",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "已排除黄山同名回音壁；北京天坛本点页建议15–30分钟，按0.25–0.5小时作项目排程参考，不含天坛整体游览/排队，非实测"
+    },
+    "check-105": {
+      "url": "https://s.visitbeijing.com.cn/attraction/117904",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议3小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按3–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-106": {
+      "url": "https://www.dpm.org.cn/subject_booking/index.html",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；同条清单景点补核票价：故宫官网珍宝馆、钟表馆分别另售10元/人，仍须先持故宫大门票；时长保留前述导览/Trip.com项目参考，来源分级不把时长当官方事实；另一依据：https://hk.trip.com/travel-guide/attraction/beijing/hall-of-clocks-and-watches-15160790"
+    },
+    "check-107": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101216",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-111": {
+      "url": "https://www.universalbeijingresort.com/zh_CN/ThemeLands/WaterWorld",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官网列为环球影城园内主题景区及特技表演；策展判断：不把园内子项目作为独立0元景点推荐，随id=0环球度假区游览，不另填整园票价"
+    },
+    "check-115": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120843",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1个小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-124": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101703",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-131": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/120842",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-146": {
+      "url": "https://s.visitbeijing.com.cn/attraction/119555",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-148": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101748",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议半小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-155": {
+      "url": "https://www.trip.com/travel-guide/attraction/beijing/great-wall-panoramic-viewing-platform-140515567/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "本点页标Temporarily closed，暂不推荐，不能用此观景平台独立4小时替代八达岭长城整段体验；恢复营业须复核，不认定永久停业"
+    },
+    "check-158": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120932",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1个小时左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-160": {
+      "url": "https://www.visitbeijing.com.cn/article/47Qrt04ujdT",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官方旅游介绍石舫为长36米的单体园林建筑；项目据外观参观范围估计15–30分钟，来源未给该时长，不是官方时长，未套用整个颐和园3小时"
+    },
+    "check-161": {
+      "url": "https://my.trip.com/travel-guide/attraction/beijing/circular-mound-altar-18046458/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com北京圜丘页建议20分钟；以30分钟作项目缓冲估计，未套用整个天坛2小时时长，深度讲解及排队另计"
+    },
+    "check-162": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120830",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议20分钟，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-165": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101465",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-172": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120829",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议20分钟，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-176": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120832",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议半个小时左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-179": {
+      "url": "https://lyzz.visitbeijing.com.cn/news/detail?id=25084",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方页面列二号码头日航75元；按该常规日航成人预算，运上行268元为另一演艺航线不可混用，班次以景区小程序为准"
+    },
+    "check-195": {
+      "url": "https://s.visitbeijing.com.cn/attraction/119557",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-199": {
+      "url": "https://s.visitbeijing.com.cn/attraction/119788",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-200": {
+      "url": "https://s.visitbeijing.com.cn/attraction/118277",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-205": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101705",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-206": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/120825",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1-2个小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-212": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101721",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-228": {
+      "url": "https://s.visitbeijing.com.cn/attraction/118340",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-229": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120919",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-234": {
+      "url": "https://www.trip.com/travel-guide/attraction/beijing/tianning-temple-31660055",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-239": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120831",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1个小时左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-252": {
+      "url": "https://tw.trip.com/travel-guide/attraction/beijing/imperial-vault-of-heaven-10521094",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com北京皇穹宇页建议1小时，作为子景点排程参考，不套用整个天坛3–4小时，非官方保证或实测"
+    },
+    "check-269": {
+      "url": "https://s.visitbeijing.com.cn/attraction/118136",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2-3小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-270": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/101929",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-285": {
+      "url": "https://www.cstm.org.cn/ykfw/yygp/index.html",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官网个人儿童科学乐园普通票30元/人/场，成人陪同也须购票，上下午场不通用，3–8岁亲子展区，官方网络实名预约"
+    },
+    "check-286": {
+      "url": "https://hk.trip.com/travel-guide/attraction/beijing/taihe-gate-24331302?locale=zh-HK&poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15 - 20分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-288": {
+      "url": "https://s.visitbeijing.com.cn/attraction/120835",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-291": {
+      "url": "https://my.trip.com/travel-guide/attraction/beijing/renshoudian-18048905",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com仁寿殿页建议20–30分钟，按0.3333–0.5小时项目参考，未将颐和园整条游线2.5–3小时套给单殿"
+    },
+    "check-293": {
+      "url": "https://you.ctrip.com/sight/beijing1/137693.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程当前标注暂停营业、恢复时间待定；暂退出自动推荐，非认定永久停业，恢复前需查运营方"
+    },
+    "check-302": {
+      "url": "https://s.visitbeijing.com.cn/appointment/83",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官方接待说明每批参观不超过1小时且需按开放活动安排；项目以0.5–1小时作参观参考，不将活动接待说明推为每天自由入内"
+    },
+    "check-317": {
+      "url": "https://www.visitbeijing.com.cn/article/47Qrt04ujdT",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官方明确“清晏舫俗称石舫”；与160北京颐和园石舫为同一建筑，保留160，暂停317独立推荐，避免同处重复和重复分配3小时"
+    },
+    "check-322": {
+      "url": "https://s.visitbeijing.com.cn/attraction/118074",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-329": {
+      "url": "https://s.visitbeijing.com.cn/attraction/101931",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议半小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-330": {
+      "url": "https://s.visitbeijing.com.cn/attraction/119063",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议30分钟，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-333": {
+      "url": "https://s.visitbeijing.com.cn/index.php/attraction/120917",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-zero-price-1": {
+      "url": "https://www.dpm.org.cn/subject_booking/index.html",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "故宫官网票务政策：4月1日–10月31日旺季60元/人，11月1日–3月31日淡季40元/人，按旺季价；珍宝馆、钟表馆另售10元"
+    },
+    "check-zero-price-7": {
+      "url": "https://www.yuanmingyuanpark.cn/",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "圆明园官网：大门票成人10元；西洋楼遗址景区另售15元，通票25元（含西洋楼与盛时全景模型展）；按大门票计，西洋楼见 id=262"
+    },
+    "check-zero-price-11": {
+      "url": "https://m.bj.bendibao.com/mip/296655.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "本地宝：主展厅30元，8周岁及以下或1.3米以下儿童免费；影院和儿童科学乐园另收费"
+    },
+    "check-zero-price-14": {
+      "url": "https://you.ctrip.com/sight/beijing1/5153.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程攻略与点评：门票25元/人；须经\"雍和宫游客信众服务\"公众号购票"
+    },
+    "check-zero-price-19": {
+      "url": "https://www.visitbeijing.com.cn/article/47QrsoTUQZU",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网文章：成人票2元（活动期间可能上调）"
+    },
+    "check-zero-price-28": {
+      "url": "https://www.visitbeijing.com.cn/article/47QrsoTUQZU",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网文章：旺季（4–10月）参观票10元、联票20元，淡季5元/15元；按旺季参观票10元"
+    },
+    "check-zero-price-39": {
+      "url": "https://www.news.cn/local/2023-06/12/c_1129686442.htm",
+      "published_at": "2023-06",
+      "verification": "curator_inference",
+      "facts": "新华网报道：成人票15元、优惠票5元，须官方渠道实名预约，无当日票和现场售票，周一闭馆"
+    },
+    "check-zero-price-42": {
+      "url": "https://r.visitbeijing.com.cn/attraction/683",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网景点页：门票30元；周一闭馆"
+    },
+    "check-zero-price-65": {
+      "url": "data/beijing/onboarding-review/check.csv",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "与 id=42 孔庙和国子监博物馆同一院落、同一张门票（30元），保留 id=42"
+    },
+    "check-zero-price-83": {
+      "url": "https://www.visitbeijing.com.cn/article/4IiFKleL4U2",
+      "published_at": "2024",
+      "verification": "curator_inference",
+      "facts": "北京旅游网2024年文章：门票2元；方泽坛另收5元"
+    },
+    "check-zero-price-87": {
+      "url": "https://www.news.cn/legal/20250706/27e8f4b2acaa4f7a90c98fb5a9fa6466/c.html",
+      "published_at": "2025-07",
+      "verification": "curator_inference",
+      "facts": "新华网等报道：成人30元、学生15元，须提前1–3天经\"人民大会堂参观预约\"小程序预约，不设现场售票"
+    },
+    "check-zero-price-99": {
+      "url": "https://touch.piao.qunar.com/touch/detail.htm?id=527322",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "去哪儿票务页：日场成人200元、夜场159元，位于北京欢乐谷内；季节性开放（新华网称2026年开放至8月30日），按日场成人票"
+    },
+    "check-zero-price-102": {
+      "url": "https://www.visitbeijing.com.cn/article/47QsHyuaoOU",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网：门票2元；樱花观赏季曾调为全价10元（2022年公园管理处通知），按平时2元"
+    },
+    "check-zero-price-110": {
+      "url": "https://www.visitbeijing.com.cn/article/47QrsoTUQZU",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网文章：北园门票5元；温室等另收费"
+    },
+    "check-zero-price-121": {
+      "url": "https://www.visitbeijing.com.cn/article/47QrsoTUQZU",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网文章：成人票2元"
+    },
+    "check-zero-price-126": {
+      "url": "https://www.visitbeijing.com.cn/article/4NjYCuvXA5F",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网等：太庙（劳动人民文化宫）门票2元，享殿中华和钟展另收10–15元；周一闭馆"
+    },
+    "check-zero-price-127": {
+      "url": "https://www.dahepiao.com/news1/20220507270508.html",
+      "published_at": "2022-05",
+      "verification": "curator_inference",
+      "facts": "大河票务网票价表：最低档280元（另有380–880元档），每日约三场；按最低档计，资料较旧"
+    },
+    "check-zero-price-137": {
+      "url": "https://www.visitbeijing.com.cn/article/47QrsoTUQZU",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网文章：全价票3元/人，如有活动以现场为准"
+    },
+    "check-zero-price-145": {
+      "url": "https://www.news.cn/local/20250108/cbb75a3ee3cc4ce88d0fa1cfedfe1738/c.html",
+      "published_at": "2025-01",
+      "verification": "curator_inference",
+      "facts": "新华社报道：箭扣长城自2016年起保护性修缮，未对公众开放；法规禁止攀登未开放长城，暂停推荐"
+    },
+    "check-zero-price-164": {
+      "url": "https://www.visitbeijing.com.cn/article/47QkWuEIy8H",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网等：先农坛（古代建筑博物馆）票价15元；周一闭馆"
+    },
+    "check-zero-price-207": {
+      "url": "https://www.visitbeijing.com.cn/article/4OYDXjIzpWC",
+      "published_at": "2025-12",
+      "verification": "curator_inference",
+      "facts": "北京旅游网文章：五塔寺（北京石刻艺术博物馆）门票20元，每周三免费200名，需线上预订"
+    },
+    "check-zero-price-231": {
+      "url": "https://www.extrabux.com/chs/guide/1218654",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "第三方攻略：成人20元，学生老人等10元，周一闭馆（资料较旧）"
+    },
+    "check-zero-price-235": {
+      "url": "https://www.dahepiao.com/lvyounews1/20240321453195.html",
+      "published_at": "2024-03",
+      "verification": "curator_inference",
+      "facts": "大河票务网攻略：博物馆成人票158元，加曼联乐园208元；按博物馆成人票"
+    },
+    "check-zero-price-240": {
+      "url": "https://www.visitbeijing.com.cn/article/4JVuaiIYLAk",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "坐标在八达岭；北京旅游网等：八达岭北线索道往返140元、单程100元，长城门票另购；按往返计"
+    },
+    "check-zero-price-262": {
+      "url": "https://www.yuanmingyuanpark.cn/",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "圆明园官网：西洋楼遗址景区（含大水法、展览馆、迷宫）成人15元，须先购圆明园大门票（id=7，10元）"
+    },
+    "check-zero-price-294": {
+      "url": "https://www.visitbeijing.com.cn/article/4MkvBLEBSIw",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网：成人票20元，每周三前200名免票"
+    },
+    "check-zero-price-296": {
+      "url": "https://m.bendibao.com/show733561_5.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "本地宝页面：门票36元，开放8:00–17:00（页面无日期）"
+    },
+    "check-zero-price-297": {
+      "url": "https://www.dahepiao.com/news1/yanchu/20240507462111.html",
+      "published_at": "2024-05",
+      "verification": "curator_inference",
+      "facts": "票务网站多场次最低票档100元（另有180–480元档）；按最低档计"
+    },
+    "check-zero-price-301": {
+      "url": "https://www.visitbeijing.com.cn/article/4MkvBLEBSIw",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "北京旅游网、本地宝：门票20元，参观壁画真迹另收100元；按门票20元"
+    }
+  },
+  "places": [
+    {
+      "id": 1,
+      "name": "故宫博物院",
+      "sources": [
+        "check-zero-price-1",
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 4.0,
+        "price": 60
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.5–4.0 小时；2026-10-21 AI核对（Claude）：故宫官网票务政策：4月1日–10月31日旺季60元/人，11月1日–3月31日淡季40元/人，按旺季价；珍宝馆、钟表馆另售10元"
+    },
+    {
+      "id": 4,
+      "name": "颐和园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.5–4.0 小时"
+    },
+    {
+      "id": 7,
+      "name": "圆明园",
+      "sources": [
+        "check-zero-price-7"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Claude）：圆明园官网：大门票成人10元；西洋楼遗址景区另售15元，通票25元（含西洋楼与盛时全景模型展）；按大门票计，西洋楼见 id=262"
+    },
+    {
+      "id": 8,
+      "name": "慕田峪长城",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 2.5–5.0 小时"
+    },
+    {
+      "id": 11,
+      "name": "中国科学技术馆",
+      "sources": [
+        "check-zero-price-11"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Claude）：本地宝：主展厅30元，8周岁及以下或1.3米以下儿童免费；影院和儿童科学乐园另收费"
+    },
+    {
+      "id": 14,
+      "name": "雍和宫",
+      "sources": [
+        "check-zero-price-14"
+      ],
+      "changes": {
+        "price": 25
+      },
+      "note": "2026-10-21 AI核对（Claude）：携程攻略与点评：门票25元/人；须经\"雍和宫游客信众服务\"公众号购票"
+    },
+    {
+      "id": 15,
+      "name": "鸟巢(国家体育场)",
+      "sources": [
+        "check-15"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 19,
+      "name": "景山公园",
+      "sources": [
+        "check-zero-price-19"
+      ],
+      "changes": {
+        "price": 2
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网文章：成人票2元（活动期间可能上调）"
+    },
+    {
+      "id": 22,
+      "name": "古北水镇",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 7.0
+      },
+      "note": "原表 2.0–2.5 小时明显偏短，按模型估计调为 4.0–7.0 小时"
+    },
+    {
+      "id": 23,
+      "name": "北京欢乐谷",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 8.0,
+        "day_anchor": true,
+        "onsite_dining": true
+      },
+      "note": "原表 1.0–2.5 小时明显偏短，按模型估计调为 5.0–8.0 小时；大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 28,
+      "name": "北海公园",
+      "sources": [
+        "check-zero-price-28"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网文章：旺季（4–10月）参观票10元、联票20元，淡季5元/15元；按旺季参观票10元"
+    },
+    {
+      "id": 32,
+      "name": "泡泡玛特城市乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 39,
+      "name": "天安门城楼",
+      "sources": [
+        "check-zero-price-39"
+      ],
+      "changes": {
+        "price": 15
+      },
+      "note": "2026-10-21 AI核对（Claude）：新华网报道：成人票15元、优惠票5元，须官方渠道实名预约，无当日票和现场售票，周一闭馆"
+    },
+    {
+      "id": 42,
+      "name": "孔庙和国子监博物馆",
+      "sources": [
+        "check-zero-price-42"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网景点页：门票30元；周一闭馆"
+    },
+    {
+      "id": 44,
+      "name": "故宫珍宝馆",
+      "sources": [
+        "check-44"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0,
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；同条清单景点补核票价：故宫官网珍宝馆、钟表馆分别另售10元/人，仍须先持故宫大门票；时长保留前述导览/Trip.com项目参考，来源分级不把时长当官方事实；另一依据：https://tw.trip.com/travel-guide/attraction/beijing/the-treasure-gallery-10521079/?curr=HKD&locale=zh-TW"
+    },
+    {
+      "id": 45,
+      "name": "太和殿",
+      "sources": [
+        "check-45"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1个小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 46,
+      "name": "毛主席纪念堂",
+      "sources": [
+        "check-46"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 47,
+      "name": "午门",
+      "sources": [
+        "check-47"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 50,
+      "name": "清华大学艺术博物馆",
+      "sources": [
+        "check-50"
+      ],
+      "changes": {
+        "price": 50
+      },
+      "note": "2026-10-21 AI核对（Codex）：官网普通门票50元/人；实名购票，经东四门艺博专用通道入馆；艺博门票不能作为清华校园参观凭证，特展另购"
+    },
+    {
+      "id": 61,
+      "name": "鼓楼",
+      "sources": [
+        "check-61"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 65,
+      "name": "国子监",
+      "sources": [
+        "check-zero-price-65"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Claude）：与 id=42 孔庙和国子监博物馆同一院落、同一张门票（30元），保留 id=42"
+    },
+    {
+      "id": 68,
+      "name": "大熊猫馆",
+      "sources": [
+        "check-68"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5 - 1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 77,
+      "name": "祈年殿",
+      "sources": [
+        "check-77"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 79,
+      "name": "纪晓岚故居",
+      "sources": [
+        "check-79"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 83,
+      "name": "地坛",
+      "sources": [
+        "check-zero-price-83"
+      ],
+      "changes": {
+        "price": 2
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网2024年文章：门票2元；方泽坛另收5元"
+    },
+    {
+      "id": 84,
+      "name": "中国紫檀博物馆",
+      "sources": [
+        "check-84"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 87,
+      "name": "人民大会堂",
+      "sources": [
+        "check-zero-price-87"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Claude）：新华网等报道：成人30元、学生15元，须提前1–3天经\"人民大会堂参观预约\"小程序预约，不设现场售票"
+    },
+    {
+      "id": 92,
+      "name": "卢沟桥",
+      "sources": [
+        "check-92"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 98,
+      "name": "回音壁",
+      "sources": [
+        "check-98"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：已排除黄山同名回音壁；北京天坛本点页建议15–30分钟，按0.25–0.5小时作项目排程参考，不含天坛整体游览/排队，非实测"
+    },
+    {
+      "id": 99,
+      "name": "北京玛雅海滩水公园",
+      "sources": [
+        "check-zero-price-99"
+      ],
+      "changes": {
+        "price": 200
+      },
+      "note": "2026-10-21 AI核对（Claude）：去哪儿票务页：日场成人200元、夜场159元，位于北京欢乐谷内；季节性开放（新华网称2026年开放至8月30日），按日场成人票"
+    },
+    {
+      "id": 102,
+      "name": "玉渊潭公园",
+      "sources": [
+        "check-zero-price-102"
+      ],
+      "changes": {
+        "price": 2
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网：门票2元；樱花观赏季曾调为全价10元（2022年公园管理处通知），按平时2元"
+    },
+    {
+      "id": 105,
+      "name": "白云观",
+      "sources": [
+        "check-105"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议3小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按3–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 106,
+      "name": "故宫钟表馆",
+      "sources": [
+        "check-106"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0,
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；同条清单景点补核票价：故宫官网珍宝馆、钟表馆分别另售10元/人，仍须先持故宫大门票；时长保留前述导览/Trip.com项目参考，来源分级不把时长当官方事实；另一依据：https://hk.trip.com/travel-guide/attraction/beijing/hall-of-clocks-and-watches-15160790"
+    },
+    {
+      "id": 107,
+      "name": "人民英雄纪念碑",
+      "sources": [
+        "check-107"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 110,
+      "name": "国家植物园(原北京植物园)",
+      "sources": [
+        "check-zero-price-110"
+      ],
+      "changes": {
+        "price": 5
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网文章：北园门票5元；温室等另收费"
+    },
+    {
+      "id": 111,
+      "name": "未来水世界",
+      "sources": [
+        "check-111"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：官网列为环球影城园内主题景区及特技表演；策展判断：不把园内子项目作为独立0元景点推荐，随id=0环球度假区游览，不另填整园票价"
+    },
+    {
+      "id": 115,
+      "name": "昆明湖",
+      "sources": [
+        "check-115"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1个小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 121,
+      "name": "陶然亭公园",
+      "sources": [
+        "check-zero-price-121"
+      ],
+      "changes": {
+        "price": 2
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网文章：成人票2元"
+    },
+    {
+      "id": 124,
+      "name": "东交民巷",
+      "sources": [
+        "check-124"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 126,
+      "name": "北京市劳动人民文化宫",
+      "sources": [
+        "check-zero-price-126"
+      ],
+      "changes": {
+        "price": 2
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网等：太庙（劳动人民文化宫）门票2元，享殿中华和钟展另收10–15元；周一闭馆"
+    },
+    {
+      "id": 127,
+      "name": "朝阳剧场杂技",
+      "sources": [
+        "check-zero-price-127"
+      ],
+      "changes": {
+        "price": 280
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网票价表：最低档280元（另有380–880元档），每日约三场；按最低档计，资料较旧"
+    },
+    {
+      "id": 131,
+      "name": "十七孔桥",
+      "sources": [
+        "check-131"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 137,
+      "name": "中山公园",
+      "sources": [
+        "check-zero-price-137"
+      ],
+      "changes": {
+        "price": 3
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网文章：全价票3元/人，如有活动以现场为准"
+    },
+    {
+      "id": 139,
+      "name": "乐多港·卡乐星球",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 7.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–7.0 小时"
+    },
+    {
+      "id": 145,
+      "name": "箭扣长城",
+      "sources": [
+        "check-zero-price-145",
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0,
+        "recommendable": false
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–5.0 小时；2026-10-21 AI核对（Claude）：新华社报道：箭扣长城自2016年起保护性修缮，未对公众开放；法规禁止攀登未开放长城，暂停推荐"
+    },
+    {
+      "id": 146,
+      "name": "银河SOHO",
+      "sources": [
+        "check-146"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 148,
+      "name": "角楼",
+      "sources": [
+        "check-148"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议半小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 155,
+      "name": "长城之漫观景台",
+      "sources": [
+        "check-155"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：本点页标Temporarily closed，暂不推荐，不能用此观景平台独立4小时替代八达岭长城整段体验；恢复营业须复核，不认定永久停业"
+    },
+    {
+      "id": 158,
+      "name": "佛香阁",
+      "sources": [
+        "check-158"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1个小时左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 160,
+      "name": "北京颐和园石舫",
+      "sources": [
+        "check-160"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：官方旅游介绍石舫为长36米的单体园林建筑；项目据外观参观范围估计15–30分钟，来源未给该时长，不是官方时长，未套用整个颐和园3小时"
+    },
+    {
+      "id": 161,
+      "name": "圜丘",
+      "sources": [
+        "check-161"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com北京圜丘页建议20分钟；以30分钟作项目缓冲估计，未套用整个天坛2小时时长，深度讲解及排队另计"
+    },
+    {
+      "id": 162,
+      "name": "保和殿",
+      "sources": [
+        "check-162"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议20分钟，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 164,
+      "name": "北京古代建筑博物馆",
+      "sources": [
+        "check-zero-price-164"
+      ],
+      "changes": {
+        "price": 15
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网等：先农坛（古代建筑博物馆）票价15元；周一闭馆"
+    },
+    {
+      "id": 165,
+      "name": "钟楼",
+      "sources": [
+        "check-165"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 172,
+      "name": "中和殿",
+      "sources": [
+        "check-172"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议20分钟，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 174,
+      "name": "南宫旅游度假区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 2.0–5.0 小时"
+    },
+    {
+      "id": 176,
+      "name": "御花园",
+      "sources": [
+        "check-176"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议半个小时左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 179,
+      "name": "通州运河游船",
+      "sources": [
+        "check-179"
+      ],
+      "changes": {
+        "price": 75
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方页面列二号码头日航75元；按该常规日航成人预算，运上行268元为另一演艺航线不可混用，班次以景区小程序为准"
+    },
+    {
+      "id": 195,
+      "name": "望京SOHO",
+      "sources": [
+        "check-195"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 199,
+      "name": "北京孔庙",
+      "sources": [
+        "check-199"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 200,
+      "name": "国家会议中心",
+      "sources": [
+        "check-200"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 205,
+      "name": "北京王府井天主教堂",
+      "sources": [
+        "check-205"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 206,
+      "name": "乾清宫",
+      "sources": [
+        "check-206"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1-2个小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 207,
+      "name": "石刻艺术博物馆",
+      "sources": [
+        "check-zero-price-207"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网文章：五塔寺（北京石刻艺术博物馆）门票20元，每周三免费200名，需线上预订"
+    },
+    {
+      "id": 212,
+      "name": "老舍纪念馆",
+      "sources": [
+        "check-212"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 220,
+      "name": "北京凤凰岭景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.5,
+        "max_hours": 5.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 2.5–5.0 小时"
+    },
+    {
+      "id": 221,
+      "name": "京东大峡谷",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 0.5–2.0 小时明显偏短，按模型估计调为 3.0–6.0 小时"
+    },
+    {
+      "id": 228,
+      "name": "北顶娘娘庙",
+      "sources": [
+        "check-228"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 229,
+      "name": "神武门",
+      "sources": [
+        "check-229"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 231,
+      "name": "中国古动物馆",
+      "sources": [
+        "check-zero-price-231"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Claude）：第三方攻略：成人20元，学生老人等10元，周一闭馆（资料较旧）"
+    },
+    {
+      "id": 234,
+      "name": "天宁寺城",
+      "sources": [
+        "check-234"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 235,
+      "name": "曼联梦剧场",
+      "sources": [
+        "check-zero-price-235"
+      ],
+      "changes": {
+        "price": 158
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网攻略：博物馆成人票158元，加曼联乐园208元；按博物馆成人票"
+    },
+    {
+      "id": 239,
+      "name": "坤宁宫",
+      "sources": [
+        "check-239"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1个小时左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 240,
+      "name": "索道",
+      "sources": [
+        "check-zero-price-240"
+      ],
+      "changes": {
+        "price": 140
+      },
+      "note": "2026-10-21 AI核对（Claude）：坐标在八达岭；北京旅游网等：八达岭北线索道往返140元、单程100元，长城门票另购；按往返计"
+    },
+    {
+      "id": 247,
+      "name": "颐和园冰雪嘉年华",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 252,
+      "name": "皇穹宇",
+      "sources": [
+        "check-252"
+      ],
+      "changes": {
+        "min_hours": 1,
+        "max_hours": 1
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com北京皇穹宇页建议1小时，作为子景点排程参考，不套用整个天坛3–4小时，非官方保证或实测"
+    },
+    {
+      "id": 262,
+      "name": "西洋楼遗址景区",
+      "sources": [
+        "check-zero-price-262"
+      ],
+      "changes": {
+        "price": 15
+      },
+      "note": "2026-10-21 AI核对（Claude）：圆明园官网：西洋楼遗址景区（含大水法、展览馆、迷宫）成人15元，须先购圆明园大门票（id=7，10元）"
+    },
+    {
+      "id": 269,
+      "name": "北京二锅头酒博物馆",
+      "sources": [
+        "check-269"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2-3小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 270,
+      "name": "日坛公园",
+      "sources": [
+        "check-270"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 272,
+      "name": "北京后花园（白虎涧）风景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 285,
+      "name": "儿童科学乐园(中国科学技术馆店)",
+      "sources": [
+        "check-285"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Codex）：官网个人儿童科学乐园普通票30元/人/场，成人陪同也须购票，上下午场不通用，3–8岁亲子展区，官方网络实名预约"
+    },
+    {
+      "id": 286,
+      "name": "太和门",
+      "sources": [
+        "check-286"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15 - 20分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 288,
+      "name": "北京火德真君庙",
+      "sources": [
+        "check-288"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议1小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 291,
+      "name": "仁寿殿",
+      "sources": [
+        "check-291"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com仁寿殿页建议20–30分钟，按0.3333–0.5小时项目参考，未将颐和园整条游线2.5–3小时套给单殿"
+    },
+    {
+      "id": 293,
+      "name": "十渡拒马乐园",
+      "sources": [
+        "check-293"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：携程当前标注暂停营业、恢复时间待定；暂退出自动推荐，非认定永久停业，恢复前需查运营方"
+    },
+    {
+      "id": 294,
+      "name": "大觉寺",
+      "sources": [
+        "check-zero-price-294"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网：成人票20元，每周三前200名免票"
+    },
+    {
+      "id": 296,
+      "name": "龙门涧风景区",
+      "sources": [
+        "check-zero-price-296"
+      ],
+      "changes": {
+        "price": 36
+      },
+      "note": "2026-10-21 AI核对（Claude）：本地宝页面：门票36元，开放8:00–17:00（页面无日期）"
+    },
+    {
+      "id": 297,
+      "name": "中国木偶剧院",
+      "sources": [
+        "check-zero-price-297"
+      ],
+      "changes": {
+        "price": 100
+      },
+      "note": "2026-10-21 AI核对（Claude）：票务网站多场次最低票档100元（另有180–480元档）；按最低档计"
+    },
+    {
+      "id": 301,
+      "name": "法海禅寺",
+      "sources": [
+        "check-zero-price-301"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Claude）：北京旅游网、本地宝：门票20元，参观壁画真迹另收100元；按门票20元"
+    },
+    {
+      "id": 302,
+      "name": "玲珑塔",
+      "sources": [
+        "check-302"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1
+      },
+      "note": "2026-10-21 AI核对（Codex）：官方接待说明每批参观不超过1小时且需按开放活动安排；项目以0.5–1小时作参观参考，不将活动接待说明推为每天自由入内"
+    },
+    {
+      "id": 313,
+      "name": "北京戏剧嘉年华",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 317,
+      "name": "清晏舫",
+      "sources": [
+        "check-317"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：官方明确“清晏舫俗称石舫”；与160北京颐和园石舫为同一建筑，保留160，暂停317独立推荐，避免同处重复和重复分配3小时"
+    },
+    {
+      "id": 322,
+      "name": "报国寺",
+      "sources": [
+        "check-322"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议2小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 329,
+      "name": "中央电视台新台址",
+      "sources": [
+        "check-329"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议半小时，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 330,
+      "name": "北坞公园",
+      "sources": [
+        "check-330"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议30分钟，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 333,
+      "name": "乾清门",
+      "sources": [
+        "check-333"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：北京旅游官方导览建议30分钟左右，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    }
+  ]
+}

@@ -103,3 +103,9 @@ def test_nanjing_batch_profiles_unchanged():
         pytest.skip("缺南京数据")
     rows = profiles()
     assert len(rows) == 20 and rows[0][0] == "01-south-2d-transit" and rows[16][1]["interests"] == ["主题乐园"]
+
+
+def test_tag_summary_list_is_joined():
+    from scripts.tag_pois import _Out
+    out = _Out.model_validate({"items": [{"id": 1, "summary": ["面向亲子", "创意体验"]}, {"id": 2, "summary": "园林"}]})
+    assert [item.summary for item in out.items] == ["面向亲子；创意体验", "园林"]

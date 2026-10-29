@@ -1,0 +1,985 @@
+{
+  "version": "2026-10-21-onboard-v1",
+  "reviewed_at": "2026-10-21",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。；待核清单经 Codex 上网核对（AI 核对，未做人工或现场核验）。；清单外条目经 Claude 上网补核（check-zero-price.csv，AI 核对，未做人工或现场核验）。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    },
+    "check-6": {
+      "url": "https://hk.trip.com/travel-guide/attraction/shanghai/huangpu-river-cruise-98472?locale=zh-HK&poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "官方旅游名录分别列十六铺、东方明珠和金陵东路三个码头，登船位置与产品可不同，不能仅同属黄浦江就禁用；同日是否体验重复由路线/产品语义另审；Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；另一依据：https://www.meet-in-shanghai.net/cn/huangpu-river-tour/"
+    },
+    "check-31": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/bund-sightseeing-tunnel-80258",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–40分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.6667小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-40": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/jingan-temple-75618/?curr=GBP&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-60": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/shanghai-sightseeing-double-decker-bus-61453154/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-62": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/wukang-mansion-94544?locale=zh-SG",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-88": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/oriental-pearl-transparent-observatory-33782293/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–45分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.75小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-97": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/sky-ring-roof-ferris-wheel-25474948/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-101": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/moller-villa-83735",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-103": {
+      "url": "https://hk.trip.com/travel-guide/attraction/shanghai/lujiazui-central-greenland-78451?locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5 - 1.5小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-105": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/351m-space-capsule-60697915/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-112": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/peace-hotel-museum-24650185/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-114": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/st-ignatius-cathedral-76153/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-135": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/flying-over-shanghai-141029331/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-150": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/century-avenue-cherry-orchard-31671605?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-157": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/north-bund-international-cruise-terminal-31674106/?curr=HKD&locale=en-XX",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-166": {
+      "url": "https://touch.piao.qunar.com/touch/detail.htm?cat=pIndex%3D20%26typeIndex%3D1%26typeId%3D2959179&id=15477",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "车入区普通大巴包含于上海野生动物园门票，不是独立免费景点；为避免与id=5整园重复预算/排程，暂停子项独立推荐，不把190元整园票重复算给子项"
+    },
+    "check-182": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/zhang-ailing-s-former-residence-98637",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-202": {
+      "url": "https://th.trip.com/travel-guide/attraction/shanghai/somekh-building-31678802/?curr=SGD&locale=en-TH",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议10–30 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-205": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/paper-building-31661110",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-212": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/laoshanghai-1930-fengqing-street-94495/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-214": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/shanghai-museum-of-sun-yat-sen-s-former-residence-76148?curr=HKD&locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-218": {
+      "url": "https://my.trip.com/travel-guide/attraction/shanghai/baoshan-temple-92105",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-224": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/zhapulu-bridge-31675785/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-248": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/pudong-development-exhibition-hall-13659500/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-267": {
+      "url": "https://www.shanghaidisneyresort.com/zh-cn/experience?group=activities",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "官网将梦幻世界列为乐园内体验所在主题区；策展判断：随id=0迪士尼整园游览，不单独推荐为0元独立景点，也不重复计整园门票"
+    },
+    "check-271": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/linjiang-park-80274",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-278": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/chuansha-park-20591104",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-284": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/chenxiang-pavilion-80279",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-290": {
+      "url": "https://www.trip.com/travel-guide/attraction/shanghai/shanghai-former-provisional-government-site-of-the-republic-of-korea-18599826?curr=CNY&locale=en-US",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-300": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/fuxing-park-78448",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-301": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/jiuqu-bridge-94958",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com豫园九曲桥页建议20–40分钟，仅作项目参考；不把整个朱家角/豫园城隍庙街区数小时时长套给单桥"
+    },
+    "check-309": {
+      "url": "https://th.trip.com/travel-guide/attraction/shanghai/xuhui-riverside-greenland-15067113/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-315": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shanghai/bank-of-china-30109487?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-333": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/shanghai-former-residence-of-mao-zedong-87865/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-338": {
+      "url": "https://hk.trip.com/travel-guide/attraction/shanghai/shanghai-shengsanyi-church-10519418/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-348": {
+      "url": "https://gs.ctrip.com/html5/you/sight/shanghai2/147690195.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程标注暂停营业、恢复时间待定；暂退出推荐，可能季节性关闭，不推断永久停业或编造2026票价"
+    },
+    "check-356": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shanghai/zhujiajiao-post-office-91385",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com朱家角大清邮局页建议0.5–1小时，作为馆内参观项目估计，未套用朱家角古镇整日游时长"
+    },
+    "check-zero-price-8": {
+      "url": "https://m.thepaper.cn/newsDetail_forward_13544757",
+      "published_at": "2021-07",
+      "verification": "curator_inference",
+      "facts": "澎湃新闻开馆报道：成人参观票30元，球幕电影另收40元；须网上预约分时段入馆，周一闭馆"
+    },
+    "check-zero-price-22": {
+      "url": "https://gs.ctrip.com/html5/you/travels/2/4119580.html",
+      "published_at": "2023-11",
+      "verification": "curator_inference",
+      "facts": "携程攻略：成人30元、学生12元，70岁以上与6岁以下免费；须经\"上海科技馆自然博物馆天文馆门票\"小程序预约，周一闭馆"
+    },
+    "check-zero-price-68": {
+      "url": "https://www.dahepiao.com/news1/20201026165334.html",
+      "published_at": "2020-10",
+      "verification": "curator_inference",
+      "facts": "票务网站2020–2021年资料：成人票15元，65岁以上免费（资料较旧，可能已调整）"
+    },
+    "check-zero-price-78": {
+      "url": "https://m.thepaper.cn/baijiahao_14784924",
+      "published_at": "2021",
+      "verification": "curator_inference",
+      "facts": "澎湃号文章：成人票20元，学生、60–70岁老人10元；周一闭馆（资料较旧）"
+    },
+    "check-zero-price-98": {
+      "url": "https://www.dahepiao.com/lvyounews1/20251022534797.html",
+      "published_at": "2025-10",
+      "verification": "curator_inference",
+      "facts": "大河票务网：成人票80元，亲子票225元起；第三方价格"
+    },
+    "check-zero-price-161": {
+      "url": "https://gs.ctrip.com/html5/you/sightlist/1958890/list-j5886.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程景点列表与多篇攻略：门票12元"
+    },
+    "check-zero-price-181": {
+      "url": "https://www.dahepiao.com/lvyounews1/20250918530756.html",
+      "published_at": "2025-09",
+      "verification": "curator_inference",
+      "facts": "水下博物馆即广富林文化展示馆（携程游记：水下博物馆门票30元），与 id=144 同一馆，保留 id=144"
+    },
+    "check-zero-price-311": {
+      "url": "https://img1.xinmin.cn/xmwb/2021-01-18/180118.pdf",
+      "published_at": "2021-01",
+      "verification": "curator_inference",
+      "facts": "新民晚报2021年版面：门票10元，1.3米以下儿童与65岁以上老人免费（资料较旧）"
+    }
+  },
+  "places": [
+    {
+      "id": 0,
+      "name": "上海迪士尼度假区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 8.0,
+        "max_hours": 13.0,
+        "day_anchor": true,
+        "onsite_dining": true
+      },
+      "note": "原表 2.0–3.5 小时明显偏短，按模型估计调为 8.0–13.0 小时；大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 3,
+      "name": "上海海昌海洋公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 4.0–6.0 小时"
+    },
+    {
+      "id": 4,
+      "name": "豫园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–3.0 小时"
+    },
+    {
+      "id": 6,
+      "name": "黄浦江游览(十六铺码头)",
+      "sources": [
+        "check-6"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：官方旅游名录分别列十六铺、东方明珠和金陵东路三个码头，登船位置与产品可不同，不能仅同属黄浦江就禁用；同日是否体验重复由路线/产品语义另审；Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留；另一依据：https://www.meet-in-shanghai.net/cn/huangpu-river-tour/"
+    },
+    {
+      "id": 8,
+      "name": "上海天文馆",
+      "sources": [
+        "check-zero-price-8"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Claude）：澎湃新闻开馆报道：成人参观票30元，球幕电影另收40元；须网上预约分时段入馆，周一闭馆"
+    },
+    {
+      "id": 9,
+      "name": "上海博物馆",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–3.0 小时"
+    },
+    {
+      "id": 16,
+      "name": "上海动物园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 19,
+      "name": "上海欢乐谷",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "day_anchor": true,
+        "onsite_dining": true,
+        "min_hours": 5.0,
+        "max_hours": 7.0
+      },
+      "note": "大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 22,
+      "name": "上海自然博物馆",
+      "sources": [
+        "check-zero-price-22"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Claude）：携程攻略：成人30元、学生12元，70岁以上与6岁以下免费；须经\"上海科技馆自然博物馆天文馆门票\"小程序预约，周一闭馆"
+    },
+    {
+      "id": 28,
+      "name": "上海影视乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 31,
+      "name": "外滩观光隧道",
+      "sources": [
+        "check-31"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.6667
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–40分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.6667小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 40,
+      "name": "静安寺",
+      "sources": [
+        "check-40"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 60,
+      "name": "申城观光双层巴士",
+      "sources": [
+        "check-60"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 61,
+      "name": "安徒生童话乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 62,
+      "name": "武康大楼",
+      "sources": [
+        "check-62"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 66,
+      "name": "上海辰山植物园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 68,
+      "name": "上海共青森林公园",
+      "sources": [
+        "check-zero-price-68"
+      ],
+      "changes": {
+        "price": 15
+      },
+      "note": "2026-10-21 AI核对（Claude）：票务网站2020–2021年资料：成人票15元，65岁以上免费（资料较旧，可能已调整）"
+    },
+    {
+      "id": 78,
+      "name": "上海宋庆龄故居纪念馆",
+      "sources": [
+        "check-zero-price-78"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Claude）：澎湃号文章：成人票20元，学生、60–70岁老人10元；周一闭馆（资料较旧）"
+    },
+    {
+      "id": 84,
+      "name": "碧海金沙",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–6.0 小时"
+    },
+    {
+      "id": 87,
+      "name": "深坑秘境乐园-上海世茂精灵之城主题乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 8.0
+      },
+      "note": "原表 2.0–2.5 小时明显偏短，按模型估计调为 4.0–8.0 小时"
+    },
+    {
+      "id": 88,
+      "name": "东方明珠259米全透明悬空观光廊",
+      "sources": [
+        "check-88"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.75
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–45分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.75小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 92,
+      "name": "东滩湿地公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.5
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–3.5 小时"
+    },
+    {
+      "id": 97,
+      "name": "SKY RING 屋顶摩天轮",
+      "sources": [
+        "check-97"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 98,
+      "name": "小猪佩奇的玩趣世界",
+      "sources": [
+        "check-zero-price-98"
+      ],
+      "changes": {
+        "price": 80
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：成人票80元，亲子票225元起；第三方价格"
+    },
+    {
+      "id": 101,
+      "name": "马勒别墅",
+      "sources": [
+        "check-101"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 103,
+      "name": "陆家嘴中心绿地",
+      "sources": [
+        "check-103"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5 - 1.5小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 105,
+      "name": "351米太空舱",
+      "sources": [
+        "check-105"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 112,
+      "name": "和平饭店博物馆",
+      "sources": [
+        "check-112"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 114,
+      "name": "徐家汇天主教堂",
+      "sources": [
+        "check-114"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 135,
+      "name": "飞越上海(第一百货店)",
+      "sources": [
+        "check-135"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 150,
+      "name": "世纪大道樱桃园",
+      "sources": [
+        "check-150"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 157,
+      "name": "北外滩国客中心",
+      "sources": [
+        "check-157"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 161,
+      "name": "古猗园",
+      "sources": [
+        "check-zero-price-161"
+      ],
+      "changes": {
+        "price": 12
+      },
+      "note": "2026-10-21 AI核对（Claude）：携程景点列表与多篇攻略：门票12元"
+    },
+    {
+      "id": 166,
+      "name": "上海野生动物园-车入区",
+      "sources": [
+        "check-166"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：车入区普通大巴包含于上海野生动物园门票，不是独立免费景点；为避免与id=5整园重复预算/排程，暂停子项独立推荐，不把190元整园票重复算给子项"
+    },
+    {
+      "id": 181,
+      "name": "广富林水下博物馆",
+      "sources": [
+        "check-zero-price-181"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Claude）：水下博物馆即广富林文化展示馆（携程游记：水下博物馆门票30元），与 id=144 同一馆，保留 id=144"
+    },
+    {
+      "id": 182,
+      "name": "张爱玲故居",
+      "sources": [
+        "check-182"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 202,
+      "name": "沙美大楼",
+      "sources": [
+        "check-202"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议10–30 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 205,
+      "name": "纸片楼",
+      "sources": [
+        "check-205"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 212,
+      "name": "老上海1930风情街",
+      "sources": [
+        "check-212"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 214,
+      "name": "孙中山故居纪念馆",
+      "sources": [
+        "check-214"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 218,
+      "name": "上海宝山寺",
+      "sources": [
+        "check-218"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 224,
+      "name": "乍浦路桥",
+      "sources": [
+        "check-224"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 240,
+      "name": "北外滩国客中心沙滩嘉年华",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    },
+    {
+      "id": 248,
+      "name": "浦东开发陈列馆",
+      "sources": [
+        "check-248"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 261,
+      "name": "青西郊野公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 267,
+      "name": "梦幻世界(上海迪士尼乐园店)",
+      "sources": [
+        "check-267"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：官网将梦幻世界列为乐园内体验所在主题区；策展判断：随id=0迪士尼整园游览，不单独推荐为0元独立景点，也不重复计整园门票"
+    },
+    {
+      "id": 271,
+      "name": "上海淞沪抗战纪念公园",
+      "sources": [
+        "check-271"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 278,
+      "name": "川沙公园",
+      "sources": [
+        "check-278"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 284,
+      "name": "沉香阁",
+      "sources": [
+        "check-284"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 290,
+      "name": "大韩民国临时政府旧址",
+      "sources": [
+        "check-290"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 300,
+      "name": "复兴公园",
+      "sources": [
+        "check-300"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 301,
+      "name": "九曲桥",
+      "sources": [
+        "check-301"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.6667
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com豫园九曲桥页建议20–40分钟，仅作项目参考；不把整个朱家角/豫园城隍庙街区数小时时长套给单桥"
+    },
+    {
+      "id": 309,
+      "name": "徐汇滨江绿地",
+      "sources": [
+        "check-309"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 311,
+      "name": "秋霞圃",
+      "sources": [
+        "check-zero-price-311"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Claude）：新民晚报2021年版面：门票10元，1.3米以下儿童与65岁以上老人免费（资料较旧）"
+    },
+    {
+      "id": 315,
+      "name": "中国银行",
+      "sources": [
+        "check-315"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 333,
+      "name": "毛泽东旧居",
+      "sources": [
+        "check-333"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 338,
+      "name": "圣三一堂",
+      "sources": [
+        "check-338"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 348,
+      "name": "松江梦幻水世界",
+      "sources": [
+        "check-348"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：携程标注暂停营业、恢复时间待定；暂退出推荐，可能季节性关闭，不推断永久停业或编造2026票价"
+    },
+    {
+      "id": 356,
+      "name": "朱家角大清邮局",
+      "sources": [
+        "check-356"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com朱家角大清邮局页建议0.5–1小时，作为馆内参观项目估计，未套用朱家角古镇整日游时长"
+    }
+  ]
+}

@@ -292,3 +292,38 @@ def test_unverified_draft_never_relaxes_route_hard_or_meals():
     assert delivery_status(result, allow_unverified_draft=True)["status"] == "data_unavailable"
     result["itinerary"].days[0].items = []
     assert delivery_status(result, allow_unverified_draft=True)["status"] == "needs_changes"
+
+
+def test_prepare_gives_host_ai_the_same_candidate_facts_as_internal_selection(service):
+    """宿主 AI 拿到的候选资料与网站内部选点提示词逐字等价：用 MCP 返回的结构化字段按内部格式重拼，必须得到同一段文本。"""
+    from app.nodes.select import _candidate_line, candidate_lines, target_count
+    from app.poi_catalog import use_catalog
+    from app.prompts import SELECT_RULES, select_system
+    p = prepared(service)
+    job = service.jobs[p["job_id"]]
+    with use_catalog(job.catalog):
+        internal = candidate_lines(job.candidates)
+    by_id = {c["poi_id"]: c for c in p["candidates"]}
+    rebuilt = []
+    for area in p["areas"]:
+        rebuilt.append(f"【片区：{area['label']}｜相邻片区：{'、'.join(area['adjacent']) or '无'}｜距起点最近约 {area['nearest_km']} km】")
+        rebuilt.extend(_candidate_line({**by_id[i], "id": i}) for i in area["candidate_ids"])
+    assert "\n".join(rebuilt) == internal
+    assert sorted(i for area in p["areas"] for i in area["candidate_ids"]) == sorted(by_id)
+    assert {"type", "stamina", "audience", "max_hours", "evening_only", "onsite_dining", "seasonal_note"} <= set(p["candidates"][0])
+    assert p["suggested_count"] == target_count(UserProfile.model_validate(p["profile"]), len(p["candidates"]))
+    assert p["selection_guide"].startswith(SELECT_RULES) and SELECT_RULES in select_system()
+    # 原有字段保持不变，旧的宿主调用不受影响
+    assert {"poi_id", "score", "open_min", "close_min", "min_hours", "facts_are_historical"} <= set(p["candidates"][0])
+
+
+def test_prepare_explains_sources_and_issues_without_calling_a_model(service):
+    # 宿主 AI 给的画像逐项标明来源；上下文里常住杭州就推断为本地人；预算偏紧给一键修改（2026-10-28 用户决定）
+    tight = {**PROFILE, "days": 4, "budget": 300, "transport": "taxi"}
+    p = service.prepare(OWNER, tight, "explain-0000", context={"home_city": "杭州"})
+    fields = {field["key"]: field for field in p["understanding"]["fields"]}
+    assert fields["days"]["source"] == "said" and fields["familiarity"]["source"] == "inferred"
+    issue = next(item for item in p["understanding"]["issues"] if item["code"] == "budget_tight")
+    assert {"transport": "transit"} in [fix["patch"] for fix in issue["fixes"]]
+    missing = service.prepare(OWNER, {}, "explain-0001")
+    assert missing["status"] == "needs_input" and missing["understanding"]["fields"]

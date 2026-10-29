@@ -25,7 +25,8 @@ def test_refine_runs_once_after_repair_only_when_enabled():
 def test_refine_fills_idle_day_without_new_hard_violations():
     from refine_eval import run
     from route_quality import cases
-    case = next(case for case in cases() if case["id"] == "west-lake-walk-normal")
+    # 2026-10-28 选餐计入车费后 west-lake-walk-normal 的精修改为调整顺序（综合分仍升 1 分），补点用例换成同组的 intense
+    case = next(case for case in cases() if case["id"] == "west-lake-walk-intense")
     row = run(case)
     assert row["after"]["overall"] >= row["before"]["overall"] + 1
     assert row["after"]["hard"] <= row["before"]["hard"] and row["after"]["missing_meals"] <= row["before"]["missing_meals"]

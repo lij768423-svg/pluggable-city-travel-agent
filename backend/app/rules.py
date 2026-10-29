@@ -71,3 +71,12 @@ def day_window_text(pace: str) -> str:
     c = PACE[pace]
     text = f"每天活动时间约 {hm(c['start'])}–{hm(c['end'])}（含往返酒店），午餐 {hm(LUNCH[0])}–{hm(LUNCH[1])} 之间开始"
     return text + f"，晚餐 {hm(DINNER[0])}–{hm(min(DINNER[1], c['end'] - MEAL_MIN - 20))} 之间开始"
+
+
+def transport_dominates(transport: float, others: float) -> bool:
+    """交通费占合计一半以上：这时压低餐标、换便宜景点都补不回来。"""
+    return transport > 0 and transport >= others
+
+# 规划前预检“预算偏紧”的门槛：系统行程人均每天花费（门票+餐饮+市内交通）的第 10 百分位，元。
+# 来源：e1-dev12-v3-r1…r3 的 B、D 行程（杭州），打车 60 份、公交 12 份，2026-10-28 统计；其他城市暂按同一门槛。
+TYPICAL_DAILY_SPEND_P10 = {"taxi": 150, "transit": 120}

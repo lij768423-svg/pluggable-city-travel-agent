@@ -17,7 +17,7 @@ CHINA = timezone(timedelta(hours=8))
 PUBLIC_BLOCKED = ("/stay-audit", "/api/stay-audit")   # 研究用核对页，只在内网使用
 # 外部数据接口的限频：(次数, 秒)，按客户端 IP 计
 RATE_LIMITS = {"places": (60, 600), "navigation": (60, 600), "details": (120, 600), "media": (240, 600),
-               "amap": (1500, 600), "swap": (30, 600)}
+               "amap": (1500, 600), "swap": (30, 600), "understand": (30, 600)}
 _hits: dict[str, list[float]] = {}
 _lock = threading.Lock()
 
@@ -39,11 +39,17 @@ def unlimited(user: dict | None) -> bool:
     return bool(user) and user.get("username") in config.UNLIMITED_USERS
 
 
-def guard_plan(request: Request) -> None:
-    """生成行程前调用：未登录（开启时）返回 401；当天次数用完返回 429。计数在开始规划时扣除。"""
+def require_login(request: Request) -> dict | None:
+    """开启登录要求时未登录返回 401；不扣次数。规划前的需求理解也要调一次模型，不能给未登录的访客白用。"""
     user = accounts.current_user(request)
     if config.REQUIRE_LOGIN_TO_PLAN and user is None:
         raise HTTPException(401, "请先登录，再生成行程。")
+    return user
+
+
+def guard_plan(request: Request) -> None:
+    """生成行程前调用：未登录（开启时）返回 401；当天次数用完返回 429。计数在开始规划时扣除。"""
+    user = require_login(request)
     if unlimited(user):
         return
     limits = {}

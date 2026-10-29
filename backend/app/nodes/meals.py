@@ -9,14 +9,17 @@
 from __future__ import annotations
 
 import re
+from ..walk_ends import choose_direction, walk_center
 from ..areas import area_fill_conflicts, area_index
+from ..bundles import bundle_notice
 from ..data import load_pois, load_restaurants
 from ..geo import haversine_km, travel  # 仅用于餐厅候选的粗筛与排序（快）；定稿路段用 Travel
 from ..rules import DINNER, LUNCH, MEAL_MIN, PACE, activity_window, required_meals
 from ..schemas import DayPlan, Item, Itinerary, MealAlternative, ReservedMeal, Restaurant, Selection, UserProfile
 from ..calendar import closed_on, date_notices, trip_date
 from ..meal_ranking import rank_restaurants
-from ..restaurants import dietary_status, meal_start
+from ..restaurants import meal_start, spice_conflict
+from ..travel import depart_at
 from ..experiences import experience_count, experience_key, walk_boundary
 from ..poi_semantics import safe_reason, experience_notices, visit_open_min
 from .schedule import fit_service_min, service_min
@@ -38,9 +41,26 @@ def per_meal_budget(p: UserProfile, factor: float = 1.0) -> float:
     return min(p.meal_budget_max or default, max(0, p.budget / count)) * factor
 
 
+DRINK_BRANDS = (r"茶百道|喜茶|奈雪|蜜雪冰城|古茗|霸王茶姬|沪上阿姨|书亦烧仙草|一点点|茶颜悦色|益禾堂|甜啦啦|七分甜|柠季|"
+                r"爷爷不泡茶|茉莉奶白|CoCo|COCO|coco都可|乐乐茶|瑞幸|星巴克|库迪|Manner|M Stand|Tims|"
+                r"(?i:coffee|café|cafe)|咖[·・]|[·・]咖")  # 加载时已按“咖啡”过滤，英文和“茶·咖”这类写法漏网
+
+
+NOT_MEAL_CUISINES = {"购物相关场所", "冷饮店", "糕饼店", "甜品店", "咖啡厅", "茶艺馆"}
+SHOP_NAMES = r"菓|水果|鲜果|果切|零食|超市|便利店|烘焙|蛋糕|伴手礼"
+
+
 def meal_suitability(restaurant: Restaurant, profile: UserProfile) -> int | None:
     name = restaurant.name
     if re.search(r"酒场|酒馆|酒吧|居酒屋|清吧|夜店|酒肆", name):
+        return None
+    # 茶饮、咖啡连锁不当正餐；高德把它们归在“休闲餐饮场所”，名称也不带“奶茶”，加载时的关键词过滤拦不住（2026-10-28 茶百道两次被排成午饭）
+    if re.search(DRINK_BRANDS, name):
+        return None
+    # 商店、零食水果店不当正餐（2026-10-28 “安之秀菓”被高德归在“购物相关场所”，两次被排成晚饭）
+    if restaurant.cuisine in NOT_MEAL_CUISINES or re.search(SHOP_NAMES, name):
+        return None
+    if restaurant.cuisine == "休闲餐饮场所" and not re.search(r"面|饭|粥|馄饨|饺子|米线|米粉|包子|小笼|煲", name + restaurant.dishes):
         return None
     if not restaurant.cuisine.strip() or restaurant.price <= 0:
         return None
@@ -57,11 +77,7 @@ def meal_suitability(restaurant: Restaurant, profile: UserProfile) -> int | None
 
 def menu_suggestions(restaurant: Restaurant, profile: UserProfile) -> list[str]:
     dishes = [dish.strip() for dish in re.split(r"[,，、]", restaurant.dishes) if dish.strip()]
-    excluded = []
-    if "不吃辣" in profile.dietary:
-        excluded.extend(["辣", "椒", "麻婆", "水煮", "剁椒"])
-    if "不吃海鲜" in profile.dietary:
-        excluded.extend(["虾", "蟹", "贝", "蛤", "蚝", "海", "鲍", "鱿", "鳗", "鱼", "螺"])
+    excluded = ["辣", "椒", "麻婆", "水煮", "剁椒"] if profile.spice == "no" else []
     return [dish for dish in dishes if not any(word in dish for word in excluded)][:3]
 
 
@@ -69,6 +85,20 @@ def pick_restaurant(pos: tuple[float, float], nxt: tuple[float, float] | None, s
                     used: set[int], cap: float, latest_start: int = 24 * 60) -> tuple[Restaurant, int] | None:
     options = rank_restaurants(pos, nxt, start, p, used, cap, latest_start, load_restaurants())
     return (options[0]["restaurant"], options[0]["go"]) if options else None
+
+
+class TrialLegs:
+    """补点试探时的校验路程：按行程项记下的出发时刻查（与排时间线同一档），其余与旧口径相同——
+    不切换当天设置、不逐段取路段证据，live=False 时只读缓存。"""
+
+    def __init__(self, route, live: bool):
+        self.route, self.live = route, live
+
+    def departing(self, minute: int | None):
+        return depart_at(self.route, minute)
+
+    def leg(self, lat1: float, lon1: float, lat2: float, lon2: float) -> tuple[int, str, float]:
+        return self.route.leg(lat1, lon1, lat2, lon2, live=self.live)
 
 
 def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[Selection],
@@ -80,9 +110,13 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
 
     pins：{(第几天, "lunch"/"dinner"): 餐厅 id}，把这一餐固定为指定餐厅（局部重规划用，见 app/replan.py）；
     user_meals：其中由用户亲自选定的餐次，推荐理由会写明"你选定的餐厅"。未出现在 pins 里的餐次照常排序挑选。
+    每段路按实际出发时刻（depart，分钟）查公交，并记进 Item.travel_depart / DayPlan.return_depart，定稿与校验按同一时刻重查。
     """
-    def leg(a: tuple[float, float], b: tuple[float, float]) -> tuple[int, str, float]:
-        return route.leg(a[0], a[1], b[0], b[1], live=live) if route is not None else travel(a[0], a[1], b[0], b[1])
+    def leg(a: tuple[float, float], b: tuple[float, float], depart: int) -> tuple[int, str, float]:
+        if route is None:
+            return travel(a[0], a[1], b[0], b[1])
+        with depart_at(route, depart):
+            return route.leg(a[0], a[1], b[0], b[1], live=live)
 
     pois = load_pois()
     reason = {s.poi_id: s.reason for s in selected}
@@ -119,7 +153,7 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
             if not options:
                 message = f"{'午' if kind == 'lunch' else '晚'}餐尚无符合饮食、预算与路线的候选，餐厅需自行确认"
                 reserve_start = max(t, window[0])
-                if reserve_start + MEAL_MIN + leg(pos, hotel)[0] <= c["end"]:
+                if reserve_start + MEAL_MIN + leg(pos, hotel, reserve_start + MEAL_MIN)[0] <= c["end"]:
                     reserved.append(ReservedMeal(meal=kind, start=reserve_start, end=reserve_start + MEAL_MIN, reason=message))
                     t = reserve_start + MEAL_MIN
                 else:
@@ -131,7 +165,8 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                 return
             chosen = options[0]
             r = chosen["restaurant"]
-            mins, mode, cost = leg(pos, (r.lat, r.lon))
+            depart = max(t, window[0])  # 与 rank_restaurants 同一出发时刻：等到饭点再出发
+            mins, mode, cost = leg(pos, (r.lat, r.lon), depart)
             go = mins
             transport += cost
             start = chosen["start"]
@@ -141,7 +176,7 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                 chosen["notices"].append("景区周边用餐，具体出口与步行接驳需确认")
             items.append(Item(kind="meal", ref_id=r.id, name=r.name, start=start, end=start + MEAL_MIN,
                               meal_detour_min=chosen["detour"], meal_context="park_exit" if near_park else "restaurant",
-                              travel_min=mins, travel_mode=mode, cost=r.price, meal=kind,
+                              travel_min=mins, travel_mode=mode, travel_depart=depart, cost=r.price, meal=kind,
                               alternatives=[MealAlternative(ref_id=option["restaurant"].id, name=option["restaurant"].name,
                                   cuisine=option["restaurant"].cuisine, price=option["restaurant"].price, rating=option["restaurant"].rating,
                                   address=option["restaurant"].address, detour_min=option["detour"], travel_source=option["source"],
@@ -162,16 +197,17 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                        window: tuple[int, int], latest: int) -> None:
             """固定餐厅：时间按同样规则推算（到店后等开门），备选仍按常规排序给出。"""
             nonlocal t, pos, transport, lunch, dinner
-            mins, mode, cost = leg(pos, (r.lat, r.lon))
-            arrival = meal_start(r, max(t, window[0]) + mins)
+            depart = max(t, window[0])
+            mins, mode, cost = leg(pos, (r.lat, r.lon), depart)
+            arrival = meal_start(r, depart + mins)
             notices = []
             if arrival is None:
-                arrival = max(t, window[0]) + mins
+                arrival = depart + mins
                 notices.append("按已知营业时间，这个时段可能未营业，出发前请确认")
-            if p.dietary and dietary_status(r, p) != "confirmed":
-                notices.append("这家餐厅与饮食要求的匹配尚未确认，请向商家确认")
+            if spice_conflict(r, p):
+                notices.append("这家以辣味菜为主，与“不吃辣”不符，点菜时请留意")
             following = nxt or hotel
-            detour = max(0, mins + leg((r.lat, r.lon), following)[0] - leg(pos, following)[0])
+            detour = max(0, mins + leg((r.lat, r.lon), following, arrival + MEAL_MIN)[0] - leg(pos, following, depart)[0])
             near_park = bool(items and items[-1].kind == "poi" and pois[items[-1].ref_id].onsite_dining
                              and haversine_km(*pos, r.lat, r.lon) <= 2)
             if near_park:
@@ -190,7 +226,7 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
             transport += cost
             items.append(Item(kind="meal", ref_id=r.id, name=r.name, start=arrival, end=arrival + MEAL_MIN,
                               meal_detour_min=detour, meal_context="park_exit" if near_park else "restaurant",
-                              travel_min=mins, travel_mode=mode, cost=r.price, meal=kind, alternatives=alternatives,
+                              travel_min=mins, travel_mode=mode, travel_depart=depart, cost=r.price, meal=kind, alternatives=alternatives,
                               notices=notices,
                               reason=f"{r.cuisine} · {'你选定的餐厅 · ' if chosen_by_user else ''}从上一站约 {mins} 分钟 · "
                               f"额外绕路约 {detour} 分钟 · 参考人均 ¥{r.price:.0f}；"
@@ -207,9 +243,13 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
             if closed_on(poi, p, d):
                 notes.append(f"{poi.name}在所选日期按已知规则不开放，未安排")
                 continue
-            loc = (poi.lat, poi.lon)
+            loc, leave, walk_note = (poi.lat, poi.lon), None, None
+            if (direction := choose_direction(poi, pos if (items or p.origin_known) else None,
+                                              walk_center(pois[order[visit_index + 1]]) if visit_index + 1 < len(order)
+                                              else hotel if p.origin_known else None)):
+                loc, leave, walk_note = direction  # 长堤：从近的一头进，走完从另一头出
             svc = service_min(poi, p.pace)
-            go, mode, cost = leg(pos, loc)
+            go, mode, cost = leg(pos, loc, t)
             start = max(t + go, visit_open_min(poi))
             onsite_lunch = (poi.onsite_dining and not (pins and (d, "lunch") in pins)
                             and max(start, LUNCH[0]) <= LUNCH[1] and max(start, LUNCH[0]) + MEAL_MIN <= start + svc)
@@ -232,16 +272,20 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                 eat("lunch", loc, poi.close_min - svc)
             elif want_dinner and not dinner and not onsite_dinner and t >= DINNER[0] - 15:
                 eat("dinner", loc, poi.close_min - svc)
-            go, mode, cost = leg(pos, loc)
+            depart = t
+            go, mode, cost = leg(pos, loc, depart)
             start = max(t + go, visit_open_min(poi))
             transport += cost
             duration = fit_service_min(poi, p.pace, start, c["end"])
             duration_note = [f"临近活动时段结束，本次安排停留{duration}分钟，仍在现有建议时长范围内"] if duration < svc else []
             items.append(Item(kind="poi", ref_id=pid, name=poi.name, start=start, end=start + duration,
-                              travel_min=go, travel_mode=mode, cost=poi.price,
-                              notices=list(dict.fromkeys(date_notices(poi, p, d) + duration_note + experience_notices(poi, p, d, start, start + duration))),
+                              enter_point=loc if leave else None, leave_point=leave,
+                              travel_min=go, travel_mode=mode, travel_depart=depart, cost=poi.price,
+                              notices=list(dict.fromkeys(([bundle] if (bundle := bundle_notice(poi.id)) else []) + ([walk_note] if walk_note else [])
+                                                         + date_notices(poi, p, d) + duration_note
+                                                         + experience_notices(poi, p, d, start, start + duration))),
                               reason=safe_reason(poi.summary if poi.seasonal_note else scheduled_reason(reason.get(pid, ""), start, start + duration), poi, p, d, start, start + duration)))
-            t, pos = start + duration, loc
+            t, pos = start + duration, leave or loc
             if poi.onsite_dining:
                 for kind, bounds, needed in (("lunch", LUNCH, not lunch), ("dinner", DINNER, not dinner)):
                     meal_at = max(start, bounds[0])
@@ -259,15 +303,19 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                 eat("lunch", None)
             if want_dinner and not dinner and t <= DINNER[1]:
                 eat("dinner", None)
-        back, _, cost = leg(pos, hotel)
+        back, _, cost = leg(pos, hotel, t)
         transport += cost if order else 0
         zones = area_index(load_pois())
         for item in items:
             if item.kind == "poi":
                 item.area = zones.label(zones.area_of(item.ref_id))
-        days.append(DayPlan(day=d, date=trip_date(p, d), items=items, return_travel_min=back if order else 0, notes=notes, reserved_meals=reserved,
+        days.append(DayPlan(day=d, date=trip_date(p, d), items=items, return_travel_min=back if order else 0,
+                            return_depart=t if order else None, notes=notes, reserved_meals=reserved,
                             areas=[zones.label(zone) for zone in zones.areas_of(order)]))
     return Itinerary(days=days, transport_cost=round(transport, 1))
+
+
+PRE_DINNER_SLACK_MIN = 15  # 饭前等这么久不算空档
 
 
 def meals_node(state: dict) -> dict:
@@ -307,7 +355,7 @@ def meals_node(state: dict) -> dict:
         candidates.extend(nearby_reviewed[:8])
 
     def check(itinerary: Itinerary, live: bool):
-        fn = (lambda a, b, c, d: route.leg(a, b, c, d, live=live)) if route is not None else None
+        fn = TrialLegs(route, live).leg if route is not None else None
         return validate_itinerary(itinerary, profile, travel_fn=fn, restaurants=catalog.restaurants if catalog else None)
 
     def idle_minutes(itinerary: Itinerary) -> int:
@@ -321,6 +369,11 @@ def meals_node(state: dict) -> dict:
             total += max(0, target - visits[-1].end)
             total += sum(max(0, following.start - previous.end - following.travel_min - 60)
                          for previous, following in zip(day.items, day.items[1:]))
+            # 最后一站结束后干等到饭点才出发吃晚饭的时间也算（2026-10-28 岳王庙 16:45 结束、17:30 才出发）
+            total += sum(max(0, (following.travel_depart if following.travel_depart is not None else following.start - following.travel_min)
+                             - previous.end - PRE_DINNER_SLACK_MIN)
+                         for previous, following in zip(day.items, day.items[1:])
+                         if following.kind == "meal" and following.meal == "dinner" and previous.kind == "poi")
         return total
 
     zones = area_index(load_pois())

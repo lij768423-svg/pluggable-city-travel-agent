@@ -30,13 +30,8 @@ TYPE_RULES: dict[str, tuple[list[str], int, bool]] = {
     "大学校园": (["小众安静", "拍照出片"], 1, False),
 }
 
-# 饮食禁忌 → 需要排除的菜系
-DIET_EXCLUDE: dict[str, set[str]] = {
-    "不吃辣": {"川菜", "湘菜", "火锅"},
-    "只吃中餐": {"西餐", "日本料理", "韩国料理", "东南亚菜", "泰国菜", "意大利菜", "法国菜", "牛排"},
-    "清真": set(),
-    "不吃海鲜": {"海鲜"},
-}
+# 辣味菜系：不吃辣时排除，爱吃辣时优先
+SPICY_CUISINES: set[str] = {"川菜", "湘菜", "火锅"}
 NON_MEAL_CUISINES = {"咖啡店", "面包甜点", "酒吧/酒馆", "茶馆/茶室", ""}
 
 
@@ -49,7 +44,10 @@ def load_pois() -> dict[int, POI]:
 @lru_cache(maxsize=None)
 def base_digest(city: str = "hangzhou") -> str:
     """原库（Parquet＋审阅/语义叠加）的内容摘要；补充目录发布和任务目录版本都以它为基准。"""
-    normalized = {str(key): value.model_dump(mode="json") for key, value in sorted((load_base_pois() if city == "hangzhou" else load_base_pois(city)).items())}
+    # 知名度档位是推荐偏好、不是地点事实，不进原库摘要：否则每次更新档位都要重新发布补充目录，旧行程也无法再修改。
+    # 评测由 fair_compare 的设计文件记录 popularity.json 的摘要，保证回放可复现
+    normalized = {str(key): value.model_dump(mode="json", exclude={"popularity", "popularity_source"})
+                  for key, value in sorted((load_base_pois() if city == "hangzhou" else load_base_pois(city)).items())}
     return hashlib.sha256(json.dumps(normalized, sort_keys=True, ensure_ascii=False,
                                      allow_nan=False).encode()).hexdigest()
 
@@ -128,6 +126,16 @@ def load_base_pois(city: str = "hangzhou") -> dict[int, POI]:
         conditions = [ExperienceCondition.model_validate(condition) for condition in entry["conditions"]]
         out[poi.id] = poi.model_copy(update={"experience_conditions": conditions,
             "field_evidence": {**poi.field_evidence, "experience_conditions": FieldEvidence(basis="curator_inference", reference=f"{settings.asset_reference('poi_semantics.json')}:{semantics['version']}")}})
+    # 知名度档位（scripts/build_popularity.py 按城市生成，存在数据目录、不进 git）；没有文件的城市一律"一般"
+    popularity_path = settings.data_dir / "popularity.json"
+    if popularity_path.exists():
+        popularity = json.loads(popularity_path.read_text(encoding="utf-8"))
+        for key, entry in popularity["places"].items():
+            poi = out.get(int(key))
+            if poi is None or norm(entry["name"], city) != norm(poi.name, city):
+                raise ValueError(f"知名度身份不匹配：{key} {entry['name']}")
+            if entry["tier"] in {"landmark", "known"}:
+                out[poi.id] = poi.model_copy(update={"popularity": entry["tier"], "popularity_source": entry["source"]})
     from .poi_semantics import enrich_semantics
     out = {identifier: enrich_semantics(poi, city) for identifier, poi in out.items()}
     return out
@@ -170,7 +178,5 @@ def _load_restaurants(city: str) -> dict[int, Restaurant]:
 load_restaurants.cache_clear = _load_restaurants.cache_clear
 
 
-def diet_ok(cuisine: str, dietary: list[str]) -> bool:
-    if "清真" in dietary and cuisine not in {"新疆菜", "西北菜"}:
-        return False
-    return not any(cuisine in DIET_EXCLUDE.get(d, set()) for d in dietary)
+def spice_ok(cuisine: str, spice: str) -> bool:
+    return not (spice == "no" and cuisine in SPICY_CUISINES)

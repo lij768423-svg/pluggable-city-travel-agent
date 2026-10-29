@@ -15,7 +15,7 @@ def main() -> None:
     a = ap.parse_args()
     r = run_plan(a.query, select_mode="rule" if a.rule else "llm", enable_repair=not a.no_repair)
     p = r["profile"]
-    print(f"画像：{p.days}天 | {p.pace} | 兴趣 {p.interests} | 饮食 {p.dietary} | 预算 {p.budget:.0f} | {p.companions}")
+    print(f"画像：{p.days}天 | {p.pace} | 兴趣 {p.interests} | 口味 {p.spice} | 预算 {p.budget:.0f} | {p.companions}")
     for d in r["itinerary"].days:
         print(f"\n第 {d.day} 天")
         for i in d.items:

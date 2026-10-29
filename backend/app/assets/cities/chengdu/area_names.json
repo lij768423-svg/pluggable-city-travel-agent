@@ -1,0 +1,142 @@
+{
+  "version": "2026-10-21-codex-review-v1",
+  "scope": "自动聚类；2026-10-21 Codex 对照全部聚类成员审阅展示名，非用户逐项认可，非行政边界，不验证坐标或重做聚类。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "熊猫基地"
+    },
+    {
+      "anchor_id": 1,
+      "name": "都江堰景区"
+    },
+    {
+      "anchor_id": 2,
+      "name": "武侯祠·锦里"
+    },
+    {
+      "anchor_id": 3,
+      "name": "杜甫草堂"
+    },
+    {
+      "anchor_id": 4,
+      "name": "青城山"
+    },
+    {
+      "anchor_id": 5,
+      "name": "金沙遗址"
+    },
+    {
+      "anchor_id": 6,
+      "name": "天府广场"
+    },
+    {
+      "anchor_id": 8,
+      "name": "都江堰熊猫苑"
+    },
+    {
+      "anchor_id": 9,
+      "name": "文殊坊·宽窄巷子"
+    },
+    {
+      "anchor_id": 13,
+      "name": "东郊记忆"
+    },
+    {
+      "anchor_id": 16,
+      "name": "欢乐谷"
+    },
+    {
+      "anchor_id": 17,
+      "name": "极地海洋公园"
+    },
+    {
+      "anchor_id": 21,
+      "name": "九眼桥·望江楼"
+    },
+    {
+      "anchor_id": 24,
+      "name": "青城后山"
+    },
+    {
+      "anchor_id": 25,
+      "name": "成都植物园"
+    },
+    {
+      "anchor_id": 30,
+      "name": "环球中心"
+    },
+    {
+      "anchor_id": 32,
+      "name": "融创文旅城"
+    },
+    {
+      "anchor_id": 34,
+      "name": "黄龙溪"
+    },
+    {
+      "anchor_id": 35,
+      "name": "洛带古镇"
+    },
+    {
+      "anchor_id": 40,
+      "name": "安仁古镇"
+    },
+    {
+      "anchor_id": 47,
+      "name": "海滨城"
+    },
+    {
+      "anchor_id": 59,
+      "name": "国色天乡"
+    },
+    {
+      "anchor_id": 64,
+      "name": "东安湖"
+    },
+    {
+      "anchor_id": 78,
+      "name": "麓湖"
+    },
+    {
+      "anchor_id": 85,
+      "name": "猫咪博物馆"
+    },
+    {
+      "anchor_id": 86,
+      "name": "明蜀王陵"
+    },
+    {
+      "anchor_id": 101,
+      "name": "鹿尔花园"
+    },
+    {
+      "anchor_id": 112,
+      "name": "东湖公园"
+    },
+    {
+      "anchor_id": 140,
+      "name": "塔子山公园"
+    },
+    {
+      "anchor_id": 154,
+      "name": "凤凰山体育公园"
+    },
+    {
+      "anchor_id": 170,
+      "name": "西博城·天府公园"
+    },
+    {
+      "anchor_id": 172,
+      "name": "交子公园"
+    },
+    {
+      "anchor_id": 187,
+      "name": "锦城湖"
+    },
+    {
+      "anchor_id": 216,
+      "name": "三圣花乡"
+    }
+  ]
+}

@@ -58,14 +58,14 @@ async function approve() {
 </template>
 
 <style scoped>
-.mcp-connect { position: fixed; inset: 64px 0 0; z-index: 1300; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: #eef2fb; }
-.mcp-card { width: min(480px, 100%); box-sizing: border-box; background: #fff; padding: 32px; border-radius: 22px; box-shadow: 0 24px 64px -32px #1f3a7a66; }
-.mcp-eyebrow { color: #62759a; font-size: 13px; letter-spacing: .1em; }
-h1 { margin: 12px 0 20px; font-size: 28px; color: #1d2a4a; }
-p { margin: 12px 0; color: #4d5871; font-size: 15px; line-height: 1.8; }
+.mcp-connect { position: fixed; inset: 64px 0 0; z-index: 1300; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: #f2f3f0; }
+.mcp-card { width: min(480px, 100%); box-sizing: border-box; background: #fff; padding: 32px; border-radius: 6px; box-shadow: 0 24px 64px -32px #15161366; }
+.mcp-eyebrow { color: #747572; font-size: 13px; letter-spacing: .1em; }
+h1 { margin: 12px 0 20px; font-size: 28px; color: #2a2b28; }
+p { margin: 12px 0; color: #575855; font-size: 15px; line-height: 1.8; }
 .mcp-note { font-size: 13px; }
-button, a { display: block; width: 100%; box-sizing: border-box; margin-top: 20px; padding: 14px; border: 0; border-radius: 12px; background: #2f5bd3; color: #fff; text-align: center; font-size: 15px; text-decoration: none; cursor: pointer; }
+button, a { display: block; width: 100%; box-sizing: border-box; margin-top: 20px; padding: 14px; border: 0; border-radius: 6px; background: #151613; color: #fff; text-align: center; font-size: 15px; text-decoration: none; cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
-.mcp-switch { margin-top: 8px; background: #eef2fb; color: #2f5bd3; }
+.mcp-switch { margin-top: 8px; background: #f2f3f0; color: #151613; }
 .mcp-error { color: #b73931; }
 </style>

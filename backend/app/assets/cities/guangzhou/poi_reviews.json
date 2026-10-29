@@ -1,0 +1,807 @@
+{
+  "version": "2026-10-21-onboard-v1",
+  "reviewed_at": "2026-10-21",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。；待核清单经 Codex 上网核对（AI 核对，未做人工或现场核验）。；清单外条目经 Claude 上网补核（check-zero-price.csv，AI 核对，未做人工或现场核验）。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    },
+    "check-12": {
+      "url": "https://lyylj.gz.gov.cn/zmhd/cjwt/gyjq/content/post_10743839.html",
+      "published_at": "2026-03-25",
+      "verification": "observed",
+      "facts": "市林业园林局明确成人全票20元；官方窗口/公众号及唯一授权同程售票，不含另售海洋馆等项目"
+    },
+    "check-16": {
+      "url": "https://my.trip.com/travel-guide/attraction/guangzhou/guangzhou-sun-yat-sen-memorial-hall-76907",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-36": {
+      "url": "https://you.ctrip.com/sight/guangzhou152/5707848.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程现有闭园通知及暂停营业、恢复时间待定；暂退出推荐，不把旧夏季票价用于10月，不认定永久停业"
+    },
+    "check-57": {
+      "url": "https://hk.trip.com/travel-guide/attraction/guangzhou/haixin-bridge-128715622?curr=AUD&locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5 - 1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-64": {
+      "url": "https://touch.piao.qunar.com/touch/detail_462267.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "第三方明确列文塔/永庆坊二选一码头单程成人票65元；仅作未官方核实预算，不用58元起价；夜航、包船、往返另核"
+    },
+    "check-78": {
+      "url": "https://hk.trip.com/travel-guide/attraction/guangzhou/guangxiao-temple-76883?curr=AUD&locale=zh-HK&tagId=569",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-83": {
+      "url": "https://you.ctrip.com/sight/guangzhou152/1482241.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "对应滨江东路29号广州黄金海岸，携程当前暂停营业，恢复时间待定，暂不推荐；不得混用深圳或澳大利亚同名水园"
+    },
+    "check-91": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/guangzhou-library-15490564/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-93": {
+      "url": "https://www.trip.com/travel-guide/attraction/guangzhou/liede-bridge-15048711/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-114": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/five-rams-statue-92041/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-118": {
+      "url": "https://gzdaily.dayoo.com/h5/html5/2023-04/01/content_870_821202.htm",
+      "published_at": "2023-04-01",
+      "verification": "curator_inference",
+      "facts": "数据坐标对应麓湖旧馆；院方通讯员报道2023-04-01旧馆闭馆搬迁，当前官网仅艺苑路198号新馆；暂不推荐旧址条目，保留id=204新馆"
+    },
+    "check-124": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/peasant-movement-training-institute-76886/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-135": {
+      "url": "https://my.trip.com/travel-guide/attraction/guangzhou/liwan-museum-10640998?curr=MYR&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-136": {
+      "url": "https://tw.trip.com/travel-guide/attraction/guangzhou/sanyuanli-people-kangying-douzheng-memorial-hall-76876",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-139": {
+      "url": "https://tw.trip.com/travel-guide/attraction/guangzhou/pazhou-pagoda-15065473/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议5–10分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-140": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/guangdong-herbal-tea-museum-79438775/?curr=SGD&locale=zh-SG",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-152": {
+      "url": "https://www.trip.com/travel-guide/attraction/guangzhou/wong-tai-sin-temple-15055051?curr=CNY&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-171": {
+      "url": "https://www.trip.com/travel-guide/attraction/guangzhou/humen-pearl-river-bridge-81358/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-193": {
+      "url": "https://hk.trip.com/travel-guide/attraction/guangzhou/happy-ferris-wheel-56392699/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "官网将欢乐摩天轮列园内项目，并说明门票一票通玩；策展判断：随id=4长隆欢乐世界游览，不作为独立0元景点推荐，时长不再单独缩短以免重复规划；Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留；另一依据：https://www.chimelong.com/gz/chimelongparadise/"
+    },
+    "check-203": {
+      "url": "https://tw.trip.com/travel-guide/attraction/guangzhou/huaisheng-mosque-76890?curr=TWD&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-237": {
+      "url": "https://hk.trip.com/travel-guide/attraction/guangzhou/church-of-our-lady-of-lourdes-10521326",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-258": {
+      "url": "https://tw.trip.com/travel-guide/attraction/guangzhou/huashan-town-50233164?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-267": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/renwei-temple-80720/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-271": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/liugeng-ancestral-hall-15053304/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-275": {
+      "url": "https://my.trip.com/travel-guide/attraction/guangzhou/puzhou-garden-83767",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-295": {
+      "url": "https://www.trip.com/travel-guide/attraction/guangzhou/chigang-tower-15490449",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议10–15 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-306": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/the-north-tropic-of-cancer-sign-park-22883490/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-309": {
+      "url": "https://th.trip.com/travel-guide/attraction/guangzhou/memorial-hall-of-jantianyou-15053193",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-313": {
+      "url": "https://tw.trip.com/travel-guide/attraction/guangzhou/deng-shichang-museum-83760/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-331": {
+      "url": "https://sg.trip.com/travel-guide/attraction/guangzhou/xiaogang-park-13853749/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-334": {
+      "url": "https://hk.trip.com/travel-guide/attraction/guangzhou/zhoutouju-park-10539105/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-zero-price-18": {
+      "url": "https://news.ycwb.com/ikimvkcthk/content_54282294.htm",
+      "published_at": "2026-08",
+      "verification": "curator_inference",
+      "facts": "金羊网2026-08报道与攻略：进山大门票5元；索道、观光车、摩星岭另收费"
+    },
+    "check-zero-price-37": {
+      "url": "https://m.bendibao.com/show784700_3.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "攻略：广州博物馆（镇海楼）票价10元/人，团体8元，学生半价；每月固定日免费（检索摘要显示广州市政府定价景区目录亦列现行10元，但该文件已无法打开）"
+    },
+    "check-zero-price-46": {
+      "url": "https://news.ycwb.com/2024-07/02/content_52781909.htm",
+      "published_at": "2024-07",
+      "verification": "curator_inference",
+      "facts": "金羊网：观光巴士24小时一日票试运行特惠价40元，可换乘全部线路；粤陶巴含点心套餐另计108元起"
+    },
+    "check-zero-price-56": {
+      "url": "https://www.dahepiao.com/lvyounews1/20250506511974.html",
+      "published_at": "2025-05",
+      "verification": "curator_inference",
+      "facts": "大河票务网：中大码头成人船票38元起（2022年资料为78元起，价格波动大）；按起价"
+    },
+    "check-zero-price-72": {
+      "url": "https://www.dahepiao.com/lvyounews1/20240824484216.html",
+      "published_at": "2024-08",
+      "verification": "curator_inference",
+      "facts": "大河票务网：西堤码头主题船68–118元（广州红主题船1楼68元）；按最低档"
+    },
+    "check-zero-price-73": {
+      "url": "https://www.dahepiao.com/lvyounews1/20241012491541.html",
+      "published_at": "2024-10",
+      "verification": "curator_inference",
+      "facts": "大河票务网：9项项目票158元起（不含卡丁车），卡丁车另计"
+    },
+    "check-zero-price-97": {
+      "url": "https://www.maigoo.com/citiao/3421.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "买购网与攻略：上山25元、下山20元、往返40元；按往返计，白云山大门票另付（id=18）"
+    },
+    "check-zero-price-296": {
+      "url": "https://www.dahepiao.com/lvyounews1/20250814525829.html",
+      "published_at": "2025-08",
+      "verification": "curator_inference",
+      "facts": "大河票务网：单人票59元、双人69元、三人99元"
+    }
+  },
+  "places": [
+    {
+      "id": 0,
+      "name": "长隆野生动物世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "day_anchor": true,
+        "onsite_dining": true,
+        "min_hours": 5.0,
+        "max_hours": 7.0
+      },
+      "note": "大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 4,
+      "name": "长隆欢乐世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "day_anchor": true,
+        "onsite_dining": true,
+        "min_hours": 5.0,
+        "max_hours": 7.0
+      },
+      "note": "大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 12,
+      "name": "广州动物园",
+      "sources": [
+        "check-12"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Codex）：市林业园林局明确成人全票20元；官方窗口/公众号及唯一授权同程售票，不含另售海洋馆等项目"
+    },
+    {
+      "id": 16,
+      "name": "中山纪念堂",
+      "sources": [
+        "check-16"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 18,
+      "name": "白云山",
+      "sources": [
+        "check-zero-price-18"
+      ],
+      "changes": {
+        "price": 5
+      },
+      "note": "2026-10-21 AI核对（Claude）：金羊网2026-08报道与攻略：进山大门票5元；索道、观光车、摩星岭另收费"
+    },
+    {
+      "id": 20,
+      "name": "广州融创文旅城",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 8.0
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 4.0–8.0 小时"
+    },
+    {
+      "id": 30,
+      "name": "广州融创乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "day_anchor": true,
+        "onsite_dining": true,
+        "min_hours": 5.0,
+        "max_hours": 7.0
+      },
+      "note": "大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 31,
+      "name": "白水寨风景名胜区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 7.0
+      },
+      "note": "原表 1.0–1.5 小时明显偏短，按模型估计调为 4.0–7.0 小时"
+    },
+    {
+      "id": 36,
+      "name": "森林海嬉水乐园",
+      "sources": [
+        "check-36"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：携程现有闭园通知及暂停营业、恢复时间待定；暂退出推荐，不把旧夏季票价用于10月，不认定永久停业"
+    },
+    {
+      "id": 37,
+      "name": "广州博物馆",
+      "sources": [
+        "check-zero-price-37"
+      ],
+      "changes": {
+        "price": 10
+      },
+      "note": "2026-10-21 AI核对（Claude）：攻略：广州博物馆（镇海楼）票价10元/人，团体8元，学生半价；每月固定日免费（检索摘要显示广州市政府定价景区目录亦列现行10元，但该文件已无法打开）"
+    },
+    {
+      "id": 46,
+      "name": "广州都市双层观光巴士（粤陶巴）",
+      "sources": [
+        "check-zero-price-46"
+      ],
+      "changes": {
+        "price": 40
+      },
+      "note": "2026-10-21 AI核对（Claude）：金羊网：观光巴士24小时一日票试运行特惠价40元，可换乘全部线路；粤陶巴含点心套餐另计108元起"
+    },
+    {
+      "id": 56,
+      "name": "珠江夜游广州塔·中大码头",
+      "sources": [
+        "check-zero-price-56"
+      ],
+      "changes": {
+        "price": 38
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：中大码头成人船票38元起（2022年资料为78元起，价格波动大）；按起价"
+    },
+    {
+      "id": 57,
+      "name": "海心桥",
+      "sources": [
+        "check-57"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5 - 1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 64,
+      "name": "广州荔枝湾游船",
+      "sources": [
+        "check-64"
+      ],
+      "changes": {
+        "price": 65
+      },
+      "note": "2026-10-21 AI核对（Codex）：第三方明确列文塔/永庆坊二选一码头单程成人票65元；仅作未官方核实预算，不用58元起价；夜航、包船、往返另核"
+    },
+    {
+      "id": 72,
+      "name": "珠江夜游西堤码头",
+      "sources": [
+        "check-zero-price-72"
+      ],
+      "changes": {
+        "price": 68
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：西堤码头主题船68–118元（广州红主题船1楼68元）；按最低档"
+    },
+    {
+      "id": 73,
+      "name": "广州融创体育世界",
+      "sources": [
+        "check-zero-price-73"
+      ],
+      "changes": {
+        "price": 158
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：9项项目票158元起（不含卡丁车），卡丁车另计"
+    },
+    {
+      "id": 78,
+      "name": "光孝寺",
+      "sources": [
+        "check-78"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 81,
+      "name": "流溪河国家森林公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 83,
+      "name": "黄金海岸水上乐园",
+      "sources": [
+        "check-83"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：对应滨江东路29号广州黄金海岸，携程当前暂停营业，恢复时间待定，暂不推荐；不得混用深圳或澳大利亚同名水园"
+    },
+    {
+      "id": 91,
+      "name": "广州图书馆",
+      "sources": [
+        "check-91"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 93,
+      "name": "猎德大桥",
+      "sources": [
+        "check-93"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 97,
+      "name": "白云山索道",
+      "sources": [
+        "check-zero-price-97"
+      ],
+      "changes": {
+        "price": 40
+      },
+      "note": "2026-10-21 AI核对（Claude）：买购网与攻略：上山25元、下山20元、往返40元；按往返计，白云山大门票另付（id=18）"
+    },
+    {
+      "id": 114,
+      "name": "五羊石雕",
+      "sources": [
+        "check-114"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 118,
+      "name": "广州艺术博物院",
+      "sources": [
+        "check-118"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：数据坐标对应麓湖旧馆；院方通讯员报道2023-04-01旧馆闭馆搬迁，当前官网仅艺苑路198号新馆；暂不推荐旧址条目，保留id=204新馆"
+    },
+    {
+      "id": 124,
+      "name": "农民运动讲习所旧址",
+      "sources": [
+        "check-124"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 135,
+      "name": "荔湾博物馆",
+      "sources": [
+        "check-135"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 136,
+      "name": "三元里人民抗英斗争纪念馆",
+      "sources": [
+        "check-136"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 139,
+      "name": "琶洲塔",
+      "sources": [
+        "check-139"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议5–10分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 140,
+      "name": "广东省凉茶博物馆",
+      "sources": [
+        "check-140"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 152,
+      "name": "黄大仙祠",
+      "sources": [
+        "check-152"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 157,
+      "name": "天河路商圈",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–4.0 小时"
+    },
+    {
+      "id": 170,
+      "name": "帽峰山景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 171,
+      "name": "虎门大桥",
+      "sources": [
+        "check-171"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 193,
+      "name": "长隆欢乐世界-欢乐摩天轮",
+      "sources": [
+        "check-193"
+      ],
+      "changes": {
+        "recommendable": false,
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：官网将欢乐摩天轮列园内项目，并说明门票一票通玩；策展判断：随id=4长隆欢乐世界游览，不作为独立0元景点推荐，时长不再单独缩短以免重复规划；Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留；另一依据：https://www.chimelong.com/gz/chimelongparadise/"
+    },
+    {
+      "id": 203,
+      "name": "怀圣寺",
+      "sources": [
+        "check-203"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 237,
+      "name": "天主教广州教区露德圣母堂",
+      "sources": [
+        "check-237"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 - 2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 258,
+      "name": "花山小镇",
+      "sources": [
+        "check-258"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 267,
+      "name": "仁威祖庙",
+      "sources": [
+        "check-267"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 271,
+      "name": "留耕堂",
+      "sources": [
+        "check-271"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 275,
+      "name": "蒲洲花园",
+      "sources": [
+        "check-275"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 295,
+      "name": "赤岗塔",
+      "sources": [
+        "check-295"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议10–15 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 296,
+      "name": "广州融创大马戏-奇幻秘境",
+      "sources": [
+        "check-zero-price-296"
+      ],
+      "changes": {
+        "price": 59
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：单人票59元、双人69元、三人99元"
+    },
+    {
+      "id": 306,
+      "name": "北回归线公园",
+      "sources": [
+        "check-306"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 309,
+      "name": "詹天佑故居纪念馆",
+      "sources": [
+        "check-309"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 313,
+      "name": "邓世昌纪念馆",
+      "sources": [
+        "check-313"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 331,
+      "name": "晓港公园",
+      "sources": [
+        "check-331"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 334,
+      "name": "洲头咀公园",
+      "sources": [
+        "check-334"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    }
+  ]
+}

@@ -1,3 +1,6 @@
+import json
+
+import pytest
 from fastapi.testclient import TestClient
 
 import app.graph as graph
@@ -90,3 +93,47 @@ def test_online_meal_alternative_has_own_location_and_details(monkeypatch):
     returned = detail_response.json()["places"][0]
     assert returned["name"] == alternative.name and returned["address"] == alternative.address
     assert returned["rating"] == 4.7
+
+
+@pytest.mark.parametrize("payload, expected", [
+    ({}, True),                                               # 网页默认：跟随修复开启（2026-10-16 用户决定）
+    ({"enable_repair": False}, False),                        # 关修复时精修也随之关闭，与原行为一致
+    ({"enable_repair": True, "enable_refine": False}, False),  # 论文“本系统 B”：修复开、精修关
+    ({"enable_repair": False, "enable_refine": True}, True),   # 显式传值优先
+])
+@pytest.mark.parametrize("path", ["/api/plan", "/api/plan/stream"])
+def test_refine_switch_is_independent_of_repair(monkeypatch, mock_llm, payload, expected, path):
+    real = graph.run_plan
+    seen = {}
+
+    def spy(*args, **kwargs):
+        seen.update(kwargs)
+        return real(*args, llm=mock_llm, **kwargs)
+
+    monkeypatch.setattr("app.api.run_plan", spy)
+    r = client.post(path, json={"form": {"days": 1}, "select_mode": "rule", **payload})
+    assert r.status_code == 200, r.text
+    body = json.loads(r.text.splitlines()[-1])["plan"] if path.endswith("stream") else r.json()
+    assert seen["enable_refine"] is expected
+    assert body["meta"]["enable_refine"] is expected
+
+
+def test_plan_meta_records_model_call_timings(monkeypatch):
+    """每次模型调用的首字等待、总耗时与重试写进行程元数据，事后可从保存的行程里查。"""
+    from app.llm import MockLLM
+    from tests.conftest import mock_select
+
+    class TimedMock(MockLLM):
+        def complete(self, messages, *, tag="misc", temperature=0.2, max_tokens=4096):
+            self.usage.timings.append({"tag": tag, "outcome": "ok", "attempts": 1, "first_chunk_s": 0.5, "seconds": 1.5})
+            return super().complete(messages, tag=tag, temperature=temperature, max_tokens=max_tokens)
+
+    model = TimedMock({"select": mock_select})
+    model.usage.timings.append({"tag": "earlier-plan"})  # 之前的规划留下的记录不应混进本次
+    real = graph.run_plan
+    monkeypatch.setattr("app.api.run_plan", lambda *a, **k: real(*a, llm=model, **k))
+    r = client.post("/api/plan", json={"form": {"days": 1, "interests": ["人文历史"]}, "select_mode": "llm"})
+    assert r.status_code == 200, r.text
+    timing = r.json()["meta"]["llm_timing"]
+    assert timing and all(entry["tag"] != "earlier-plan" for entry in timing)
+    assert "select" in [entry["tag"] for entry in timing] and timing[0]["first_chunk_s"] == 0.5

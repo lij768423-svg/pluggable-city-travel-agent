@@ -32,7 +32,8 @@ def create_manifest() -> dict:
     digests = {str(path.relative_to(root)):hashlib.sha256(path.read_bytes()).hexdigest()
                for path in sorted(set(paths)) if path.is_file()}
     return {"created_at":datetime.now(timezone.utc).isoformat(),"python":platform.python_version(),
-            "head":subprocess.check_output(["git","rev-parse","HEAD"],cwd=root,text=True).strip(),
+            # 从压缩包解出的公开版不是 git 检出，提交号记 unknown，文件摘要照样能认出版本
+            "head":subprocess.run(["git","rev-parse","HEAD"],cwd=root,capture_output=True,text=True).stdout.strip() or "unknown",
             "working_tree_hash":hashlib.sha256(json.dumps(digests,sort_keys=True).encode()).hexdigest(),
             "dependencies":{name:importlib.metadata.version(name) for name in ("pydantic","ortools","langgraph","pandas")},
             "files":digests,"external_api_responses_included":False,

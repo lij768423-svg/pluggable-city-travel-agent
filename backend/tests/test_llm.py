@@ -68,3 +68,32 @@ def test_single_attempt_client_stops_on_rate_limit(monkeypatch):
         client.complete([{"role": "user", "content": "test"}])
     assert len(calls) == client.request_attempts == 1
     assert client.client.max_retries == 0
+
+
+def test_stream_flag_streams_without_subscriber(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.llm import OpenAICompatLLM
+
+    calls = []
+
+    class Stream:
+        def __enter__(self):
+            delta = SimpleNamespace(content="好", reasoning_content=None, model_extra={})
+            usage = SimpleNamespace(prompt_tokens=3, completion_tokens=1)
+            return iter([SimpleNamespace(model="m", usage=None, choices=[SimpleNamespace(delta=delta)]),
+                         SimpleNamespace(model="m", usage=usage, choices=[])])
+
+        def __exit__(self, *exc):
+            return False
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return Stream()
+
+    client = OpenAICompatLLM(api_key="test-placeholder", model="gpt-test", cache=False, stream=True)
+    monkeypatch.setattr(client.client.chat.completions, "create", create)
+    assert client.complete([{"role": "user", "content": "x"}]) == "好"
+    assert client.fork().complete([{"role": "user", "content": "x"}]) == "好"  # 并发用的分身也流式
+    assert [c.get("stream") for c in calls] == [True, True]
+    assert client.usage.completion_tokens == 1

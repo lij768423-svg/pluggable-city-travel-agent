@@ -18,6 +18,7 @@ from collections import Counter
 from datetime import datetime, timezone
 import json
 import math
+import os
 from pathlib import Path
 import re
 import sys
@@ -222,7 +223,7 @@ TEMPLATES = [  # 与南京 20 画像同一组条件（天数/交通/预算/节�
     ("12", "south", 2, "transit", 1000, "normal", "solo", ("自然风光", "户外徒步"), {}),
     ("13", "south", 1, "taxi", 600, "relaxed", "elderly", ("宗教寺庙",), {}),
     ("14", "north", 2, "transit", 1200, "normal", "couple", ("夜景夜游", "拍照出片"), {}),
-    ("15", "east", 1, "transit", 300, "intense", "solo", ("人文历史",), {"dietary": ["不吃辣"]}),
+    ("15", "east", 1, "transit", 300, "intense", "solo", ("人文历史",), {"spice": "no"}),
     ("16", "east", 2, "taxi", 2000, "normal", "friends", ("人文历史", "园林古镇"), {"must_visit": "heritage"}),
     ("17", "south", 2, "transit", 1500, "normal", "family_kids", ("主题乐园",), {}),
     ("18", "central", 2, "transit", 800, "normal", "solo", ("博物馆展览", "艺术文创"), {"start_date": "2026-10-26"}),
@@ -439,6 +440,10 @@ def stage_check(key: str) -> dict:
 
 def stage_eval(key: str) -> dict:
     from eval import city_batch20
+    # 规划入口只接受启用城市；评测时把待接入城市临时加进本进程的 TTA_CITIES（2026-10-21 北京评测全部 CityDisabled），不影响生产与测试实例
+    enabled = [item for item in os.environ.get("TTA_CITIES", "hangzhou").split(",") if item.strip()]
+    if key not in enabled:
+        os.environ["TTA_CITIES"] = ",".join([*enabled, key])
     root = config.BACKEND_DIR.parent / "data" / f"onboard-{key}-{now()[:10].replace('-', '')}" / "batch20"
     for mode in ("capture", "replay", "assess"):
         sys.argv = ["city_batch20.py", mode, "--root", str(root), "--city", key]

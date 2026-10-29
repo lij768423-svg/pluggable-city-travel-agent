@@ -25,10 +25,24 @@ def interest_tags(values) -> set[str]:
     return set(interest_list(values))
 
 AUDIENCES: list[str] = ["亲子", "老人", "情侣", "朋友", "独行"]
-DIETARY: list[str] = ["不吃辣", "只吃中餐", "清真", "不吃海鲜"]
+# 口味（辣度）：不吃辣会排除辣味菜系，爱吃辣只是优先推荐。2026-10-26 起替代原"饮食忌口"
+# （清真、只吃中餐、不吃海鲜已删除：数据核验不了，也少有人需要）
+SPICE_LEVELS: dict[str, str] = {"no": "不吃辣", "any": "微辣都行", "love": "爱吃辣"}
+Spice = Literal["no", "any", "love"]
+# 对这座城市的熟悉程度（2026-10-25 用户决定）：决定知名度加分的权重，第一次来最高、本地人最低
+FAMILIARITY_LEVELS: dict[str, str] = {"first": "第一次来", "visited": "来过", "local": "本地人"}
+Familiarity = Literal["first", "visited", "local"]
+# 景点知名度档位：城市地标 / 知名景点 / 未标注（数据见 data/<city>/popularity.json）
+POPULARITY_LABELS: dict[str, str] = {"landmark": "城市地标", "known": "知名景点", "": "一般"}
 
 Pace = Literal["relaxed", "normal", "intense"]
 Companions = Literal["solo", "couple", "friends", "family_kids", "elderly"]
+# 没说预算时每天人均多少元（门票、餐饮、市内交通）。2026-10-28 用户："一般来说本地大概在 300 人均"；
+# 系统行程每天花费中位数约 140（公交）–210（打车）元（e1-dev12-v3），300 留有余量。
+DEFAULT_DAILY_BUDGET = 300
+PACE_LABELS: dict[str, str] = {"relaxed": "轻松", "normal": "适中", "intense": "紧凑"}
+COMPANION_LABELS: dict[str, str] = {"solo": "独自", "couple": "情侣", "friends": "朋友", "family_kids": "带孩子", "elderly": "带老人"}
+TRANSPORT_LABELS: dict[str, str] = {"taxi": "打车", "transit": "公交地铁"}
 Transport = Literal["taxi", "transit"]  # 景点之间怎么走：打车 | 公交/地铁（≤1.5 km 一律步行）
 
 
@@ -155,14 +169,16 @@ class UserProfile(BaseModel):
     # 画像只校验城市存在，是否启用由新建规划、修改等入口检查，保证旧记录总能读出
     city: str = Field(default_factory=lambda: _context_city(), min_length=1, max_length=40)
     days: int = Field(2, ge=1, le=5)
-    budget: float = Field(1500, gt=0, description="人均总预算（元），含门票、餐饮、市内交通，不含住宿")
+    budget: float = Field(DEFAULT_DAILY_BUDGET * 2, gt=0, description="人均总预算（元），含门票、餐饮、市内交通，不含住宿；没说时按天数估")
     pace: Pace = "normal"
     interests: list[str] = Field(default_factory=list)
-    dietary: list[str] = Field(default_factory=list)
+    spice: Spice = "any"
+    familiarity: Familiarity = "first"  # 没说时按第一次来，页面显示可改
     preferred_regions: list[str] = Field(default_factory=list)
     companions: Companions = "solo"
     transport: Transport = "taxi"
     hotel: Hotel = Field(default_factory=Hotel)
+    origin_known: bool = Field(True, description="定了起点（酒店等）。False：没定，每天从第一站开始、最后一项结束，去第一站和回去的路程不计")
     must_visit: list[str] = Field(default_factory=list, description="点名要去的景点名称")
     avoid: list[str] = Field(default_factory=list, description="明确不去的景点名称")
     notes: str = ""
@@ -195,6 +211,29 @@ class UserProfile(BaseModel):
         from .cities import city_config
         city_config(value)
         return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_budget(cls, data):
+        # 没说预算时按天数估（每天人均 DEFAULT_DAILY_BUDGET 元），不再一律 1500
+        if isinstance(data, dict) and data.get("budget") in (None, ""):
+            try:
+                days = int(data.get("days") or 2)
+            except (TypeError, ValueError):
+                return data  # 天数格式不对交给字段校验报错
+            data = {**data, "budget": DEFAULT_DAILY_BUDGET * min(5, max(1, days))}
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def legacy_dietary(cls, data):
+        # 旧行程、旧脚本或外部 AI 仍可能传 dietary：含"不吃辣"即视为不吃辣，其余忌口不再支持，直接丢弃
+        if isinstance(data, dict) and "dietary" in data:
+            data = dict(data)
+            legacy = data.pop("dietary") or []
+            if "spice" not in data and "不吃辣" in legacy:
+                data["spice"] = "no"
+        return data
 
     @model_validator(mode="before")
     @classmethod
@@ -334,6 +373,8 @@ class POI(BaseModel):
     # 补充地点登记的别名；原库条目为空，名称匹配行为不变
     aliases: list[str] = Field(default_factory=list)
     catalog_source: Literal["chinatravel", "supplement"] = "chinatravel"
+    popularity: Literal["landmark", "known", ""] = ""  # 知名度档位，见 POPULARITY_LABELS
+    popularity_source: str = ""
 
 
 class Restaurant(BaseModel):
@@ -489,7 +530,10 @@ class Item(BaseModel):
     start: int
     end: int
     travel_min: int = 0  # 从上一地点（或酒店）出发的交通时间
+    enter_point: tuple[float, float] | None = None  # 长堤这类一头进、另一头出的游览：进入处（BD-09）；None 即地点坐标
+    leave_point: tuple[float, float] | None = None  # 离开处，下一段路从这里算
     travel_mode: str = ""
+    travel_depart: int | None = None  # 这段路按几点出发查的（分钟，排时间线时记下；定稿、校验、裁判都按它查公交）
     cost: float = 0.0  # 门票或人均餐费
     reason: str = ""
     meal: Literal["lunch", "dinner"] | None = None
@@ -516,6 +560,7 @@ class DayPlan(BaseModel):
     day: int
     items: list[Item] = Field(default_factory=list)
     return_travel_min: int = 0
+    return_depart: int | None = None  # 返程按几点出发查的（分钟）
     notes: list[str] = Field(default_factory=list)
     date: Date | None = None
     return_leg: LegEvidence | None = None
@@ -729,3 +774,38 @@ class CatalogSnapshot(BaseModel):
                 if key:
                     result.setdefault(key, set()).add(record.internal_id)
         return {key: tuple(sorted(ids)) for key, ids in result.items()}
+
+
+class TripContext(BaseModel):
+    """接入方（手机助手、导航 App、聊天 AI）知道的用户情况，都可不填；网页不传。开车暂不支持，所以不收“有没有车”。"""
+    model_config = ConfigDict(extra="forbid")
+    home_city: str | None = Field(None, max_length=40, description="常住城市（城市键或中文名）")
+    usual_transport: Transport | None = None
+
+
+class FieldView(BaseModel):
+    key: str
+    label: str
+    display: str
+    source: Literal["said", "form", "inferred", "default"]
+    note: str = ""
+
+
+class Fix(BaseModel):
+    label: str
+    patch: dict
+
+
+class Issue(BaseModel):
+    code: str
+    level: Literal["blocker", "warning", "info"]
+    message: str
+    fields: list[str] = Field(default_factory=list)
+    fixes: list[Fix] = Field(default_factory=list)
+
+
+class Understanding(BaseModel):
+    """规划前给用户确认的“我是这么理解的”：画像、每个字段的来源、需要留意的问题。"""
+    profile: UserProfile
+    fields: list[FieldView]
+    issues: list[Issue]

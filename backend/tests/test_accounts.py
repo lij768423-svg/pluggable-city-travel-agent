@@ -51,7 +51,7 @@ def test_dated_plan_delivery_and_history(account_store, logged_in, streamed):
         payload["history_id"] = client.post(f"/api/plans/{payload['plan_id']}/save").json()["history_id"]
     history = client.get(f"/api/history/{payload['history_id']}").json()
     assert history["plan"]["profile"]["start_date"] == "2026-10-20"
-    assert history["request"] == request | {"query": "", "enable_repair": True, "guide_mode": "off", "travel_source": None}
+    assert history["request"] == request | {"query": "", "enable_repair": True, "enable_refine": None, "guide_mode": "off", "travel_source": None}
 
 
 def test_registration_login_session_rotation_logout(account_store):

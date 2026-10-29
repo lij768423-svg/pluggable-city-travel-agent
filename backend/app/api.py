@@ -5,10 +5,9 @@ uv run uvicorn app.api:app --host 127.0.0.1 --port 18600
 from __future__ import annotations
 
 
-from functools import lru_cache
+import logging
 from typing import Any, Literal
 
-import pandas as pd
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -20,25 +19,36 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 from .cities import current_city
 from . import config
 from . import accounts
-from . import access, stay_audit
+from . import access, onboarding_status, stay_audit
 from .data import load_pois, load_restaurants, tag_source
 from .geo import bd09_to_gcj02, hm
 from .graph import run_plan
+from .understanding import understand
 from .places import PlaceSearchError, search_places
 from .navigation import NavigationRequest, NavigationBoundsError, get_navigation
 from .place_details import PlaceDetailsRequest, get_place_details
-from .schemas import AUDIENCES, DIETARY, INTERESTS, UserProfile, MealEditPreviewRequest, MealEditCommitRequest
+from .schemas import (AUDIENCES, COMPANION_LABELS, FAMILIARITY_LEVELS, INTERESTS, PACE_LABELS, SPICE_LEVELS, Hotel, TripContext, UserProfile,
+                      MealEditPreviewRequest, MealEditCommitRequest)
 from .sessions import SESSIONS, SessionNotFound, StaleRevision, PreviewNotFound
 from .mcp_login import router as mcp_login_router
 from .progress import stream_plan_events
-from .presentation import serialize_plan, city_entry
+from .presentation import serialize_plan, city_entry, hotel_presets
 from .cities import CityDisabled, city_config, enabled_cities, ensure_enabled, reference_city
 from .poi_catalog import current_catalog, published_catalog, result_catalog, use_catalog
+
+# uvicorn 只配置它自己的 logger；应用日志（模型调用耗时等）另挂一个输出到标准错误，由 systemd 收进用户日志
+_app_log = logging.getLogger("app")
+if not _app_log.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+    _app_log.addHandler(_handler)
+    _app_log.setLevel(logging.INFO)
 
 app = FastAPI(title=f"{current_city().name}个性化行程规划 Agent", version="0.1.0")
 app.include_router(accounts.router)
 app.include_router(mcp_login_router)
 app.include_router(stay_audit.router)
+app.include_router(onboarding_status.router)  # 只在设置 TTA_ONBOARDING_STATUS_ROOT 的测试实例开放
 
 
 @app.middleware("http")
@@ -62,28 +72,15 @@ def gcj(lat: float, lon: float) -> dict[str, float]:
     return {"lat": round(la, 6), "lon": round(lo, 6)}
 
 
-@lru_cache(maxsize=None)
-def hotel_presets(city: str = "hangzhou") -> list[dict[str, Any]]:
-    from .cities import city_config
-    settings = city_config(city)
-    path = settings.data_dir / "accommodations.parquet"
-    if not path.exists():  # 新城市可能没有住宿数据：没有预设，用户自行搜索起点
-        return []
-    df = pd.read_parquet(path)
-    out = []
-    for area in settings.hotel_areas:
-        hit = df[df.name.str.contains(area)]
-        if len(hit):
-            r = hit.iloc[0]
-            out.append({"area": area, "name": r["name"], "lat": float(r.lat), "lon": float(r.lon), **{"gcj": gcj(r.lat, r.lon)}})
-    return out
-
 
 class PlanRequest(BaseModel):
     query: str = ""
     form: dict[str, Any] = Field(default_factory=dict)
     select_mode: Literal["llm", "rule", "jev"] = "llm"
     enable_repair: bool = True
+    # 合理性精修（app/refine.py）。不传时跟随 enable_repair：网页规划默认开启精修是用户 2026-10-16 看过效果后的决定；
+    # 评测与论文配置必须显式传值（论文“本系统 B”为 False，B+ 为 True）。
+    enable_refine: bool | None = None
     guide_mode: Literal["off", "pilot"] = "off"
     travel_source: Literal["amap", "estimate"] | None = None  # 实验开关；默认有 Web服务 key 就用高德
 
@@ -129,13 +126,12 @@ def ensure_editable(result: dict) -> None:
 def meta(city: str | None = Query(None, max_length=40)) -> dict[str, Any]:
     city = enabled_city(city or ("hangzhou" if "hangzhou" in enabled_cities() else enabled_cities()[0]))
     return {"city": city, "cities": [city_entry(key) for key in enabled_cities()],
-            "interests": INTERESTS, "dietary": DIETARY, "audiences": AUDIENCES, "hotels": hotel_presets(city),
+            "interests": INTERESTS, "spice_levels": SPICE_LEVELS, "familiarity_levels": FAMILIARITY_LEVELS, "audiences": AUDIENCES, "hotels": hotel_presets(city),
             # Web端 key 本来就会出现在浏览器里；安全密钥不下发，由 /_AMapService 代理附加（A8）
             "map": {"provider": "amap" if config.AMAP_JS_KEY and config.AMAP_JS_SECURITY else "leaflet",
                     "amap_js_key": config.AMAP_JS_KEY or None},
             "access": {"login_to_plan": config.REQUIRE_LOGIN_TO_PLAN, "invite_required": bool(config.INVITE_CODES)},
-            "paces": {"relaxed": "轻松", "normal": "适中", "intense": "紧凑"},
-            "companions": {"solo": "独自", "couple": "情侣", "friends": "朋友", "family_kids": "带孩子", "elderly": "带老人"}}
+            "paces": PACE_LABELS, "companions": COMPANION_LABELS}
 
 
 @app.get("/api/guides/status")
@@ -164,13 +160,42 @@ async def places_search(request: Request, q: str = Query(min_length=2, max_lengt
         raise HTTPException(status_code=503, detail=str(error)) from None
 
 
+def refine_enabled(req: PlanRequest) -> bool:
+    return req.enable_repair if req.enable_refine is None else req.enable_refine
+
+
+class UnderstandRequest(BaseModel):
+    query: str = Field("", max_length=3000)  # 跟 AI 说模式把几轮的话按行合在一起传
+    form: dict[str, Any] = Field(default_factory=dict)
+    context: TripContext | None = None
+    places: list[Hotel] = Field(default_factory=list, max_length=10)  # 跟 AI 说：表上搜过选过的起点，带坐标
+
+
+@app.post("/api/plan/understand")
+def understand_request(req: UnderstandRequest, request: Request) -> dict[str, Any]:
+    """规划前的“我是这么理解的”：解析一句话、标明每项来源并预检；不扣每天的生成次数。"""
+    accounts.same_origin(request)
+    access.require_login(request)
+    access.rate_limit(request, "understand")
+    city = enabled_city(req.form.get("city") or "hangzhou")
+    try:
+        with use_catalog(published_catalog(city)):
+            result = understand(req.query, {**req.form, "city": city}, req.context,
+                                places=[place.model_dump() for place in req.places])
+    except ValidationError:
+        raise HTTPException(status_code=422, detail="出游条件格式不正确，请检查日期、活动时段、预算和起点。") from None
+    except Exception:
+        raise HTTPException(status_code=502, detail="暂时没能理解这段需求，请稍后重试，或改用详细填写。") from None
+    return result.model_dump(mode="json")
+
+
 @app.post("/api/plan")
 def plan(req: PlanRequest, request: Request, response: Response) -> dict[str, Any]:
     accounts.same_origin(request)
     access.guard_plan(request)
     owner = accounts.principal(request, response)
     try:
-        r = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=req.enable_repair,
+        r = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=refine_enabled(req),
                      travel_source=req.travel_source, guide_mode=req.guide_mode)
     except ValidationError:
         raise HTTPException(status_code=422, detail="出游条件格式不正确，请检查日期、活动时段、预算和起点。") from None
@@ -178,7 +203,7 @@ def plan(req: PlanRequest, request: Request, response: Response) -> dict[str, An
         raise HTTPException(status_code=409, detail=str(error)) from None
     except Exception:
         raise HTTPException(status_code=502, detail="规划暂未完成，请保留条件后重试；外部数据或模型可能暂不可用。") from None
-    request_meta = {"select_mode": req.select_mode, "enable_repair": req.enable_repair, "guide_mode": req.guide_mode, "input": req.model_dump()}
+    request_meta = {"select_mode": req.select_mode, "enable_repair": req.enable_repair, "enable_refine": refine_enabled(req), "guide_mode": req.guide_mode, "input": req.model_dump()}
     session = SESSIONS.create(r, request_meta, owner)
     return deliver_plan(r, session, 0)
 
@@ -190,9 +215,9 @@ async def plan_stream(req: PlanRequest, request: Request):
     cookie_response = Response()
     owner = accounts.principal(request, cookie_response)
     def generate(progress):
-        result = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=req.enable_repair,
+        result = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=refine_enabled(req),
                           travel_source=req.travel_source, guide_mode=req.guide_mode, progress=progress)
-        request_meta = {"select_mode": req.select_mode, "enable_repair": req.enable_repair, "guide_mode": req.guide_mode, "input": req.model_dump()}
+        request_meta = {"select_mode": req.select_mode, "enable_repair": req.enable_repair, "enable_refine": refine_enabled(req), "guide_mode": req.guide_mode, "input": req.model_dump()}
         session = SESSIONS.create(result, request_meta, owner)
         return deliver_plan(result, session, 0)
 

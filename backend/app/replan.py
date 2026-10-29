@@ -14,6 +14,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from .walk_ends import stop_points
 from .data import load_pois
 from .evening import add_evening_visits
 from .nodes.meals import build_itinerary
@@ -87,9 +88,9 @@ def swap_meal(result: dict[str, Any], day: int, item_index: int, restaurant_id: 
             place = pois.get(old_item.ref_id) if old_item.kind == "poi" else restaurants.get(old_item.ref_id)
             if place is None:
                 continue
-            destination = (place.lat, place.lon)
+            destination, leave = stop_points(old_item, place)
             old_transport += old_item.travel_evidence.cost if old_item.travel_evidence else route.leg(*position, *destination)[2]
-            position = destination
+            position = leave
         if plan_day.items:
             old_transport += plan_day.return_leg.cost if plan_day.return_leg else route.leg(*position, profile.hotel.lat, profile.hotel.lon)[2]
 
@@ -164,10 +165,10 @@ def swap_meal(result: dict[str, Any], day: int, item_index: int, restaurant_id: 
                 place = pois.get(stop.ref_id) if stop.kind == "poi" else catalog.restaurants.get(stop.ref_id)
                 if place is None:
                     continue
-                destination = (place.lat, place.lon)
+                destination, leave = stop_points(stop, place)
                 if stop.travel_evidence:
                     final_evidence[route.edge_key(*position, *destination)] = stop.travel_evidence
-                position = destination
+                position = leave
             if planned.return_leg:
                 final_evidence[route.edge_key(*position, profile.hotel.lat, profile.hotel.lon)] = planned.return_leg
     travel_stats = route.stats()

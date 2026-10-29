@@ -35,7 +35,7 @@ def cases() -> list[dict]:
             if name == "short-last-day":
                 profile["daily_windows"] = [{"day": 2, "start": 540, "end": 840}]
             if name == "food-and-budget":
-                profile.update(budget=500, dietary=["素食"] if pace == "relaxed" else ["不吃辣"])
+                profile.update(budget=500, spice="love" if pace == "relaxed" else "no")
             if name == "park-day":
                 profile["must_visit"] = ["宋城"]
             result.append({"id": f"{name}-{pace}", "profile": profile, "selected": selected})

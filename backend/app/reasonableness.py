@@ -8,6 +8,8 @@ docs/计划合理性指标.md，尚未用人工评价标定。
 停留分只有在传入独立参考（references）时才有判别力；coverage 字段如实报告覆盖情况。
 """
 from __future__ import annotations
+from .bundles import visit_hours
+from .walk_ends import stop_points
 from .schemas import interest_tags
 
 import itertools
@@ -108,7 +110,8 @@ def ramp(value: float, good: float, bad: float) -> float:
 
 def default_reference(place: POI) -> Reference:
     source = "dataset" if place.duration_source.startswith("ChinaTravel") else "project_review"
-    return place.min_hours * 60, place.max_hours * 60, source
+    low, high = visit_hours(place)
+    return low * 60, high * 60, source
 
 
 def must_named(place: POI, profile: UserProfile) -> bool:
@@ -166,7 +169,7 @@ def score_itinerary(itinerary: Itinerary, profile: UserProfile, pois: dict[int, 
                     flag("transport", f"单程乘车约 {item.travel_min} 分钟", day.day, item.name)
             place = pois.get(item.ref_id) if item.kind == "poi" else restaurants.get(item.ref_id)
             if place:
-                position = (place.lat, place.lon)
+                position = stop_points(item, place)[1]
         if day.return_travel_min and travel_fn(*position, *hotel)[1] not in {"步行", "原地"}:
             ride += day.return_travel_min
         ratio = ride / (ride + stay_minutes + meal_minutes) if ride + stay_minutes + meal_minutes else 0

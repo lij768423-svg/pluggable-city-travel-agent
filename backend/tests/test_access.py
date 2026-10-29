@@ -87,3 +87,16 @@ def test_everything_is_open_when_switches_are_off(account_store):  # noqa: F811
     assert client.post("/api/plan", json=PLAN).status_code == 200
     assert client.get("/api/auth/me").json()["quota"] is None
     assert client.get("/api/meta").json()["access"] == {"login_to_plan": False, "invite_required": False}
+
+
+def test_understanding_needs_login_but_not_a_daily_count(public):
+    # 规划前的“我是这么理解的”要调一次模型：未登录不给用；登录后不扣每天的生成次数
+    client = TestClient(api.app)
+    body = {"form": {"city": "hangzhou", "days": 4, "budget": 300, "transport": "taxi"}}
+    assert client.post("/api/plan/understand", json=body).status_code == 401
+    assert join(client).status_code == 200
+    reply = client.post("/api/plan/understand", json=body)
+    assert reply.status_code == 200
+    assert "budget_tight" in {issue["code"] for issue in reply.json()["issues"]}
+    assert reply.json()["profile"]["days"] == 4
+    assert client.get("/api/auth/me").json()["quota"]["used"] == 0

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .bundles import visit_hours
+from .walk_ends import stop_points
 from .cities import current_city
 from .areas import area_fill_conflicts, area_index
 from .calendar import closed_on, date_notices
@@ -10,6 +12,7 @@ from .geo import travel as estimated_travel
 from .rules import activity_window, interstop_ride_long
 from .poi_semantics import visit_open_min
 from .schemas import Item, Itinerary, UserProfile, ValidationReport
+from .travel import depart_at
 
 if TYPE_CHECKING:
     from .travel import Travel
@@ -56,7 +59,7 @@ def add_evening_visits(itinerary: Itinerary, profile: UserProfile, route: Travel
         place = pois.get(last.ref_id) if last.kind == "poi" else restaurants.get(last.ref_id)
         if place is None:
             continue
-        position = (place.lat, place.lon)
+        position = stop_points(last, place)[1]
         departure = max(last.end, *(slot.end for slot in day.reserved_meals), 0)
         seen = {item.ref_id for planned in itinerary.days for item in planned.items if item.kind == "poi"}
         candidates = [poi for identifier, name in current_city().evening_streets.items() if (poi := pois.get(identifier))
@@ -73,26 +76,33 @@ def add_evening_visits(itinerary: Itinerary, profile: UserProfile, route: Travel
                           if item.kind == "poi" and item.ref_id in pois), None)
         candidates.sort(key=lambda poi: (zones.area_of(poi.id) != last_zone,
                         estimated_travel(*position, poi.lat, poi.lon)[0]
-                        + estimated_travel(poi.lat, poi.lon, *hotel)[0]))
-        direct, _, old_return = route.leg(*position, *hotel) if route else estimated_travel(*position, *hotel)
+                        + (estimated_travel(poi.lat, poi.lon, *hotel)[0] if profile.origin_known else 0)))
+        def leg(a: tuple[float, float], b: tuple[float, float], depart: int) -> tuple[int, str, float]:
+            if route is None:
+                return estimated_travel(*a, *b)
+            with depart_at(route, depart):  # 按这一段的出发时刻查公交（与时间线、定稿同一规则）
+                return route.leg(*a, *b)
+
+        direct, _, old_return = leg(position, hotel, departure)
         for poi in candidates:
             destination = (poi.lat, poi.lon)
             coarse_minutes, coarse_mode, _ = estimated_travel(*position, *destination)
             if route is None and interstop_ride_long(coarse_minutes, coarse_mode):
                 continue
-            go, mode, fare = route.leg(*position, *destination) if route else estimated_travel(*position, *destination)
-            back, _, return_fare = route.leg(*destination, *hotel) if route else estimated_travel(*destination, *hotel)
+            go, mode, fare = leg(position, destination, departure)
+            start = max(departure + go, 18 * 60 + 30, visit_open_min(poi))
+            duration = max(60, round(visit_hours(poi)[0] * 60))
+            back, _, return_fare = leg(destination, hotel, start + duration)
             extra = max(0, go + back - direct)
             if zones.area_of(poi.id) != last_zone and extra > 15:
                 continue
-            start = max(departure + go, 18 * 60 + 30, visit_open_min(poi))
-            duration = max(60, round(poi.min_hours * 60))
             if interstop_ride_long(go, mode) or start + duration + back > window["end"] or start + duration > poi.close_min:
                 continue
             trial = itinerary.model_copy(deep=True)
             trial_day = trial.days[day_index]
+            trial_day.return_depart = start + duration
             trial_day.items.append(Item(kind="poi", ref_id=poi.id, name=poi.name, start=start, end=start + duration,
-                travel_min=go, travel_mode=mode, cost=poi.price, evening=True,
+                travel_min=go, travel_mode=mode, travel_depart=departure, cost=poi.price, evening=True,
                 reason="晚饭后沿街散步，按兴趣看看街景和店铺；在最晚返回时间内安排一小时夜游。",
                 notices=date_notices(poi, profile, day.day) + ["夜间开放采用现有地点记录，商铺营业和临时管制需现场确认；不包含收费演出、船班或灯光秀承诺"]))
             trial.transport_cost = round(trial.transport_cost - old_return + fare + return_fare, 1)

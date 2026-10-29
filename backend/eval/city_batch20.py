@@ -142,7 +142,7 @@ def profiles(city='nanjing'):
       ('12-jiangning-2d-hiking',form(10,2,'transit',1000,'normal','solo',['自然风光','户外徒步'])),
       ('13-jiangning-1d-temples',form(10,1,'taxi',600,'relaxed','elderly',['宗教寺庙'])),
       ('14-lake-2d-night',form(29,2,'transit',1200,'normal','couple',['夜景夜游','拍照出片'])),
-      ('15-qinhuai-1d-nospicy',form(99,1,'transit',300,'intense','solo',['人文历史'],dietary=['不吃辣'])),
+      ('15-qinhuai-1d-nospicy',form(99,1,'transit',300,'intense','solo',['人文历史'],spice='no')),
       ('16-qinhuai-2d-must-mausoleum',form(99,2,'taxi',2000,'normal','friends',['人文历史','园林古镇'],must_visit=['中山陵景区'])),
       ('17-jiangning-2d-themepark',form(10,2,'transit',1500,'normal','family_kids',['主题乐园'])),
       ('18-central-2d-museum-monday',form(42,2,'transit',800,'normal','solo',['博物馆展览','艺术文创'],start_date='2026-10-26')),

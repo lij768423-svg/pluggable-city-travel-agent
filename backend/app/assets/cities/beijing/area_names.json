@@ -1,0 +1,114 @@
+{
+  "version": "2026-10-21-codex-review-v1",
+  "scope": "自动聚类；2026-10-21 Codex 对照全部聚类成员审阅展示名，非用户逐项认可，非行政边界，不验证坐标或重做聚类。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "北京环球度假区"
+    },
+    {
+      "anchor_id": 1,
+      "name": "故宫·王府井"
+    },
+    {
+      "anchor_id": 2,
+      "name": "八达岭长城"
+    },
+    {
+      "anchor_id": 3,
+      "name": "天安门·前门"
+    },
+    {
+      "anchor_id": 4,
+      "name": "颐和园"
+    },
+    {
+      "anchor_id": 5,
+      "name": "什刹海·南锣鼓巷"
+    },
+    {
+      "anchor_id": 6,
+      "name": "天坛"
+    },
+    {
+      "anchor_id": 7,
+      "name": "圆明园"
+    },
+    {
+      "anchor_id": 9,
+      "name": "北京动物园"
+    },
+    {
+      "anchor_id": 11,
+      "name": "中国科学技术馆"
+    },
+    {
+      "anchor_id": 12,
+      "name": "奥林匹克公园"
+    },
+    {
+      "anchor_id": 14,
+      "name": "雍和宫"
+    },
+    {
+      "anchor_id": 20,
+      "name": "玉渊潭公园"
+    },
+    {
+      "anchor_id": 21,
+      "name": "西单·白塔寺"
+    },
+    {
+      "anchor_id": 27,
+      "name": "香山公园"
+    },
+    {
+      "anchor_id": 31,
+      "name": "朝阳公园"
+    },
+    {
+      "anchor_id": 34,
+      "name": "北京大观园"
+    },
+    {
+      "anchor_id": 49,
+      "name": "798艺术区"
+    },
+    {
+      "anchor_id": 67,
+      "name": "三里屯"
+    },
+    {
+      "anchor_id": 71,
+      "name": "明十三陵"
+    },
+    {
+      "anchor_id": 75,
+      "name": "首都博物馆"
+    },
+    {
+      "anchor_id": 84,
+      "name": "中国紫檀博物馆"
+    },
+    {
+      "anchor_id": 104,
+      "name": "世贸天阶"
+    },
+    {
+      "anchor_id": 108,
+      "name": "大运河博物馆"
+    },
+    {
+      "anchor_id": 146,
+      "name": "史家胡同"
+    },
+    {
+      "anchor_id": 179,
+      "name": "通州运河游船"
+    },
+    {
+      "anchor_id": 267,
+      "name": "北京科学中心"
+    }
+  ]
+}

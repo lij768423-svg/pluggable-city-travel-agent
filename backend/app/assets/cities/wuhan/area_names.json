@@ -1,0 +1,122 @@
+{
+  "version": "2026-10-21-codex-review-v1",
+  "scope": "自动聚类；2026-10-21 Codex 对照全部聚类成员审阅展示名，非用户逐项认可，非行政边界，不验证坐标或重做聚类。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "黄鹤楼·户部巷"
+    },
+    {
+      "anchor_id": 2,
+      "name": "省博·东湖"
+    },
+    {
+      "anchor_id": 3,
+      "name": "武汉欢乐谷"
+    },
+    {
+      "anchor_id": 4,
+      "name": "汉口江滩·古德寺"
+    },
+    {
+      "anchor_id": 5,
+      "name": "黎黄陂路"
+    },
+    {
+      "anchor_id": 6,
+      "name": "东湖磨山"
+    },
+    {
+      "anchor_id": 8,
+      "name": "武汉大学·凌波门"
+    },
+    {
+      "anchor_id": 9,
+      "name": "武汉极地海洋公园"
+    },
+    {
+      "anchor_id": 12,
+      "name": "武汉动物园"
+    },
+    {
+      "anchor_id": 13,
+      "name": "楚河汉街"
+    },
+    {
+      "anchor_id": 17,
+      "name": "武汉园博园"
+    },
+    {
+      "anchor_id": 19,
+      "name": "江汉路步行街"
+    },
+    {
+      "anchor_id": 22,
+      "name": "武汉植物园"
+    },
+    {
+      "anchor_id": 24,
+      "name": "鄂军都督府"
+    },
+    {
+      "anchor_id": 39,
+      "name": "东湖沙滩景区"
+    },
+    {
+      "anchor_id": 40,
+      "name": "九峰国家森林公园"
+    },
+    {
+      "anchor_id": 42,
+      "name": "宝通禅寺"
+    },
+    {
+      "anchor_id": 43,
+      "name": "武汉博物馆"
+    },
+    {
+      "anchor_id": 47,
+      "name": "汉阳造·琴台"
+    },
+    {
+      "anchor_id": 54,
+      "name": "光谷步行街"
+    },
+    {
+      "anchor_id": 69,
+      "name": "中山公园"
+    },
+    {
+      "anchor_id": 75,
+      "name": "鹦鹉洲长江大桥"
+    },
+    {
+      "anchor_id": 77,
+      "name": "湖北省科学技术馆"
+    },
+    {
+      "anchor_id": 87,
+      "name": "武汉国际博览中心"
+    },
+    {
+      "anchor_id": 91,
+      "name": "盘龙城遗址博物院"
+    },
+    {
+      "anchor_id": 139,
+      "name": "光谷天地"
+    },
+    {
+      "anchor_id": 179,
+      "name": "中润趣谷"
+    },
+    {
+      "anchor_id": 182,
+      "name": "中国武钢博物馆"
+    },
+    {
+      "anchor_id": 183,
+      "name": "虎泉夜市"
+    }
+  ]
+}

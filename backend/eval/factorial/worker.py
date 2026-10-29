@@ -78,8 +78,11 @@ def run_case(root: Path, group: str, identifier: str) -> dict:
                     return [[self.leg(*before, *after, live=False)[0] for after in locations] for before in locations]
 
                 def _resolve(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool):
-                    context = next((context for context in matrix["contexts"] if context["date"] == (str(self.service_date) if self.service_date else None)
-                        and context["departure"] == self.departure_time and context["walk_limit_m"] == self.walk_limit_m), None)
+                    # 估算路程与日期、出发时刻无关，只按步行条件对应；真实路线快照仍要求日期与出发时段一致
+                    # （2026-10-26 起系统按每段出发时刻、参考日查路线，旧的真实路线快照需要重建）
+                    timeless = matrix["source"] == "estimate"
+                    context = next((context for context in matrix["contexts"] if context["walk_limit_m"] == self.walk_limit_m and (timeless or (
+                        context["date"] == (str(self.service_date) if self.service_date else None) and context["departure"] == self.departure_time))), None)
                     if context is None:
                         record["route_snapshot_misses"] = record.get("route_snapshot_misses", 0) + 1
                         raise SnapshotError("路线快照缺少日期、出发时段或步行条件；禁止估算回退")

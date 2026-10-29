@@ -1,5 +1,6 @@
 """协议无关的行程展示序列化；网页与 MCP 共用。"""
 from __future__ import annotations
+from functools import lru_cache
 from typing import Any
 from fastapi.encoders import jsonable_encoder
 from . import config
@@ -11,6 +12,24 @@ from .poi_catalog import result_catalog
 def gcj(lat: float, lon: float) -> dict[str, float]:
     la, lo = bd09_to_gcj02(lat, lon)
     return {"lat": round(la, 6), "lon": round(lo, 6)}
+
+
+@lru_cache(maxsize=None)
+def hotel_presets(city: str = "hangzhou") -> list[dict[str, Any]]:
+    from .cities import city_config
+    import pandas as pd
+    settings = city_config(city)
+    path = settings.data_dir / "accommodations.parquet"
+    if not path.exists():  # 新城市可能没有住宿数据：没有预设，用户自行搜索起点
+        return []
+    df = pd.read_parquet(path)
+    out = []
+    for area in settings.hotel_areas:
+        hit = df[df.name.str.contains(area)]
+        if len(hit):
+            r = hit.iloc[0]
+            out.append({"area": area, "name": r["name"], "lat": float(r.lat), "lon": float(r.lon), **{"gcj": gcj(r.lat, r.lon)}})
+    return out
 
 
 def city_entry(key: str) -> dict[str, Any]:
@@ -54,6 +73,9 @@ def _serialize_plan(r: dict[str, Any], request_meta: dict[str, Any], plan_id: st
             items.append({**i.model_dump(), "start_hm": hm(i.start), "end_hm": hm(i.end),
                           "alternatives": alternatives,
                           **(gcj(place.lat, place.lon) if place else {}),
+                          # 长堤一头进、另一头出：导航按进入处到达、离开处出发（GCJ-02）
+                          "enter": gcj(*i.enter_point) if i.enter_point else None,
+                          "leave": gcj(*i.leave_point) if i.leave_point else None,
                           "type": getattr(place, "type", getattr(place, "cuisine", "")),
                           "visit_group": getattr(place, "visit_group", ""),
                           "visit_group_label": getattr(place, "visit_group_label", ""),
@@ -85,9 +107,11 @@ def _serialize_plan(r: dict[str, Any], request_meta: dict[str, Any], plan_id: st
             "verification_notice": "测试草稿：开放时间、票价等仍待核实，请出发前确认"
                 if r.get("delivery_status", request_meta.get("delivery_status")) == "draft" else None}
            if request_meta.get("source") == "mcp" else {}),
-        "meta": {"travel": r.get("travel_stats", {}), "restaurants": r.get("restaurant_stats", {}), "select_mode": request_meta["select_mode"], "enable_repair": request_meta["enable_repair"], "repair_rounds": r.get("repair_round", 0),
+        "meta": {"travel": r.get("travel_stats", {}), "restaurants": r.get("restaurant_stats", {}), "select_mode": request_meta["select_mode"], "enable_repair": request_meta["enable_repair"], "enable_refine": request_meta.get("enable_refine"), "repair_rounds": r.get("repair_round", 0),
                  "operation": r.get("operation", "plan"), "source": request_meta.get("source", "web"),
                  "server_llm_calls": r.get("usage", {}).get("calls", 0),
+                 # 每次模型调用的首字等待、总耗时与重试，用户反馈"等了很久"时可据此排查
+                 "llm_timing": r.get("llm_timings", []),
                  "adjustments": r.get("adjustments", []),
                  "llm_model": "external_ai" if request_meta.get("source") == "mcp" else config.LLM_MODEL, "llm_thinking": None if request_meta.get("source") == "mcp" else config.LLM_THINKING, "tag_source": tag_source(),
                  "selection": r.get("selection_stats", {}),

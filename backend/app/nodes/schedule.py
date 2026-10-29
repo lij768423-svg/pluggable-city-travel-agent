@@ -15,6 +15,8 @@ import math
 import numpy as np
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
+from ..bundles import visit_hours
+from ..walk_ends import walk_center
 from ..areas import area_index, area_transition_cost
 from ..data import load_pois
 from ..experiences import experience_key, keep_walks_together
@@ -38,7 +40,7 @@ MEAL_BLOCK = MEAL_MIN + 15
 
 
 def service_min(poi: POI, pace: str) -> int:
-    lo, hi = poi.min_hours * 60, poi.max_hours * 60
+    lo, hi = (hours * 60 for hours in visit_hours(poi))  # 合并后的景区用名单给的时长（app/bundles.py）
     # 轻松：建议时长的中点；适中：下限 + 25%；紧凑：下限（数据集建议时长普遍偏长，如鼓楼 2–3.5 h）
     v = {"relaxed": (lo + hi) / 2, "normal": lo + 0.25 * (hi - lo), "intense": lo}[pace]
     if poi.day_anchor:
@@ -50,7 +52,7 @@ def service_min(poi: POI, pace: str) -> int:
 def fit_service_min(poi: POI, pace: str, start: int, latest_end: int) -> int:
     duration = service_min(poi, pace)
     available = min(poi.close_min, latest_end) - start
-    minimum = max(15, math.ceil(poi.min_hours * 60))
+    minimum = max(15, math.ceil(visit_hours(poi)[0] * 60))
     if minimum <= available < duration:
         return max(minimum, available // 15 * 15)
     return duration
@@ -212,7 +214,7 @@ def split_days(ids: list[int], p: UserProfile, travel=None) -> list[list[int]]:
 
 def _nodes(day_ids: list[int], p: UserProfile, travel):
     pois = load_pois()
-    locs = [(p.hotel.lat, p.hotel.lon)] + [(pois[i].lat, pois[i].lon) for i in day_ids]
+    locs = [(p.hotel.lat, p.hotel.lon)] + [walk_center(pois[i]) for i in day_ids]  # 长堤取两端中点
     T = travel.matrix(locs)  # 打车模式为高德真实矩阵；公交模式为缓存真实值 + 标定兜底
     svc = [0] + [service_min(pois[i], p.pace) for i in day_ids]
     allowed = [[True for _ in locs] for _ in locs]

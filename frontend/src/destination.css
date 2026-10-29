@@ -1,52 +1,18 @@
 /* 中性目的地入口：城市并列，选中后再展开城市问卷。 */
 .journey-shell { position: relative; overflow: hidden; }
 .journey-bar { position: relative; z-index: 20; }
-.destination-page { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 3; overflow: auto; overscroll-behavior: contain; background: #f5f7fb; color: #202b41; }
-.destination-content { position: relative; z-index: 1; width: min(960px, calc(100% - 80px)); min-height: 100%; margin: auto; padding: clamp(34px, 6vh, 72px) 0 24px; display: flex; flex-direction: column; justify-content: center; }
-.destination-heading { position: relative; margin-bottom: clamp(26px, 4vh, 42px); padding-right: 120px; }
-.destination-kicker { display: flex; align-items: center; gap: 9px; margin: 0 0 17px; color: #71809a; font-size: 12px; letter-spacing: .16em; }
-.destination-kicker > span { width: 6px; height: 6px; border-radius: 50%; background: #c8a967; box-shadow: 0 0 0 5px #e9d9b82e; }
-.destination-heading h1 { font-size: clamp(34px, 4.4vw, 56px); font-weight: 600; line-height: 1.28; letter-spacing: -.04em; margin: 0; outline: none; }
-.destination-intro { color: #78849a; font-size: 14px; line-height: 1.9; margin-top: 15px; letter-spacing: .02em; }
-.destination-mobile-break { display: none; }
-.destination-compass { position: absolute; right: 13px; top: 31px; color: #afbdcf; }
-.destination-compass svg { transform: rotate(-16deg); }
-.destination-compass i { position: absolute; inset: -14px; border: 1px dashed #cbd5e5; border-radius: 50%; }
-.destination-cities { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 26px; }
-.destination-card { position: relative; isolation: isolate; min-width: 0; height: clamp(276px, 34vh, 340px); overflow: hidden; padding: 24px 26px 20px; border: 1px solid #dce3ee; border-radius: 20px; background: #fff; box-shadow: 0 12px 34px -30px #31507866; text-align: left; color: inherit; transform-origin: 50% 60%; transition: transform .55s cubic-bezier(.2,.8,.2,1), border-color .3s, box-shadow .5s, opacity .4s, filter .4s; }
-.destination-card:focus-visible { outline: 3px solid #688bec; outline-offset: 5px; }
-.destination-card-heading { position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; color: #a2adc0; }
-.destination-number { font-size: 12px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
-.destination-card-caption { font-size: 10px; letter-spacing: .13em; }
-.destination-card-arrow { margin-left: auto; color: #8197c5; transition: transform .45s cubic-bezier(.2,.8,.2,1), color .3s; }
-.destination-card-copy { position: relative; z-index: 2; margin-top: 27px; }
-.destination-card-copy h2 { margin: 0 0 9px; font-size: clamp(30px,3vw,40px); font-weight: 600; letter-spacing: .06em; line-height: 1.2; }
-.destination-card-copy p { color: #8490a4; font-size: 12px; letter-spacing: .05em; }
-.destination-art { position: absolute; z-index: -1; inset: 50px 0 0; opacity: .75; pointer-events: none; -webkit-mask-image: linear-gradient(transparent,#000 24%,#000 84%,transparent); mask-image: linear-gradient(transparent,#000 24%,#000 84%,transparent); transition: transform 1s cubic-bezier(.2,.8,.2,1), opacity .6s; }
-.destination-art > div { position: absolute; bottom: -25px; width: 75%; height: auto; }
-.destination-art-left { left: -29%; }
-.destination-art-right { right: -22%; }
-.destination-art svg { display: block; width: 100%; height: auto; }
-.destination-art-empty { display: grid; place-items: center; color: #c0ccdf; }
-.destination-card-bottom { position: absolute; z-index: 2; left: 26px; right: 26px; bottom: 20px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; letter-spacing: .05em; color: #697b9f; }
-.destination-card-bottom > i { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid #cbd8ed; border-radius: 50%; background: #ffffffa3; font-style: normal; transition: background .3s, color .3s, transform .4s; }
-.destination-card:active:not(:disabled) { transform: translateY(-2px) scale(.99); }
-.destination-card.selected { transform: translateY(-8px) scale(1.02); border-color: #7396e3; box-shadow: 0 25px 65px -35px #2f5bd388; }
-.destination-card.selected .destination-card-arrow { transform: translate(6px,-6px); color: #2f5bd3; }
-.destination-card.selected .destination-art { transform: scale(1.05) translateY(-4px); opacity: .95; }
-.destination-card.muted { opacity: .3; transform: translateY(8px) scale(.97); filter: blur(2px); }
-.destination-card:disabled { cursor: default; }
-.destination-foot { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 30px; font-size: 11px; letter-spacing: .08em; color: #9ba7ba; }
-.destination-foot-line { width: 36px; height: 1px; background: #d9e1ec; }
+.destination-page { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 3; overflow: hidden auto; overscroll-behavior: contain; background: #f5f7fb; color: #202b41; }
 .destination-error { padding-top: 18px; text-align: center; color: #a34d4d; font-size: 13px; }
-.destination-contours { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.destination-contours i { position: absolute; width: 1100px; height: 600px; border: 1px solid #dfe6f088; border-radius: 50%; transform: rotate(-30deg); left: calc(50% - 850px); bottom: -450px; }
-.destination-contours i:nth-child(2) { transform: rotate(-30deg) translateY(-40px); }
-.destination-contours i:nth-child(3) { transform: rotate(-30deg) translateY(-80px); }
-.destination-transit { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 15; display: grid; place-content: center; justify-items: center; gap: 18px; pointer-events: none; background: #f5f7fb; animation: destination-transit .62s cubic-bezier(.4,0,.2,1) both; }
+.destination-transit { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 15; display: grid; place-content: center; justify-items: center; gap: 18px; pointer-events: none; background: #fff; animation: destination-transit .62s cubic-bezier(.4,0,.2,1) both; }
 .destination-transit .journey-mark { width: 48px; height: 48px; animation: destination-needle .62s cubic-bezier(.4,0,.2,1) both; }
-.destination-transit p { font-size: 20px; color: #465a83; letter-spacing: .12em; }
-.destination-transit small { font-size: 11px; color: #9aa7ba; letter-spacing: .15em; }
+/* 2026-10-24 灰白科技风：墨色城市名、红色细线从左画满、等宽小字（启动页沿用预载画面的字体，接替时不变） */
+.destination-transit p { font-size: 26px; font-weight: 600; color: #151613; letter-spacing: .24em; padding-left: .24em; line-height: 1.2; }
+.destination-transit small { font-size: 11px; color: #9a9c95; letter-spacing: .16em; font-family: var(--mono); }
+.destination-boot small { font-family: inherit; }
+.transit-code { color: #151613; }
+.transit-line { display: block; width: 132px; height: 1px; margin-top: -4px; background: #dedfda; overflow: hidden; }
+.transit-line span { display: block; height: 100%; background: #b93b28; transform-origin: left; animation: transit-line .62s cubic-bezier(.4,0,.2,1) both; }
+@keyframes transit-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .destination-switch { display: inline-flex; align-items: center; gap: 6px; color: #6882b9; font-size: 12px; padding: 5px 0; }
 .destination-switch:hover { color: #2f5bd3; }
 .brand-copy-enter-active, .brand-copy-leave-active { transition: opacity .2s ease, transform .3s ease; }
@@ -71,71 +37,38 @@
 .city-scenery-enter-active .qb-south { transition: transform 1.4s cubic-bezier(.16,1,.3,1), opacity 1.15s ease; }
 .city-scenery-enter-from .qb-west { transform: translate(-42px,18px); opacity: 0; }
 .city-scenery-enter-from .qb-south { transform: translate(42px,18px); opacity: 0; }
+/* 2026-10-23 问卷 → 生成进度：背景原先没有离场样式，Vue 会等根元素上早已播完的 1 秒进场动画，背景停住约 1 秒才消失；
+   改为停掉进场动画后 0.35 秒淡出，同时进度页的 .app 保持在背景图之上，底色从透明渐变到暖灰 */
+.city-scenery-leave-active { animation: none; transition: opacity .35s ease; }
+.city-scenery-leave-to { opacity: 0; }
+.journey-fullscreen.app { position: relative; z-index: 1; transition: background-color .4s ease; }
 @keyframes destination-transit { 0% { opacity: 0; } 35%,100% { opacity: 1; } }
+/* 2026-10-23 加载过渡：启动页接替 index.html 的预载画面（同一淡入、按已过时间对齐），离场与选城页交叉淡化 */
+.destination-boot { animation: boot-in .8s ease-out var(--boot-delay, 0s) both; }
+.destination-boot .journey-mark { animation: none; }
+@keyframes boot-in { 0%, 25% { opacity: 0; } 100% { opacity: 1; } }
+/* 离场先停掉进场动画，否则动画的填充值会压住 opacity 过渡 */
+.boot-leave-active { animation: none; transition: opacity .45s ease; }
+.boot-leave-to { opacity: 0; }
+/* 加载提示进出都淡入淡出（进场沿用各自已有的进场动画） */
+.loading-note-leave-active { animation: none; transition: opacity .25s ease; }
+.loading-note-leave-to { opacity: 0; }
+/* 城市图与地点图片下载完再淡入（main.ts 给加载完成的图片加 is-loaded）；保留相册图悬停放大的过渡 */
+img[data-fade] { opacity: 0; transition: opacity .6s ease, transform .4s ease; }
+img[data-fade].is-loaded { opacity: 1; }
+/* 换点预览、逐段导航：结果出来时淡入，不直接替换加载提示 */
+.preview-content > :not(.confirm-swap):not(.self-cost-field), .navigation-instructions { animation: fade-in .35s ease-out both; }
 @keyframes destination-needle { from { transform: rotate(-20deg) scale(.88); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
-@keyframes destination-rise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: no-preference) {
-  .destination-heading > :not(.destination-compass) { animation: destination-rise .7s cubic-bezier(.16,1,.3,1) both; }
-  .destination-heading h1 { animation-delay: .06s; }
-  .destination-heading .destination-intro { animation-delay: .13s; }
-  .destination-compass svg { animation: destination-compass 15s ease-in-out infinite alternate; }
-  .destination-cities:not(.departing) .destination-card { animation: destination-rise .8s cubic-bezier(.16,1,.3,1) backwards; animation-delay: calc(.18s + var(--card-index) * .09s); }
-  .destination-foot { animation: destination-rise .8s .38s both; }
-}
-@keyframes destination-compass { to { transform: rotate(25deg); } }
-@media (hover: hover) {
-  .destination-card:not(:disabled):hover { transform: translateY(-7px); border-color: #a4b9e2; box-shadow: 0 24px 45px -28px #486aa666; }
-  .destination-card:not(:disabled):hover .destination-art { transform: translateY(-5px) scale(1.035); opacity: .95; }
-  .destination-card:not(:disabled):hover .destination-card-arrow { transform: translate(4px,-4px); }
-  .destination-card:not(:disabled):hover .destination-card-bottom > i { background: #2f5bd3; color: #fff; transform: rotate(5deg); border-color: #2f5bd3; }
-}
-@media (max-width: 640px) {
-  .destination-content { width: calc(100% - 40px); padding: 35px 0 22px; justify-content: flex-start; }
-  .destination-heading { padding-right: 66px; margin-bottom: 27px; }
-  .destination-heading h1 { font-size: clamp(32px,7vw,44px); line-height: 1.3; }
-  .destination-kicker { font-size: 10px; margin-bottom: 16px; }
-  .destination-intro { font-size: 12px; margin-top: 13px; }
-  .destination-compass { right: 2px; top: 48px; }
-  .destination-compass svg { width: 50px; height: 50px; }
-  .destination-compass i { inset: -7px; }
-  .destination-cities { gap: 14px; }
-  .destination-card { height: clamp(244px,33vh,310px); padding: 16px 16px 18px; border-radius: 16px; }
-  .destination-card-caption { display: none; }
-  .destination-card-copy { margin-top: 24px; }
-  .destination-card-copy h2 { font-size: 29px; }
-  .destination-card-copy p { font-size: 10px; max-width: 7em; line-height: 1.8; }
-  .destination-card-bottom { left: 16px; right: 16px; bottom: 17px; font-size: 10px; }
-  .destination-card-bottom > i { width: 25px; height: 25px; }
-  .destination-art { inset: 86px 0 15px; opacity: .55; }
-  .destination-art > div { width: 140%; bottom: -45px; }
-  .destination-art-left { left: -78%; }
-  .destination-art-right { right: -62%; }
-  .destination-foot { margin-top: 26px; font-size: 10px; gap: 7px; letter-spacing: .02em; }
-  .destination-foot-line { width: 20px; }
-  .destination-mobile-break { display: inline; }
-}
-@media (max-height: 700px) and (min-width: 641px) {
-  .destination-content { padding-top: 23px; }
-  .destination-heading { margin-bottom: 22px; }
-  .destination-kicker { margin-bottom: 9px; }
-  .destination-heading h1 { font-size: 39px; }
-  .destination-intro { margin-top: 8px; }
-  .destination-card { height: 252px; }
-  .destination-foot { margin-top: 21px; }
-}
 @media (prefers-reduced-motion: reduce) {
   .destination-page *, .destination-page *::before, .destination-page *::after, .destination-transit, .destination-transit *, .destination-page-enter-active, .destination-page-leave-active, .journey-reveal-enter-active, .journey-reveal-leave-active, .city-scenery-enter-active *, .brand-copy-enter-active, .brand-copy-leave-active { animation: none !important; transition: none !important; transform: none !important; }
 }
 
 .brand-name { font: inherit; }
 .destination-boot { animation: none; }
-.city-change-notice { margin: 0 0 14px !important; }
 
-/* 原生 button 内容默认居中，卡片内容明确按顶部排布；两幅画交叠渐隐。 */
-.destination-card { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; }
-.destination-art > div { width: 80%; }
-.destination-art-left { left: -14%; mask-image: linear-gradient(to right,#000 55%,transparent 100%); }
-.destination-art-right { right: -14%; mask-image: linear-gradient(to left,#000 55%,transparent 100%); }
-@media (max-width:640px) { .destination-art > div { width: 140%; } .destination-art-left { left: -78%; } .destination-art-right { right: -62%; } }
-
-@media (max-width:640px) { .destination-card-copy p { max-width: none; } }
+/* 选城页用 ljj-helix.css（ljj.world 项目页样式副本）；这里只补外层底色与报错位置。 */
+.destination-page.ljj-scope { background: var(--bg); }
+/* 2026-10-23 用户要求选城页整页纯白、去掉顶栏与螺旋区之间的色差：顶栏、外壳、启动过场与螺旋底色统一为 #fff（40px 网格线保留） */
+.journey-shell.landing-view, .journey-shell.landing-view .journey-bar, .destination-boot { background: #fff; }
+.destination-page.ljj-scope { --bg: #fff; }
+.ljj-scope > .destination-error { position: absolute; z-index: 60; left: 0; right: 0; bottom: 18px; }

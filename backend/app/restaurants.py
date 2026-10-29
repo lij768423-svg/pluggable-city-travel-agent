@@ -9,17 +9,13 @@ from datetime import datetime, timezone
 from .cities import current_city
 from . import config
 from .amap import AmapError
-from .data import diet_ok, load_restaurants
+from .amap_limits import RESTAURANT_RESERVE, restaurant_requests
+from .data import load_restaurants, spice_ok
 from .geo import bd09_to_gcj02, haversine_km
 from .matching import norm
 from .places import normalize_place
 from .schemas import Restaurant, UserProfile
 
-
-# 只认商家核验结果的饮食要求；找不到核验过的餐厅时放宽，但必须在提示里写明
-STRICT_DIET = {"清真"}
-# 放宽时优先给菜系上可能合规的，再退到任意餐厅；两种情况的提示写法不同
-DIET_HINT = {"清真": {"新疆菜", "西北菜", "清真", "中东菜", "土耳其菜"}}
 
 
 def valid_location(restaurant: Restaurant) -> bool:
@@ -36,13 +32,9 @@ def brand_name(restaurant: Restaurant) -> str:
     return norm(restaurant.name)
 
 
-def dietary_status(restaurant: Restaurant, profile: UserProfile) -> str:
-    if not diet_ok(restaurant.cuisine, [item for item in profile.dietary if item != "清真"]):
-        return "conflict"
-    strict = set(profile.dietary) & STRICT_DIET
-    if strict - set(restaurant.dietary_verified):
-        return "unknown"
-    return "confirmed" if set(profile.dietary) <= set(restaurant.dietary_verified) else "unknown"
+def spice_conflict(restaurant: Restaurant, profile: UserProfile) -> bool:
+    """不吃辣却是辣味菜系。"""
+    return not spice_ok(restaurant.cuisine, profile.spice)
 
 
 def opening_periods(text: str) -> list[tuple[int, int]]:
@@ -76,6 +68,11 @@ def normalize_restaurant(raw: dict) -> Restaurant | None:
     categories = str(raw.get("type") or "")
     if re.search(r"咖啡|饮品|甜品|糕点|面包|酒吧|茶艺馆|冷饮|茶饮|奶茶|冰淇淋|茶吧|汉服体验", categories + place["name"]):
         return None
+    # 一家店可挂多个分类（“|”分隔）：带购物分类的是商店，不当正餐；菜系只从餐饮那一段取
+    segments = categories.split("|")
+    if any(part.startswith("购物服务") for part in segments):
+        return None
+    categories = next((part for part in segments if part.startswith("餐饮服务")), categories)
     business = raw.get("business") if isinstance(raw.get("business"), dict) else {}
     try:
         price = float(business.get("cost") or 0)
@@ -117,12 +114,13 @@ class RestaurantCatalog:
             return self.restaurants
         location = bd09_to_gcj02(*position)
         anchor = (round(location[0], 2), round(location[1], 2))
-        if anchor in self.queries or len(self.queries) >= 12 or not self.route._can_go_live():
+        if anchor in self.queries or len(self.queries) >= RESTAURANT_RESERVE or not self.route._can_go_live(restaurant=True):
             return self.restaurants
         self.queries.add(anchor)
         try:
-            data = router._get("v5/place/around", {"location":f"{anchor[1]},{anchor[0]}", "types":"050000", "radius":2000,
-                                                  "sortrule":"distance", "page_size":20, "page_num":1, "show_fields":"business"})
+            with restaurant_requests():  # 用餐厅预留额度，路线查询用不到这部分
+                data = router._get("v5/place/around", {"location":f"{anchor[1]},{anchor[0]}", "types":"050000", "radius":2000,
+                                                      "sortrule":"distance", "page_size":20, "page_num":1, "show_fields":"business"})
             for raw in data.get("pois", []):
                 restaurant = normalize_restaurant(raw) if isinstance(raw, dict) else None
                 if restaurant is None:

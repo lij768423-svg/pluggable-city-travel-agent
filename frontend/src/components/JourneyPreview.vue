@@ -17,7 +17,7 @@ function photoFailed(file: string) { if (!failedPhotos.value.includes(file)) fai
 </script>
 
 <template>
-  <aside v-if="city.key !== 'hangzhou'" class="journey-preview city-art-preview" :class="{ 'neutral-backdrop': !scene }" :aria-label="`${city.name}主题插画`"><div v-if="scene" class="preview-illustration" v-html="scene.right" /><div class="journey-photo-top"><span>{{ scene?.rightLabel || city.name }}</span><span>{{ city.name }}印象 · 插画</span></div><div class="journey-photo-caption"><p>把喜欢的，<br />慢慢走成一段旅程。</p><span>先选喜欢的，再安排去哪里。</span></div></aside>
+  <aside v-if="city.key !== 'hangzhou'" class="journey-preview city-art-preview" :class="{ 'neutral-backdrop': !scene }" :aria-label="`${city.name}主题插画`"><div v-if="scene" class="preview-illustration"><img :src="scene.right" alt="" decoding="async" /></div><div class="journey-photo-top"><span>{{ scene?.rightLabel || city.name }}</span><span>{{ city.name }}印象 · 插画</span></div><div class="journey-photo-caption"><p>把喜欢的，<br />慢慢走成一段旅程。</p><span>先选喜欢的，再安排去哪里。</span></div></aside>
   <aside v-else class="journey-preview" aria-label="杭州实景">
     <Transition name="journey-photo"><img v-if="!failedPhotos.includes(activePhoto.file)" :key="activePhoto.file" class="journey-photo" :src="`/questionnaire/${activePhoto.file}`" :alt="activePhoto.place" @error="photoFailed(activePhoto.file)" /></Transition>
     <div class="journey-photo-shade" />
@@ -29,5 +29,5 @@ function photoFailed(file: string) { if (!failedPhotos.value.includes(file)) fai
 
 <style scoped>
 .preview-illustration { position: absolute; inset: 0; }
-.preview-illustration :deep(svg) { width: 100%; height: 100%; object-fit: cover; }
+.preview-illustration img { display: block; width: 100%; height: 100%; object-fit: cover; }
 </style>

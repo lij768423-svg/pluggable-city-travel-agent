@@ -14,7 +14,7 @@ def test_bad_itinerary_reports_all_violations():
     lingyin = _poi("灵隐寺")  # 06:30–17:45
     leifeng = _poi("雷峰塔")
     spicy = next(r for r in load_restaurants().values() if r.cuisine == "火锅")
-    prof = UserProfile(days=1, budget=50, pace="normal", dietary=["不吃辣"], must_visit=["西溪国家湿地公园"])
+    prof = UserProfile(days=1, budget=50, pace="normal", spice="no", must_visit=["西溪国家湿地公园"])
     it = Itinerary(days=[DayPlan(day=1, items=[
         Item(kind="poi", ref_id=lingyin.id, name=lingyin.name, start=17 * 60 + 30, end=18 * 60 + 30),  # 超过关门
         Item(kind="poi", ref_id=leifeng.id, name=leifeng.name, start=18 * 60 + 35, end=19 * 60),  # 路上来不及

@@ -66,7 +66,7 @@ def test_stop_completion_does_not_fill_a_park_day_with_extra_attractions():
 
 def test_onsite_lunch_stays_within_visit_and_counts_only_as_budget_reservation(monkeypatch):
     monkeypatch.setattr("app.nodes.meals.load_restaurants", lambda: {})
-    profile = UserProfile(days=1, pace="intense", day_start=540, day_end=1050, dietary=["清真"])
+    profile = UserProfile(days=1, pace="intense", day_start=540, day_end=1050)
     itinerary = build_itinerary([[1]], profile, [], live=False)
     day = itinerary.days[0]
     visit = day.items[0]

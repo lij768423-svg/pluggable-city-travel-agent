@@ -7,7 +7,7 @@
 - **Web 端**：问卷、地图和行程页，由服务端模型理解需求并选点。
 - **MCP 服务**：Claude、Codex 等聊天 AI 通过 MCP 工具调用。由聊天 AI 自己选点，服务端不调用语言模型。
 
-目前已接入杭州、南京、苏州。本项目是本科毕业设计：**基于大模型 Agent 的个性化旅游行程规划系统设计与实现**。
+目前已接入 ChinaTravel 数据集覆盖的全部 10 座城市：北京、上海、广州、深圳、成都、重庆、武汉、杭州、南京、苏州。本项目是本科毕业设计：**基于大模型 Agent 的个性化旅游行程规划系统设计与实现**。
 
 这是研究与原型项目。通过程序校验，只代表满足系统已知的约束，不代表在真实世界中一定可行；营业时间、预约、交通、价格和饮食限制仍需自行确认。
 
@@ -58,6 +58,8 @@ uv run python scripts/check_city.py --city wuhan             # 单独做完整�
 ### Web 端
 
 - **问卷**：四步填写偏好，包括天数、同行人、起点、兴趣、节奏、餐饮、预算和特别要求；先选城市，每座城市有自己的品牌和默认起点。
+- **说一句话也行**：可以不填问卷，直接说需求（如“周末带爸妈在杭州玩两天，别太累”）。规划前先列出理解的每一项，标明来源（你说的、你填的、推断、默认）；可以在表里改好后一次提交，也可以在「跟 AI 说」里用对话改。闭馆、必去相距太远排不进同一天等问题会先提示，并给出一键修改。
+- **贴近实际的排法**：起点可以不定（从第一站开始，结束后不算回程）；同一景区里的多个条目（如故宫各殿、灵隐寺与飞来峰）合成一次游览，按景区的游览时长排；苏堤、外滩这类长堤长街从一头进、另一头出，下一段路从出口算。
 - **规划过程**：可以看到实际执行的规划步骤和模型输出；模型调用次数、缓存命中和 token 用量分别统计。
 - **行程查看**：真实道路路径、地图定位、地点详情、餐厅备选；换餐要先预览，确认后才生效，也可以撤销。
 - **账号**：登录后按账号保存行程历史；公网部署可开启邀请码注册、每日次数和限流。
@@ -85,7 +87,7 @@ uv run python scripts/check_city.py --city wuhan             # 单独做完整�
                  │ JSON + NDJSON                     │ Streamable HTTP
                  └──────── FastAPI 同一进程（端口分离）┘
                                    │
-   城市注册表 → 需求解析 → 候选检索 → 选点（服务端模型 / 外部 AI）
+   城市注册表 → 需求理解与确认 → 候选检索 → 选点（服务端模型 / 外部 AI）
                                    ↓
             片区分天 → OR-Tools VRPTW 日内排序 → 餐饮与晚间活动
                                    ↓
@@ -113,7 +115,7 @@ git clone https://github.com/lij768423-svg/pluggable-city-travel-agent.git
 cd pluggable-city-travel-agent/backend
 cp .env.example .env
 uv sync --frozen
-for city in hangzhou nanjing suzhou; do uv run python scripts/fetch_data.py --city $city; done
+for city in beijing shanghai guangzhou shenzhen chengdu chongqing wuhan hangzhou nanjing suzhou; do uv run python scripts/fetch_data.py --city $city; done
 ```
 
 国内网络可以在命令后加 `--mirror https://hf-mirror.com`。
@@ -137,7 +139,7 @@ for city in hangzhou nanjing suzhou; do uv run python scripts/fetch_data.py --ci
 ```bash
 cd ../frontend && npm ci && npm run build
 cd ../backend
-TTA_CITIES=hangzhou,nanjing,suzhou uv run uvicorn app.api:app --host 127.0.0.1 --port 18600
+TTA_CITIES=beijing,shanghai,guangzhou,shenzhen,chengdu,chongqing,wuhan,hangzhou,nanjing,suzhou uv run uvicorn app.api:app --host 127.0.0.1 --port 18600
 ```
 
 打开 `http://127.0.0.1:18600/`。开发前端时，在 `frontend/` 下执行 `npm run dev`。
@@ -146,7 +148,7 @@ TTA_CITIES=hangzhou,nanjing,suzhou uv run uvicorn app.api:app --host 127.0.0.1 -
 
 ```bash
 # backend/.env 中配置 TTA_MCP_TOKEN（至少 24 位随机值）、TTA_MCP_USERNAME（已存在的网站账号）、TTA_MCP_SITE_URL
-TTA_CITIES=hangzhou,nanjing,suzhou uv run python -m app.mcp_server --web-port 18600 --mcp-port 18602
+TTA_CITIES=beijing,shanghai,guangzhou,shenzhen,chengdu,chongqing,wuhan,hangzhou,nanjing,suzhou uv run python -m app.mcp_server --web-port 18600 --mcp-port 18602
 ```
 
 MCP 客户端连接 `http://127.0.0.1:18602/mcp`，鉴权使用 Bearer 凭据或浏览器登录授权；Web 端口上的 `/mcp` 一律返回 404。远程客户端可以用 `scripts/mcp_stdio.py`，经 SSH 以 stdio 方式转接，凭据只留在服务器上。

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PhArrowLeft, PhCheck, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
-import { getMeta, postPlan, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, revertPlan, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
+import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, revertPlan, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
+import PlanConfirm from './components/PlanConfirm.vue'
+import AgentChat from './components/AgentChat.vue'
 import JourneyMark from './components/JourneyMark.vue'
 import { getCurrentPlan } from './api'
 import PlanProgress from './components/PlanProgress.vue'
@@ -26,7 +28,6 @@ const authReady = ref(false)
 const accountOpen = ref(false)
 const authReason = ref('')
 const destinationOpen = ref(true)
-const hasEnteredCity = ref(false)
 const departureCity = ref<string | null>(null)
 const departureReady = ref(false)
 let departureTimer: ReturnType<typeof setTimeout> | undefined
@@ -35,6 +36,17 @@ const coveredSwitch = ref(false)
 let coveredTimer: ReturnType<typeof setTimeout> | undefined
 // 公网：生成行程需要登录，未登录时先保留条件，登录后自动开始；quota 为当天剩余次数
 const pendingRequest = ref<PlanRequest | null>(null)
+// 规划前的“我是这么理解的”：edits 是用户在确认表里改过的项，重新核对时叠在表单上
+const confirming = ref<{ req: PlanRequest; understanding: Understanding; edits: Record<string, unknown> } | null>(null)
+const confirmBusy = ref(false)
+const confirmError = ref('')
+// 两种规划方式（2026-10-28 用户决定）：跟 AI 说（默认）/ 自己选问卷；记住上次选的，读写失败（无痕模式等）就按默认
+const planMode = ref<'agent' | 'form'>((() => { try { return localStorage.getItem('tta-plan-mode') === 'form' ? 'form' : 'agent' } catch { return 'agent' } })())
+watch(planMode, mode => { try { localStorage.setItem('tta-plan-mode', mode) } catch { /* 只是不记住 */ } })
+const agentMessages = ref<string[]>([])
+const agentUnderstanding = ref<Understanding | null>(null)
+const agentReplies = ref<(Understanding | null)[]>([])
+const agentPlaces = ref<Hotel[]>([])  // 这轮对话里在表上搜过选过的起点（带坐标），理解“从 XX 出发”时先对它们  // 每句话对应的那次理解（失败的为空），聊天里逐轮显示
 const quota = ref<PlanQuota | null>(null)
 // 公网开启“登录才能生成”时，未登录只显示登录页；启动时等账号与配置都读到再渲染，避免问卷先闪一下
 const gated = computed(() => !destinationOpen.value && !!meta.value?.access?.login_to_plan && authReady.value && !user.value)
@@ -48,8 +60,8 @@ const initialRequest = ref<PlanRequest | null>(null)
 const outputText = ref('')
 let identityRevision = 0
 let outputTag = ''
-// 模型思考中：只显示状态与字数，不显示思考内容
-const modelThinking = ref<{ tag: string; started: number; chars: number } | null>(null)
+// 模型思考中：只显示状态与字数，不显示思考内容；waiting = 已发出请求、还没收到任何片段
+const modelThinking = ref<{ tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null>(null)
 // 思考内容只在生成页实时展示，且只保留最近 THINK_WINDOW 字
 const THINK_WINDOW = 4000
 const thinkText = ref('')
@@ -77,6 +89,7 @@ const cityError = ref('')
 let citySequence = 0
 let cityController: AbortController | null = null
 const draftCity = computed(() => meta.value?.cities.find(city => city.key === selectedCity.value) || legacyCity)
+watch(() => draftCity.value.key, () => { confirming.value = null; resetAgent() })  // 换城市后旧的理解作废
 async function changeCity(key: string): Promise<boolean> {
   if (!meta.value?.cities.some(city => city.key === key)) return false
   selectedCity.value = key
@@ -101,6 +114,8 @@ async function chooseDestination(key: string) {
   if (departureCity.value || loading.value) return
   departureCity.value = key
   void import('./components/QuestionnaireBackdrop.vue')  // 遮罩淡入期间预载问卷背景，揭开时已就绪
+  // 同时下载并解码两侧城市图；揭开前最多再等 1.2 秒，图片不在揭开后才突然出现
+  const artwork = import('./cityArt').then(module => module.preloadCityArtwork(key))
   const revision = identityRevision
   const ready = meta.value?.city === key && !cityError.value ? true : await changeCity(key)
   if (revision !== identityRevision) { departureCity.value = null; return }
@@ -109,8 +124,8 @@ async function chooseDestination(key: string) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   departureReady.value = !reducedMotion
   departureTimer = setTimeout(async () => {
+    await Promise.race([artwork, new Promise(resolve => setTimeout(resolve, 1200))])
     coveredSwitch.value = true
-    hasEnteredCity.value = true
     editing.value = true
     destinationOpen.value = false
     departureCity.value = null
@@ -244,12 +259,22 @@ async function loadDayExtras(force = false) {
   navigation.value = force ? null : navigationCache.get(current.day) || null
   navigationError.value = ''
   navigationLoading.value = !navigation.value
-  const points = [{ ...result.profile.hotel_gcj }, ...current.items.map(item => ({ lat: item.lat!, lon: item.lon! })), { ...result.profile.hotel_gcj }]
-  const legs: NavigationLeg[] = points.slice(1).map((destination, index) => ({
-    origin: points[index]!, destination,
-    mode: current.items[index]?.travel_mode || current.return_leg?.mode || (result.profile.transport === 'transit' ? '公交/地铁' : '打车'),
-    departure: current.items[index] ? Math.max(0, current.items[index]!.start - current.items[index]!.travel_min) : Math.max(current.items.at(-1)?.end || 0, ...(current.reserved_meals || []).map(slot => slot.end)),
-  }))
+  const home = { ...result.profile.hotel_gcj }
+  // 长堤一头进、另一头出；其他地点进出都是自己的坐标
+  const arrive = (item: PlanItem) => item.enter ?? { lat: item.lat!, lon: item.lon! }
+  const leave = (item: PlanItem) => item.leave ?? { lat: item.lat!, lon: item.lon! }
+  const open = result.profile.origin_known === false
+  const legs: NavigationLeg[] = [...current.items, null].map((item, index) => {
+    const previous = index ? current.items[index - 1]! : null
+    const departure = item ? Math.max(0, item.start - item.travel_min) : Math.max(current.items.at(-1)?.end || 0, ...(current.reserved_meals || []).map(slot => slot.end))
+    // 起点不定：去第一站和回去的路程不计，按原地占位，不查导航（方式“未计入”接口也不认）
+    if (open && (!previous || !item)) {
+      const here = item ? arrive(item) : leave(previous!)
+      return { origin: here, destination: here, mode: '原地', departure }
+    }
+    return { origin: previous ? leave(previous) : home, destination: item ? arrive(item) : home,
+      mode: item?.travel_mode || current.return_leg?.mode || (result.profile.transport === 'transit' ? '公交/地铁' : '打车'), departure }
+  })
   const references = current.items.filter(item => item.ref_id != null && !placeDetails.value[`${item.kind}:${item.ref_id}`])
     .map(item => ({ kind: item.kind, id: item.ref_id! }))
   detailsLoading.value = references.length > 0
@@ -525,6 +550,86 @@ async function copyPlan() {
   try { await navigator.clipboard.writeText(lines.join('\n')); copied.value = true; setTimeout(() => (copied.value = false), 1800) } catch { /* 无剪贴板权限时静默 */ }
 }
 
+async function understandFirst(req: PlanRequest, edits: Record<string, unknown> = {}) {
+  if (loading.value || cityLoading.value || cityError.value || confirmBusy.value) return
+  if (meta.value?.access?.login_to_plan && !user.value) { pendingRequest.value = req; openAuth('登录后就能生成行程，已填的条件会保留。'); return }
+  confirmBusy.value = true
+  confirmError.value = ''
+  error.value = ''
+  try {
+    const understanding = await understandPlan(req.query, { ...req.form, ...edits })
+    // 问卷里每项都是用户自己选的：首次提交预检没发现问题就直接规划，有问题才停下来让用户看
+    if (!understanding.issues.length && !Object.keys(edits).length) {
+      confirming.value = null
+      confirmBusy.value = false
+      run(planRequest(req, understanding))
+      return
+    }
+    confirming.value = { req, understanding, edits }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    if (confirming.value) confirmError.value = message
+    else error.value = message
+  } finally {
+    confirmBusy.value = false
+  }
+}
+
+function patchUnderstanding(patch: Record<string, unknown>) {
+  if (confirming.value) understandFirst(confirming.value.req, { ...confirming.value.edits, ...patch })
+}
+
+// 确认过的画像整份交给规划，不再解析一遍
+function planRequest(req: PlanRequest, understanding: Understanding): PlanRequest {
+  return { ...req, query: '', form: { ...understanding.profile, city: req.form.city } }
+}
+
+function confirmPlan() {
+  const current = confirming.value
+  if (!current) return
+  confirming.value = null
+  run(planRequest(current.req, current.understanding))
+}
+
+// 跟 AI 说：每句话都加进对话，整段重新理解（后说的为准）；表里的修改也当成一句话
+async function sendAgent(text: string, places: Hotel[] = []) {
+  if (confirmBusy.value || loading.value) return
+  if (meta.value?.access?.login_to_plan && !user.value) { openAuth('登录后就能和 AI 说需求，写好的话会保留。'); return }
+  agentPlaces.value = [...places, ...agentPlaces.value.filter(place => !places.some(other => other.name === place.name))].slice(0, 10)
+  agentMessages.value = [...agentMessages.value, text]
+  await understandAgent()
+}
+
+async function understandAgent() {
+  confirmBusy.value = true
+  confirmError.value = ''
+  try {
+    const understanding = await understandPlan(agentMessages.value.join('\n'), { city: draftCity.value.key }, agentPlaces.value)
+    const replies = [...agentReplies.value]
+    replies[agentMessages.value.length - 1] = understanding
+    agentReplies.value = Array.from(replies, reply => reply ?? null)
+    agentUnderstanding.value = understanding
+  } catch (e) {
+    confirmError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    confirmBusy.value = false
+  }
+}
+
+function resetAgent() {
+  agentMessages.value = []
+  agentReplies.value = []
+  agentPlaces.value = []
+  agentUnderstanding.value = null
+  confirmError.value = ''
+}
+
+function startAgentPlan() {
+  if (!agentUnderstanding.value) return
+  run(planRequest({ query: agentMessages.value.join('\n'), form: { city: draftCity.value.key }, select_mode: 'llm', enable_repair: true, guide_mode: 'off' },
+    agentUnderstanding.value))
+}
+
 async function run(req: PlanRequest) {
   if (loading.value || cityLoading.value || cityError.value) return
   if (meta.value?.access?.login_to_plan && !user.value) { pendingRequest.value = req; openAuth('登录后就能生成行程，已填的条件会保留。'); return }
@@ -556,9 +661,12 @@ async function run(req: PlanRequest) {
         }
         outputText.value = (outputText.value + event.text).slice(-32000)
         if (event.think) thinkText.value = (thinkText.value + event.think).slice(-THINK_WINDOW)
-        if (event.source === 'live' && event.phase === 'thinking' && !event.text) {
-          if (modelThinking.value?.tag !== event.tag) modelThinking.value = { tag: event.tag, started: Date.now(), chars: event.thought ?? 0 }
-          else modelThinking.value = { ...modelThinking.value, chars: event.thought ?? modelThinking.value.chars }
+        if (event.source === 'live' && (event.phase === 'waiting' || event.phase === 'thinking') && !event.text) {
+          const waiting = event.phase === 'waiting'
+          // 换了调用或重试一次就重新计时；收到第一个片段后不再回到"等待"
+          if (modelThinking.value?.tag !== event.tag || modelThinking.value.attempt !== event.attempt)
+            modelThinking.value = { tag: event.tag, attempt: event.attempt, started: Date.now(), chars: event.thought ?? 0, waiting }
+          else modelThinking.value = { ...modelThinking.value, chars: event.thought ?? modelThinking.value.chars, waiting: waiting && modelThinking.value.waiting }
         } else modelThinking.value = null
       } else {
         if (event.status === 'completed') modelThinking.value = null
@@ -611,7 +719,7 @@ async function startEdit() {
 
 function clearPrivateView() {
   identityRevision++
-  clearTimeout(departureTimer); departureCity.value = null; departureReady.value = false; destinationOpen.value = true; hasEnteredCity.value = false
+  clearTimeout(departureTimer); departureCity.value = null; departureReady.value = false; destinationOpen.value = true
   planController?.abort(); extrasController?.abort(); mediaController?.abort(); alternativeController?.abort()
   plan.value = null; lastRequest.value = null; historyOpen.value = false; progressVisible.value = false
   drawerOpen.value = false; swapOpen.value = false; toast.value = null; navigation.value = null
@@ -632,7 +740,7 @@ function signedIn(account: AccountUser) {
   user.value = account; identityRevision++
   refreshAccount().catch(() => {})
   if (pendingTrip) { resumeTripLink(); return }
-  if (pendingRequest.value) { destinationOpen.value = false; const request = pendingRequest.value; pendingRequest.value = null; nextTick(() => run(request)); return }
+  if (pendingRequest.value) { destinationOpen.value = false; const request = pendingRequest.value; pendingRequest.value = null; nextTick(() => understandFirst(request)); return }
   if (historyAfterLogin.value) { historyOpen.value = true; historyAfterLogin.value = false }
   else if (plan.value?.plan_id && !plan.value.history_id) void saveCurrent()
 }
@@ -657,7 +765,6 @@ async function saveCurrent() {
   finally { accountBusy.value = false }
 }
 function newJourney() {
-  hasEnteredCity.value = false
   destinationOpen.value = true
   historyOpen.value = false
   initialRequest.value = { query: '', form: {}, select_mode: 'llm', enable_repair: true }
@@ -679,7 +786,6 @@ async function openSaved(id: string, replan = false, linked = false) {
     initialRequest.value = { ...saved.request, form: { ...saved.request.form, city } }; lastRequest.value = initialRequest.value
     drawerOpen.value = false; clearAlternative(); navigationCache.clear(); placeDetails.value = {}; placeMedia.value = {}
     selectedIndex.value = null; expandedMeal.value = null; toast.value = null; activeDay.value = 1
-    hasEnteredCity.value = true
     destinationOpen.value = false
     plan.value = saved.plan; historyOpen.value = false; editing.value = replan; mobileView.value = 'route'
     if (replanNotice) showToast(replanNotice, true, null)
@@ -689,8 +795,11 @@ async function openSaved(id: string, replan = false, linked = false) {
 }
 
 onMounted(async () => {
-  try { await refreshAccount() } catch { error.value = '账号服务暂不可用，你仍可以先规划行程。' } finally { authReady.value = true }
-  try { meta.value = await getMeta(); selectedCity.value = meta.value.city; previewHotel.value = meta.value.hotels[0] ?? null } catch { error.value = '暂时连接不上规划服务，请刷新后重试。' }
+  // 账号与城市列表同时请求，互不等待
+  const account = refreshAccount().catch(() => { error.value = '账号服务暂不可用，你仍可以先规划行程。' }).finally(() => { authReady.value = true })
+  const loadMeta = getMeta().then(result => { meta.value = result; selectedCity.value = result.city; previewHotel.value = result.hotels[0] ?? null })
+    .catch(() => { error.value = '暂时连接不上规划服务，请刷新后重试。' })
+  await Promise.all([account, loadMeta])
   if (mcpConnectionId || mcpCompleted || pendingTrip) destinationOpen.value = false
   if (mcpConnectionId && !user.value) openAuth('首次配置 MCP：登录后确认授权，以后即可直接使用。')
   await resumeTripLink()
@@ -699,7 +808,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
 </script>
 
 <template>
-  <div class="journey-shell" :class="{ 'questionnaire-view': showForm && !progressVisible && !historyOpen }">
+  <div class="journey-shell" :class="{ 'questionnaire-view': showForm && !progressVisible && !historyOpen, 'landing-view': (destinationOpen && !historyOpen) || booting }">
     <header class="journey-bar"><a href="/" class="brand" aria-label="行记首页" @click.prevent="chooseAgain"><component :is="neutralBrand ? JourneyMark : BrandMark" :city="displayCity.key" /><span class="brand-copy-stack"><Transition name="brand-copy"><b :key="neutralBrand ? 'neutral' : displayCity.key" class="brand-name">{{ neutralBrand ? '行记' : displayCity.brand }}</b></Transition></span><span v-if="!neutralBrand">{{ cityTagline(displayCity) }}</span></a>
       <nav v-if="!gated && !booting" aria-label="账号与行程">
         <button class="bar-link" :class="{ on: historyOpen }" aria-label="历史行程" :disabled="loading || swapBusy || accountBusy" @click="openHistory"><PhClockCounterClockwise :size="18" /><span>历史行程</span></button>
@@ -711,13 +820,13 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       </nav>
     </header>
   <Transition name="destination-page" :css="!coveredSwitch"><CityLanding v-if="destinationOpen && !historyOpen && !booting" :cities="meta?.cities || []" :pending="departureCity" :loading="cityLoading" :error="cityError || error" @choose="chooseDestination" /></Transition>
-  <div v-if="booting" class="destination-transit destination-boot" role="status"><JourneyMark /><small>行记 · 正在展开下一程</small></div>
-  <Transition name="destination-transit"><div v-if="departureReady" class="destination-transit" role="status"><JourneyMark /><p>{{ draftCity.name }}</p><small>这一程，从这里开始</small></div></Transition>
+  <Transition name="boot"><div v-if="booting" class="destination-transit destination-boot" role="status"><JourneyMark /><small>行记 · 正在展开下一程</small></div></Transition>
+  <Transition name="destination-transit"><div v-if="departureReady" class="destination-transit" role="status"><JourneyMark /><p>{{ draftCity.name }}</p><i class="transit-line" aria-hidden="true"><span /></i><small><span class="transit-code">{{ draftCity.key.toUpperCase() }}</span> · 这一程，从这里开始</small></div></Transition>
   <Transition name="city-scenery" :css="!coveredSwitch"><QuestionnaireBackdrop :city="draftCity.key" v-if="!destinationOpen && showForm && !progressVisible && !historyOpen && !accountOpen && !gated && !booting" /></Transition>
   <Transition name="journey-reveal" :css="!coveredSwitch">
   <div v-if="!gated && !booting" v-show="!destinationOpen || historyOpen" class="app" :class="[`view-${mobileView}`, { 'has-plan': plan && !showForm && !progressVisible && !historyOpen, 'journey-fullscreen': showForm || progressVisible || historyOpen }]">
     <HistoryView v-if="historyOpen && user" :key="user.id" :username="user.username" @back="historyOpen = false" @create="newJourney" @open="id => openSaved(id)" @replan="id => openSaved(id, true)" @expired="expired" />
-    <div v-if="historyBusy" class="history-opening" role="status">正在读取行程…</div>
+    <Transition name="loading-note"><div v-if="historyBusy" class="history-opening" role="status">正在读取行程…</div></Transition>
     <aside v-show="!historyOpen" class="panel">
       <header class="panel-bar">
         <button v-if="showForm && !progressVisible" type="button" class="destination-switch" :disabled="loading || cityLoading" @click="chooseAgain"><PhArrowLeft :size="14" />更换目的地</button>
@@ -759,15 +868,20 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
         <p v-if="error && !progressVisible" class="notice bad" role="alert"><PhWarningCircle :size="16" />{{ error }}</p>
 
         <section v-show="showForm && !progressVisible" class="form-wrap">
-          <p v-if="cityLoading" class="notice" role="status">正在读取{{ draftCity.name }}的起点与偏好…</p>
+          <Transition name="loading-note"><p v-if="cityLoading" class="notice" role="status">正在读取{{ draftCity.name }}的起点与偏好…</p></Transition>
           <p v-if="cityError" class="notice bad" role="alert">{{ cityError }} <button type="button" @click="changeCity(selectedCity)">重新读取城市信息</button></p>
-          <PlanForm :notify-city-change="hasEnteredCity" :city="draftCity" :meta="meta" :loading="loading || cityLoading || !!cityError" :quota="quota" :needs-login="!!meta?.access?.login_to_plan && !user" :initial-query="initialQuery" :initial-request="initialRequest" @submit="run" @hotel-change="previewHotel = $event" />
+          <div class="plan-entry">
+            <div class="mode-switch" role="tablist" aria-label="规划方式"><button type="button" role="tab" :aria-selected="planMode === 'agent'" :class="{ on: planMode === 'agent' }" @click="planMode = 'agent'">跟 AI 说</button><button type="button" role="tab" :aria-selected="planMode === 'form'" :class="{ on: planMode === 'form' }" @click="planMode = 'form'">自己选</button></div>
+            <AgentChat v-if="planMode === 'agent'" :meta="meta" :messages="agentMessages" :replies="agentReplies" :understanding="agentUnderstanding" :busy="confirmBusy" :error="confirmError" :disabled="loading || cityLoading || !!cityError || !meta" :needs-login="!!meta?.access?.login_to_plan && !user" :quota="quota" @send="sendAgent" @retry="understandAgent" @confirm="startAgentPlan" @reset="resetAgent" />
+            <PlanConfirm v-if="planMode === 'form' && confirming" :understanding="confirming.understanding" :meta="meta" :busy="confirmBusy" :error="confirmError" :quota="quota" @patch="patchUnderstanding" @back="confirming = null" @confirm="confirmPlan" />
+            <PlanForm v-show="planMode === 'form' && !confirming" :city="draftCity" :meta="meta" :loading="loading || confirmBusy || cityLoading || !!cityError" :quota="quota" :needs-login="!!meta?.access?.login_to_plan && !user" :initial-query="initialQuery" :initial-request="initialRequest" @submit="understandFirst" @hotel-change="previewHotel = $event" />
+          </div>
         </section>
 
         <template v-if="plan && !showForm && currentDay && !progressVisible">
           <div v-if="plan.delivery_status === 'draft'" class="history-status warning" role="status"><strong>测试草稿 · 待核实</strong><span>{{ plan.verification_notice || '开放时间、票价等尚未全部核实，请出发前确认。' }}</span></div>
           <div class="history-status" :class="{ warning: plan.history_error }"><template v-if="plan.history_readonly"><span>历史行程快照 · 时间与价格以当时安排为准</span><button @click="startEdit">按这些偏好重新规划</button></template><template v-else-if="plan.history_id && !plan.history_error"><span>已保存到 {{ user?.username }} 的历史行程</span></template><template v-else><span>{{ plan.history_error || (user ? '保存后，下次可以继续查看' : '登录账号，收藏这次旅程') }}</span><button :disabled="accountBusy" @click="saveCurrent">{{ accountBusy ? '保存中…' : user ? '保存行程' : '登录并保存' }}</button></template></div>
-          <Timeline :key="`${plan.plan_id ?? 'plan'}-${currentDay.day}`" :day="currentDay" :hotel-name="plan.profile.hotel.name" :selected-index="selectedIndex" :selected-alternative-id="selectedAlternative?.ref_id ?? null" @focus="focusStop" @details="openStopDetails" @focus-alternative="focusAlternative" @details-alternative="(index, alternative) => focusAlternative(index, alternative, true)"
+          <Timeline :key="`${plan.plan_id ?? 'plan'}-${currentDay.day}`" :day="currentDay" :hotel-name="plan.profile.hotel.name" :open-ends="plan.profile.origin_known === false" :selected-index="selectedIndex" :selected-alternative-id="selectedAlternative?.ref_id ?? null" @focus="focusStop" @details="openStopDetails" @focus-alternative="focusAlternative" @details-alternative="(index, alternative) => focusAlternative(index, alternative, true)"
             @alternatives-toggle="onAlternativesToggle" />
           <p v-for="issue in plan.report.violations.filter(issue => issue.day === currentDay!.day)" :key="`${issue.code}-${issue.item}`" class="notice warn">{{ issue.message }}</p>
           <p v-if="plan.dropped.length" class="aside-note">结合当天主项目、时间与路线，未排入：{{ plan.dropped.join('、') }}</p>
@@ -796,7 +910,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       </div>
       <DayStrip v-if="plan && !showForm && currentDay" :day="currentDay" :hotel-name="plan.profile.hotel.name" :selected-index="selectedIndex" :travel-minutes="dayTravel"
         @focus="i => focusStop(i, true)" @details="openStopDetails">
-        <NavigationPanel :day="currentDay" :home="plan.profile.hotel.name" :navigation="navigation" :loading="navigationLoading" :error="navigationError" @retry="loadDayExtras(true)" />
+        <NavigationPanel :day="currentDay" :home="plan.profile.hotel.name" :open-ends="plan.profile.origin_known === false" :navigation="navigation" :loading="navigationLoading" :error="navigationError" @retry="loadDayExtras(true)" />
       </DayStrip>
     </main>
 

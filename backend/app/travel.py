@@ -7,22 +7,29 @@ live:
   - True：未缓存的路段联网查询（受单次规划调用上限 live_budget 约束）。
   - False：只读缓存，未缓存的路段用标定兜底模型（data/travel_calibration.json）——用于"补空档"等大量试探。
 任何一段用了兜底模型都会计数（approx_legs），并在规划日志与页面中如实显示。
+出发时刻（2026-10-26）：每段按计划出发时刻查公交（按 DEPART_SLOT_MIN 分钟一档，见 departing）；
+没填出游日期时按参考日（calendar.reference_date）查。驾车接口不支持指定出发时刻，开车分钟是查询时的路况。
 """
 from __future__ import annotations
 
 import json
 import logging
 from functools import lru_cache
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import timedelta
 from typing import Any
 
+from .walk_ends import stop_points, walk_length_m
 from . import config
 from .cities import city_config, current_city
 from .geo import SAME_PLACE_KM, haversine_km, travel as estimate_travel
-from .amap_limits import PLAN_HTTP_LIMIT, RequestBudget, operation_budget
+from .amap_limits import FINAL_LEGS_PER_DAY, PLAN_HTTP_LIMIT, RESTAURANT_RESERVE, RequestBudget, operation_budget, plan_http_limit
+from .calendar import reference_date
 from .rules import MAX_INTERSTOP_RIDE_MIN
 from .schemas import LegEvidence
+
+# 按出发时刻查公交时，时刻取到这么多分钟一档（缓存键与查询参数共用）
+DEPART_SLOT_MIN = 30
 
 # 标定文件缺失时的默认值：2026-10-14 用 406 段高德真实路线拟合（scripts/calibrate_travel.py）
 DEFAULT_CAL = {"walk_detour": 1.362, "drive_min": {"a": 17.574, "b": 1.51}, "transit_min": {"a": 33.334, "b": 4.517},
@@ -37,6 +44,8 @@ TAXI_UPGRADE_MAX_FARE = 30
 # 公交接驳步行多时改打车（2026-10-20 用户同意）：单段公交步行超过每日步行上限的这一比例才换，车费上限另设
 TAXI_UPGRADE_WALK_SHARE = 0.25
 TAXI_UPGRADE_WALK_MAX_FARE = 60
+# 当天步行超过上限时由修复环节指定改打车的路段（2026-10-22 用户：保住步行上限，必要时打车，哪怕更慢或更贵）
+FORCED_TAXI_REASON = "当天步行超过上限，这段改打车少走路"
 
 
 def calibration(city: str | None = None) -> dict[str, Any]:
@@ -73,9 +82,13 @@ def calibrated(lat1: float, lon1: float, lat2: float, lon2: float, scenario: str
 
 class Travel:
     def __init__(self, source: str = "amap", scenario: str = "taxi", router=None, live_budget: int | None = PLAN_HTTP_LIMIT):
+        self.open_point: tuple[float, float] | None = None  # 起点不定时的默认点，与它相连的路段不计（见 open_from）
         self.source = source
         self.scenario = scenario if scenario in MODE_NAMES else "taxi"
         self.budget = operation_budget.get() or RequestBudget(live_budget)
+        if source == "amap" and self.budget.reserve == 0 and self.budget.limit:
+            # 小额度（测试、换餐预览外的特例）按四分之一封顶，免得预留比路线还多
+            self.budget.reserve = min(RESTAURANT_RESERVE, self.budget.limit // 4)
         self.router = router
         if source == "amap" and router is None:
             from .amap import get_router
@@ -89,12 +102,42 @@ class Travel:
         self.errors: list[str] = []
         self.evidence: dict[tuple, LegEvidence] = {}
         self.final_keys: set[tuple] | None = None
+        self.taxi_overrides: set[tuple] = set()  # 修复环节指定改打车的有向路段（起终点坐标四舍五入到 6 位）
         self.allow_taxi_fallback = False
         self.taxi_upgrade = False
         self.walk_upgrade_m: int | None = None
         self.service_date = None
         self.departure_time = "09:00"
         self.walk_limit_m = 1500
+        self.reference = reference_date()  # 一次规划内固定，跨午夜也不变
+        self.trip_days = 1
+
+    @staticmethod
+    def slot(minute: int) -> str:
+        """出发时刻取到 DEPART_SLOT_MIN 分钟一档的 HH:MM（跨午夜按次日同一时刻）。"""
+        value = max(0, int(minute)) // DEPART_SLOT_MIN * DEPART_SLOT_MIN % (24 * 60)
+        return f"{value // 60:02d}:{value % 60:02d}"
+
+    @contextmanager
+    def departing(self, minute: int | None):
+        """在这一时刻出发：期间的路段查询、缓存键都按这一档；None 时沿用当天起点时刻。"""
+        if minute is None:
+            yield self
+            return
+        previous = self.departure_time
+        self.departure_time = self.slot(minute)
+        if self.router:
+            self.router.departure_time = self.departure_time
+        try:
+            yield self
+        finally:
+            self.departure_time = previous
+            if self.router:
+                self.router.departure_time = previous
+
+    def route_date(self, profile, day: int):
+        """查路线用的日期：有出游日期用出游日期，否则用参考日顺延。"""
+        return (profile.start_date or self.reference) + timedelta(days=day - 1)
 
     @contextmanager
     def for_day(self, profile, day: int):
@@ -109,7 +152,8 @@ class Travel:
 
     def set_day(self, profile, day: int) -> None:
         from .rules import activity_window, walking_limit
-        self.service_date = profile.start_date + timedelta(days=day - 1) if profile.start_date else None
+        self.service_date = self.route_date(profile, day)
+        self.trip_days = profile.days
         window = activity_window(profile, day)
         self.departure_time = f"{window['start'] // 60:02d}:{window['start'] % 60:02d}"
         self.allow_taxi_fallback = profile.allow_taxi_fallback
@@ -119,23 +163,46 @@ class Travel:
         if self.router:
             self.router.service_date, self.router.departure_time = self.service_date, self.departure_time
             self.router.walk_limit_m = self.walk_limit_m
+        self.open_from(profile)
+
+    def open_from(self, profile) -> None:
+        """起点不定（2026-10-28 用户决定）：默认点只用来圈定游玩范围，与它相连的路段记 0 分钟、0 元。"""
+        self.open_point = None if getattr(profile, "origin_known", True) else (round(profile.hotel.lat, 6), round(profile.hotel.lon, 6))
+
+    def opens(self, lat1: float, lon1: float, lat2: float, lon2: float) -> bool:
+        return self.open_point is not None and self.open_point in {(round(lat1, 6), round(lon1, 6)), (round(lat2, 6), round(lon2, 6))}
+
+    @staticmethod
+    def pair(lat1: float, lon1: float, lat2: float, lon2: float) -> tuple:
+        return (round(lat1, 6), round(lon1, 6), round(lat2, 6), round(lon2, 6))
+
+    def forced_taxi(self, lat1: float, lon1: float, lat2: float, lon2: float) -> bool:
+        return self.allow_taxi_fallback and self.pair(lat1, lon1, lat2, lon2) in self.taxi_overrides
 
     def edge_key(self, lat1: float, lon1: float, lat2: float, lon2: float) -> tuple:
-        return (round(lat1, 6), round(lon1, 6), round(lat2, 6), round(lon2, 6), self.scenario, self.service_date, self.departure_time, self.walk_limit_m)
+        # 末项区分是否强制打车：改前、改后的路段结果分开缓存，定稿时按最佳方案那一轮的集合取值
+        return (*self.pair(lat1, lon1, lat2, lon2), self.scenario, self.service_date, self.departure_time, self.walk_limit_m,
+                self.forced_taxi(lat1, lon1, lat2, lon2))
 
     @property
     def live_calls(self) -> int:
         return self.budget.used
 
-    def _can_go_live(self) -> bool:
-        limits = [value for value in (self.live_budget, self.budget.ceiling) if value is not None]
-        return not limits or self.live_calls < min(limits)
+    def _can_go_live(self, restaurant: bool = False) -> bool:
+        """还能否联网：餐厅搜索可用到总额度；路线查询要给餐厅留出未用完的预留。"""
+        limits = [value for value in (self.live_budget, None if restaurant else self.budget.ceiling) if value is not None]
+        if not limits:
+            return True
+        held = 0 if restaurant or self.live_budget is None else self.budget.reserve - self.budget.reserve_used
+        return self.live_calls < min(limits) - held
 
     @contextmanager
     def planning_limits(self):
         previous = self.budget.ceiling
         if self.live_budget is not None:
-            limit = max(0, self.live_budget - min(24, self.live_budget // 4))
+            # 排程试探之外先留定稿路段的余量（按天数），再留餐厅搜索的预留
+            final = min(FINAL_LEGS_PER_DAY * self.trip_days, self.live_budget // 4)
+            limit = max(0, self.live_budget - final - self.budget.reserve)
             self.budget.ceiling = min(previous, limit) if previous is not None else limit
         try:
             yield
@@ -177,11 +244,20 @@ class Travel:
         key = f"walk|{o}|{d}"
         return self.router.has(key) and self.router.cache[key]["m"] <= self.walk_limit_m
 
-    def leg(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool = True) -> tuple[int, str, float]:
-        detail = self.detail(lat1, lon1, lat2, lon2, live=live)
+    def leg(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool = True,
+            depart: int | None = None) -> tuple[int, str, float]:
+        with self.departing(depart):
+            detail = self.detail(lat1, lon1, lat2, lon2, live=live)
         return detail.minutes, detail.mode, detail.cost
 
-    def detail(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool = True) -> LegEvidence:
+    def detail(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool = True,
+               depart: int | None = None) -> LegEvidence:
+        with self.departing(depart):
+            return self._detail(lat1, lon1, lat2, lon2, live)
+
+    def _detail(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool) -> LegEvidence:
+        if self.opens(lat1, lon1, lat2, lon2):
+            return LegEvidence(minutes=0, mode="未计入", cost=0.0, source="same_place", cost_source="free", service_date=self.service_date)
         key = self.edge_key(lat1, lon1, lat2, lon2)
         existing = self.evidence.get(key)
         if existing is not None and (existing.source != "estimate" or not live or not self._can_go_live()):
@@ -233,8 +309,28 @@ class Travel:
             return minutes, "打车", fare, source, 0, f"公交需步行约{walk_m}米，改打车少走路", True, fetched
         return None
 
+    def _forced_taxi_leg(self, o, d, coordinates: tuple[float, float, float, float], live: bool):
+        """修复环节指定的路段：不论快慢、车费，按打车给出；排程试探时打车未缓存就用标定模型估算并如实标注。"""
+        from .amap import TAXI_WAIT_MIN
+        drive = self.router.drive(o, d, live=live)
+        if drive is not None:
+            key = self.router.transit_key(o, d)
+            quote = (self.router.get(key) or {}).get("taxi_cost") if self.router.has(key) else None
+            fetched = self.router.records.get(f"drive|{o}|{d}", {}).get("fetched_at")
+            return (round(drive["min"]) + TAXI_WAIT_MIN, "打车", self._taxi_cost(drive, o, d) if quote is None else quote,
+                    "amap", 0, FORCED_TAXI_REASON, True, fetched)
+        if not live:
+            minutes, _, fare = calibrated(*coordinates, "taxi", 0)
+            return minutes, "打车", fare, "estimate", 0, FORCED_TAXI_REASON, True, None
+        raise LookupError
+
     def _resolve(self, lat1: float, lon1: float, lat2: float, lon2: float, live: bool):
+        forced = self.forced_taxi(lat1, lon1, lat2, lon2)
         if self.source == "estimate":
+            if forced:
+                minutes, _, cost = calibrated(lat1, lon1, lat2, lon2, "taxi", 0)
+                if minutes:
+                    return minutes, "打车", cost, "estimate", 0, FORCED_TAXI_REASON, True, None
             minutes, mode, cost = estimate_travel(lat1, lon1, lat2, lon2, self.walk_limit_m)
             return minutes, mode, cost, "estimate", round(minutes * 75) if mode == "步行" else 0, "使用估算模型", True, None
         from .amap import TAXI_WAIT_MIN, WALK_M_PER_MIN, AmapError, pt, straight_km
@@ -245,6 +341,8 @@ class Travel:
         live = live and self._can_go_live()
         try:
             r = self.router
+            if forced:
+                return self._forced_taxi_leg(o, d, (lat1, lon1, lat2, lon2), live)
             w = r._walk_m(o, d, live=live)
             if w is None and live is False and straight_km(o, d) < self.walk_limit_m / 1000 and not r.has(f"walk|{o}|{d}"):
                 raise LookupError  # 不知道能否步行 → 兜底
@@ -282,30 +380,49 @@ class Travel:
                 self.approx_legs += 1
             else:
                 self.approx_planning += 1
+            if forced:
+                minutes, _, cost = calibrated(lat1, lon1, lat2, lon2, "taxi", 0)
+                return minutes, "打车", cost, "estimate", 0, f"{FORCED_TAXI_REASON}（{str(e) or '请求额度用完或快照缺少路段'}）", True, None
             minutes, mode, cost = calibrated(lat1, lon1, lat2, lon2, self.scenario, self.walk_limit_m)
             return minutes, mode, cost, "estimate", round(minutes * WALK_M_PER_MIN) if mode == "步行" else 0, str(e) or ("请求额度用完或快照缺少路段"), True, None
 
-    def finalize(self, itinerary, profile, restaurants) -> None:
+    @staticmethod
+    def day_legs(day, profile, restaurants) -> list[tuple[Any, Any, tuple[float, float], tuple[float, float], int | None]]:
+        """当天按顺序的每段路：(行程项, 地点, 起点, 终点, 出发时刻)；返程的行程项与地点为 None。定稿、校验与步行修复共用。
+
+        出发时刻取排时间线时记下的 travel_depart / return_depart；旧行程没有时用上一项结束时刻（首段为 None，即当天起点时刻）。
+        """
         from .data import load_pois
+        hotel = (profile.hotel.lat, profile.hotel.lon)
+        position, legs, previous_end = hotel, [], None
+        for item in day.items:
+            place = load_pois().get(item.ref_id) if item.kind == "poi" else restaurants.get(item.ref_id)
+            if place is None:
+                previous_end = item.end
+                continue
+            destination, leave = stop_points(item, place)  # 长堤从一头进、另一头出
+            legs.append((item, place, position, destination, item.travel_depart if item.travel_depart is not None else previous_end))
+            position, previous_end = leave, item.end
+        if day.items:
+            legs.append((None, None, position, hotel, day.return_depart if day.return_depart is not None else previous_end))
+        return legs
+
+    def finalize(self, itinerary, profile, restaurants) -> None:
         self.final_keys = set()
         for day in itinerary.days:
             with self.for_day(profile, day.day):
-                position = (profile.hotel.lat, profile.hotel.lon)
                 day.walking_m = 0
-                for item in day.items:
-                    place = load_pois().get(item.ref_id) if item.kind == "poi" else restaurants.get(item.ref_id)
-                    if place is None:
-                        continue
-                    destination = (place.lat, place.lon)
-                    item.travel_evidence = self.detail(*position, *destination)
-                    day.walking_m += item.travel_evidence.walking_m + (getattr(place, "walking_m", None) or 0)
-                    self.final_keys.add(self.edge_key(*position, *destination))
-                    position = destination
-                if day.items:
-                    destination = (profile.hotel.lat, profile.hotel.lon)
-                    day.return_leg = self.detail(*position, *destination)
-                    day.walking_m += day.return_leg.walking_m
-                    self.final_keys.add(self.edge_key(*position, *destination))
+                for item, place, origin, destination, depart in self.day_legs(day, profile, restaurants):
+                    with self.departing(depart):
+                        detail = self.detail(*origin, *destination)
+                        if not self.opens(*origin, *destination):  # 起点不定时去第一站和回去的路段不计，也不记证据
+                            self.final_keys.add(self.edge_key(*origin, *destination))
+                    if item is None:
+                        day.return_leg = detail
+                        day.walking_m += detail.walking_m
+                    else:
+                        item.travel_evidence = detail
+                        day.walking_m += detail.walking_m + (getattr(place, "walking_m", None) or 0) + walk_length_m(item)
         self.approx_legs = sum(self.evidence[key].source == "estimate" for key in self.final_keys)
 
     def matrix(self, points: list[tuple[float, float]]) -> list[list[int]]:
@@ -318,14 +435,15 @@ class Travel:
         if self.source == "estimate":
             rows = []
             for a in points:
-                rows.append([estimate_travel(a[0], a[1], b[0], b[1], self.walk_limit_m)[0] for b in points])
+                rows.append([0 if self.opens(*a, *b) else estimate_travel(a[0], a[1], b[0], b[1], self.walk_limit_m)[0] for b in points])
                 tick_add("legs", len(points), "已算 {n} 段交通")
             return rows
         from .amap import AmapError, pt
         if self._can_go_live():
             try:
                 pts = [pt(*p) for p in points]
-                self.router.prefetch([(o, d) for o in pts for d in pts], need_drive=self.scenario == "taxi" or self.taxi_upgrade)
+                self.router.prefetch([(pts[i], pts[j]) for i, a in enumerate(points) for j, b in enumerate(points) if not self.opens(*a, *b)],
+                                     need_drive=self.scenario == "taxi" or self.taxi_upgrade)
             except AmapError as e:
                 self.errors.append(str(e)[:120])
         live = self.scenario == "taxi"
@@ -340,11 +458,16 @@ class Travel:
                 "live_calls": self.live_calls, "approx_legs": self.approx_legs, "approx_planning": self.approx_planning,
                 "errors": list(dict.fromkeys(self.errors))[:3], "final_legs": len(self.final_keys or []),
                 "cache_policy": "explicit_snapshot" if self.router and self.router.offline else "memory_15min",
-                "live_budget": self.live_budget}
+                "live_budget": self.live_budget, "reference_date": self.reference.isoformat()}
 
 
-def make_travel(source: str | None, scenario: str) -> Travel:
-    """source=None 时：配置了 Web服务 key 就用高德，否则退回估算模型。"""
+def depart_at(route, minute: int | None):
+    """在 minute 出发：route 是 Travel 时进入该时刻；估算函数、冻结路线、测试替身等没有出发时刻的对象原样使用。"""
+    return route.departing(minute) if hasattr(route, "departing") else nullcontext()
+
+
+def make_travel(source: str | None, scenario: str, days: int | None = None) -> Travel:
+    """source=None 时：配置了 Web服务 key 就用高德，否则退回估算模型。days：按行程天数放宽高德额度。"""
     if source is None:
         source = "amap" if config.AMAP_WEB_KEY else "estimate"
-    return Travel(source, scenario)
+    return Travel(source, scenario, live_budget=plan_http_limit(days) if days else PLAN_HTTP_LIMIT)

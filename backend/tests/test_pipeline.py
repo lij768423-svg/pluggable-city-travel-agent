@@ -62,11 +62,11 @@ def test_must_visit_survives_rule_select_and_repair(mock_llm):
     assert "must_visit_missing" not in {v.code for v in r["report"].violations}, r["log"]
 
 
-def test_vegetarian_gets_meals_when_possible(mock_llm):
-    r = run_plan("", {"days": 2, "interests": ["博物馆展览"], "dietary": ["只吃中餐"], "budget": 2000}, llm=mock_llm,
+def test_no_spicy_still_gets_meals(mock_llm):
+    r = run_plan("", {"days": 2, "interests": ["博物馆展览"], "spice": "no", "budget": 2000}, llm=mock_llm,
                  select_mode="rule")
     meals = [i for d in r["itinerary"].days for i in d.items if i.kind == "meal"]
-    assert meals, "只吃中餐也应安排到部分正餐（放宽距离后）"
+    assert meals, "不吃辣也应安排到正餐"
 
 
 def test_lunch_uses_wait_before_late_opening(mock_llm):

@@ -5,7 +5,7 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
@@ -13,11 +13,7 @@ jobs:
           python-version: '3.12'
       - run: uv sync --frozen
         working-directory: backend
-      - run: uv run python scripts/fetch_data.py
-        working-directory: backend
-      - run: uv run python scripts/fetch_data.py --city nanjing
-        working-directory: backend
-      - run: uv run python scripts/fetch_data.py --city suzhou
+      - run: for city in beijing shanghai guangzhou shenzhen chengdu chongqing wuhan hangzhou nanjing suzhou; do uv run python scripts/fetch_data.py --city $city; done
         working-directory: backend
       - run: uv run pytest -q
         working-directory: backend

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>城市接入进度</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+  :root { --bg: #f5f7fb; --panel: #fff; --line: #e4e7ec; --text: #1d2433; --muted: #5d687b; --faint: #8b94a5; --accent: #2f5bd3; --accent-soft: #eef3fe;
+    --ok: #1f7a4d; --ok-soft: #e8f5ee; --warn: #8a5a14; --warn-soft: #fff7e8; --bad: #b42318; --bad-soft: #fdecea; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.6 'Geist Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+  main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: .02em; }
+  .stamp { color: var(--faint); font-size: 12px; }
+  .stamp b { color: var(--muted); font-weight: 500; }
+  .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .tile small { display: block; color: var(--faint); font-size: 12px; }
+  .tile strong { display: block; margin-top: 4px; font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .tile span { color: var(--muted); font-size: 12px; }
+  .bar { height: 6px; margin-top: 10px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .6s ease; }
+  .cities { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+  .city { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .city.running { border-color: #b9c9f2; box-shadow: 0 10px 30px -22px #2f5bd3aa; }
+  .city-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .city-head h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .06em; }
+  .chip { padding: 2px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; background: var(--line); color: var(--muted); }
+  .chip.running { background: var(--accent-soft); color: var(--accent); }
+  .chip.passed { background: var(--ok-soft); color: var(--ok); }
+  .chip.gate_failed, .chip.paused { background: var(--warn-soft); color: var(--warn); }
+  .chip.error { background: var(--bad-soft); color: var(--bad); }
+  .steps { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; margin: 14px 0 6px; }
+  .steps i { height: 6px; border-radius: 2px; background: var(--line); }
+  .steps i.done { background: var(--accent); }
+  .steps i.now { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .step-label { color: var(--muted); font-size: 12px; min-height: 19px; }
+  .step-label b { color: var(--text); font-weight: 600; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0 0; font-size: 13px; }
+  dt { color: var(--faint); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .error-line { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bad-soft); color: var(--bad); font-size: 12px; word-break: break-all; }
+  details { margin-top: 10px; font-size: 13px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+  details dl { margin-top: 8px; }
+  .empty { padding: 40px; text-align: center; color: var(--faint); background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; }
+  .foot { margin-top: 18px; color: var(--faint); font-size: 12px; }
+  @media (max-width: 760px) {
+    main { padding-top: 20px; }
+    .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cities { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>城市接入进度</h1>
+    <div class="stamp" id="stamp">正在读取…</div>
+  </header>
+  <section class="summary" id="summary"></section>
+  <section class="cities" id="cities"></section>
+  <p class="foot">每 10 秒自动刷新。调用次数按接入记录与日志统计，评测的高德次数取录制阶段的实际联网请求；模型额度与律所共用。只在测试实例开放，生产不提供。</p>
+</main>
+<script>
+const STATUS = { waiting: '等待中', running: '进行中', passed: '已通过', gate_failed: '评测未达标', error: '出错', paused: '已暂停' }
+const $ = id => document.getElementById(id)
+const esc = value => String(value ?? '—').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const time = iso => iso ? new Date(iso).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '—'
+
+function render(data) {
+  const cities = data.cities
+  const passed = cities.filter(city => city.status === 'passed')
+  const running = cities.find(city => city.status === 'running')
+  const stepsDone = cities.reduce((sum, city) => sum + city.stages.filter(stage => stage.done).length, 0)
+  const stepsAll = cities.length * 9
+  const model = cities.reduce((sum, city) => sum + city.usage.model, 0)
+  const amap = cities.reduce((sum, city) => sum + city.usage.amap, 0)
+  // 中途重启过的城市起止时间不准，剩余时间按每座约 45 分钟估（北京：标签约 3 分、时长参考约 14 分、评测约 21 分）
+  const average = 45
+  const left = cities.filter(city => city.status === 'waiting').length + (running ? 0.5 : 0)
+  const eta = data.all_done ? '已全部结束' : `约 ${Math.max(1, Math.round(left * average / 6) / 10)} 小时`
+  $('summary').innerHTML = `
+    <div class="tile"><small>已通过</small><strong>${passed.length} / ${cities.length}</strong><span>座城市</span><div class="bar"><i style="width:${stepsDone / stepsAll * 100}%"></i></div></div>
+    <div class="tile"><small>当前</small><strong>${running ? esc(running.name) : data.all_done ? '完成' : '—'}</strong><span>${running ? esc(running.current || stageNow(running)) : `${stepsDone}/${stepsAll} 步`}</span></div>
+    <div class="tile"><small>模型调用</small><strong>${model}</strong><span>预计全部约 850–900</span></div>
+    <div class="tile"><small>高德调用</small><strong>${amap.toLocaleString()}</strong><span>预计全部约 16,000 · ${eta}</span></div>`
+  $('cities').innerHTML = cities.map(card).join('') || '<div class="empty">还没有接入记录</div>'
+  const updated = data.updated_at ? new Date(data.updated_at * 1000).toLocaleTimeString('zh-CN') : '—'
+  $('stamp').innerHTML = `日志更新于 <b>${updated}</b> · 页面刷新于 <b>${new Date().toLocaleTimeString('zh-CN')}</b>`
+}
+
+function stageNow(city) {
+  const next = city.stages.find(stage => !stage.done)
+  return next ? next.label : '收尾'
+}
+
+function card(city) {
+  const nowIndex = city.status === 'running' ? city.stages.findIndex(stage => !stage.done) : -1
+  const steps = city.stages.map((stage, index) => `<i class="${stage.done ? 'done' : index === nowIndex ? 'now' : ''}" title="${esc(stage.label)}${stage.finished_at ? ' · ' + time(stage.finished_at) : ''}"></i>`).join('')
+  const done = city.stages.filter(stage => stage.done).length
+  const label = city.status === 'running' ? `<b>${esc(stageNow(city))}</b>${city.current ? ' · ' + esc(city.current) : ''}`
+    : city.status === 'passed' ? `9 步完成 · ${time(city.stages[8].finished_at)} 结束`
+    : city.status === 'waiting' ? '排队中' : `完成 ${done}/9 步`
+  const c = city.counts, e = city.eval
+  const evalText = e.constraints_passed ? `${e.constraints_passed} 满足约束 · 硬违例 ${e.hard_violations}` : city.status === 'running' && nowIndex === 8 ? '进行中' : '—'
+  const rows = [
+    ['景点 / 餐厅 / 住宿', c.attractions ? `${c.attractions} / ${c.restaurants} / ${c.hotels}` : '—'],
+    ['规则修正 / 待核', c.rule_changes != null ? `${c.rule_changes} / ${c.pending}` : '—'],
+    ['片区（起名 / 全部）', c.areas != null ? `${c.areas_named} / ${c.areas}` : '—'],
+    ['20 画像评测', evalText],
+    ['调用（模型 / 高德）', `${city.usage.model} / ${city.usage.amap.toLocaleString()}`],
+  ]
+  const d = city.defaults
+  const derived = d.origin ? `<details><summary>自动推导的城市设置（待核）</summary><dl>
+    <dt>默认起点</dt><dd>${esc(d.origin)}</dd>
+    <dt>酒店区</dt><dd>${esc((d.hotel_areas || []).join('、'))}</dd>
+    <dt>夜游街</dt><dd>${esc(Object.values(d.evening_streets || {}).join('、'))}</dd>
+    <dt>本地菜</dt><dd>${esc((d.local_cuisine || '').replaceAll('|', '、'))}</dd></dl></details>` : ''
+  return `<article class="city ${city.status}">
+    <div class="city-head"><h2>${esc(city.name)}</h2><span class="chip ${city.status}">${STATUS[city.status] || city.status}</span></div>
+    <div class="steps">${steps}</div>
+    <div class="step-label">${label}</div>
+    <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    ${city.last_error ? `<div class="error-line">${esc(city.last_error)}</div>` : ''}
+    ${derived}
+  </article>`
+}
+
+async function refresh() {
+  try {
+    const response = await fetch('/api/onboarding-status', { cache: 'no-store' })
+    if (!response.ok) throw new Error(response.status === 404 ? '这个实例没有开放接入进度' : `读取失败（${response.status}）`)
+    render(await response.json())
+  } catch (error) {
+    $('stamp').textContent = error.message
+  }
+}
+refresh()
+setInterval(refresh, 10000)
+</script>
+</body>
+</html>

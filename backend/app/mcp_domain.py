@@ -3,14 +3,17 @@ from __future__ import annotations
 
 import re
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 
+from .amap_limits import plan_http_limit
 from .data import load_pois
 from .graph import build_graph, finish_result
 from .meal_edits import freeze_preview_locations, validate_preview
 from .nodes.retrieve import retrieve_with_report, must_visit_ids
+from .nodes.select import candidate_groups, target_count
 from .planning_context import allowed_pois, poi_catalog
 from .poi_catalog import current_catalog
+from .prompts import SELECT_RULES
 from .restaurants import RestaurantCatalog
 from .schemas import ExternalSelection, UserProfile
 from .travel import Travel
@@ -31,12 +34,20 @@ def prepare_candidates(profile: UserProfile) -> tuple[list, dict]:
     return retrieve_with_report(profile)
 
 
+def candidate_overview(candidates: list, profile: UserProfile) -> dict:
+    """与网页选点提示词相同的片区分组、相邻关系、建议景点数和选点规则（宿主 AI 拿到的信息与内部模型一致）。"""
+    return {"areas": [{key: group[key] for key in ("area_id", "label", "adjacent", "nearest_km")}
+                      | {"candidate_ids": [facts["id"] for facts in group["candidates"]]} for group in candidate_groups(candidates)],
+            "suggested_count": target_count(profile, len(candidates)),
+            "selection_guide": SELECT_RULES + "（字段对应：免费已核验=price_free_verified，季节限制=seasonal_note，"
+                               "晚间型=evening_only，同段游览=visit_group；推荐理由写在 reason，必去之外可用 priority 表示偏好强弱。）"}
+
+
 def public_candidates(candidates: list) -> list[dict]:
     places = load_pois()
-    return [{**c.model_dump(mode="json"), "name": places[c.poi_id].name,
-             "summary": places[c.poi_id].summary, "price": places[c.poi_id].price,
+    facts = {f["id"]: f for group in candidate_groups(candidates) for f in group["candidates"]}
+    return [{**c.model_dump(mode="json"), **{k: v for k, v in facts[c.poi_id].items() if k != "id"},
              "open_min": places[c.poi_id].open_min, "close_min": places[c.poi_id].close_min,
-             "min_hours": places[c.poi_id].min_hours,
              "facts_are_historical": True,
              # 补充地点：只在逐日准入日期开放，票价可能是已知上界
              **({"catalog_source": "supplement",
@@ -70,8 +81,10 @@ def run_selected(profile: UserProfile, candidates: list, selections: list[Extern
         selected.append(Selection(poi_id=entry.poi_id, reason=reason, source="external_ai"))
     priority = {entry.poi_id: entry.priority for entry in selections}
     candidates = [c.model_copy(update={"score": c.score + priority.get(c.poi_id, 0) / 100}) for c in candidates]
-    route = route or Travel("amap", profile.transport)
+    route = route or Travel("amap", profile.transport, live_budget=plan_http_limit(profile.days))
     route.allow_taxi_fallback = profile.allow_taxi_fallback
+    if hasattr(route, "open_from"):
+        route.open_from(profile)
     catalog = catalog or RestaurantCatalog(route)
     places = current_catalog()
     token = allowed_pois.set(frozenset(pool))
@@ -124,9 +137,12 @@ def delivery_status(result: dict, *, now: datetime | None = None, allow_unverifi
         return {"status": "needs_changes", "code": "no_valid_plan_found", "proven_infeasible": False,
                 "message": "存在空白旅行日，有限候选未组成完整行程", "options": ["增加候选地点或减少天数"]}
     now = now or datetime.now(timezone.utc)
+    # 没填出游日期时，路线按参考日查（Travel.route_date）；证据日期应与之一致
+    reference = (result.get("travel_stats") or {}).get("reference_date")
     for day in result["itinerary"].days:
         if not day.items:
             continue
+        expected_date = day.date or (date.fromisoformat(reference) + timedelta(days=day.day - 1) if reference else None)
         for label, evidence in [(item.name, item.travel_evidence) for item in day.items] + [("返程", day.return_leg)]:
             valid = evidence is not None and evidence.available and evidence.source in {"amap", "same_place"}
             if valid and evidence.source == "amap":
@@ -135,7 +151,7 @@ def delivery_status(result: dict, *, now: datetime | None = None, allow_unverifi
                     valid = fetched.tzinfo is not None and timedelta(seconds=-60) <= now - fetched <= timedelta(minutes=15)
                 except (AttributeError, ValueError):
                     valid = False
-                valid = valid and evidence.service_date == day.date
+                valid = valid and evidence.service_date == expected_date
             if not valid:
                 missing.append({"day": day.day, "leg": label, "reason": "缺少有效真实路线证据"})
     if missing:

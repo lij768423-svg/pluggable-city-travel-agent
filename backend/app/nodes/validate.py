@@ -4,14 +4,17 @@ from collections.abc import Callable
 from contextlib import nullcontext
 from copy import deepcopy
 
+from ..bundles import visit_hours
+from ..bundles import bundles, umbrella_of
+from ..walk_ends import stop_points, walk_center, walk_length_m
 from ..areas import area_index
-from ..calendar import closed_on, date_notices
+from ..calendar import closed_on, date_label, date_notices
 from ..data import load_pois, load_restaurants
-from ..geo import hm, travel
-from ..matching import norm
+from ..geo import haversine_km, hm, travel
+from ..matching import match_place, norm
 from ..poi_semantics import evening_only, visit_open_min
 from ..progress import tick_add
-from ..restaurants import STRICT_DIET, dietary_status, meal_start
+from ..restaurants import meal_start, spice_conflict
 from ..rules import (
     DINNER,
     LUNCH,
@@ -22,20 +25,58 @@ from ..rules import (
     interstop_ride_allowed,
     interstop_ride_long,
     required_meals,
+    transport_dominates,
     walking_limit,
 )
 from ..schemas import Itinerary, Restaurant, UserProfile, ValidationReport, Violation
+from ..travel import Travel, depart_at
 
 TravelFn = Callable[[float, float, float, float], tuple[int, str, float]]
-FEASIBILITY = {"unknown_place", "opening_hours", "date_closed", "travel_time", "time_order", "duplicate_poi", "transport_unavailable"}
+FEASIBILITY = {"unknown_place", "opening_hours", "date_closed", "travel_time", "time_order", "duplicate_poi", "transport_unavailable",
+               "route_unverified"}
+UNVERIFIED = "这段路没有查到真实路线（高德额度用完或接口出错），时间是估算的，未经核验"
 CONSTRAINT = {"over_budget", "diet_conflict", "day_overlong", "avoid_visited", "must_visit_missing", "walking_limit", "interstop_ride_limit"}
 QUALITY_CODES = {"missing_lunch", "missing_dinner", "early_finish", "long_idle", "short_visit", "empty_day", "excessive_transport", "anchor_mixed", "audience_mismatch", "onsite_meal_unconfirmed", "interstop_ride_long", "area_scattered"}
 
 
+def far_must_partner(target: int, days: list[list[int]], must: set[int], leg: TravelFn) -> tuple[int, int, str] | None:
+    """必去 target 没排上，是不是因为每天都已有一处必去离它太远：两处之间来回单段乘车都超过封顶，排不进同一天（2026-10-29）。
+
+    返回最近的那处 (必去, 分钟, 方式)；有哪天没有这样的必去（换到那天还能放）就返回 None。只为说明原因，leg 应只读缓存或估算。
+    """
+    from ..amap import MissingSnapshotError
+    pois = load_pois()
+    if target not in pois:
+        return None
+    nearest = []
+    try:
+        for day in days:
+            blocked = []
+            for other in day:
+                if other == target or other not in must or other not in pois:
+                    continue
+                legs = [leg(*walk_center(pois[a]), *walk_center(pois[b])) for a, b in ((other, target), (target, other))]
+                if not any(interstop_ride_allowed(minutes, mode) for minutes, mode, _ in legs):
+                    minutes, mode, _ = min(legs)
+                    blocked.append((other, minutes, mode))
+            if not blocked:
+                return None
+            nearest.append(min(blocked, key=lambda entry: entry[1]))
+    except MissingSnapshotError:  # 离线回放的快照里没有这段路：不猜原因
+        return None
+    return min(nearest, key=lambda entry: entry[1]) if nearest else None
+
+
 def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn | None = None,
-                       restaurants: dict[int, Restaurant] | None = None) -> ValidationReport:
+                       restaurants: dict[int, Restaurant] | None = None, strict_routes: bool = False) -> ValidationReport:
+    """每段按行程项记下的出发时刻查（travel_depart / return_depart，旧行程退回上一项结束时刻）。
+
+    strict_routes：定稿校验时打开——用高德排的行程里，仍是估算的路段记为硬违例 route_unverified（2026-10-26 用户："最好不要估计"）。
+    补点试探只读缓存、估算属预期，不打开。
+    """
     travel_function = travel_fn or travel
     route = getattr(travel_fn, "__self__", None)
+    verify = strict_routes and getattr(route, "source", None) == "amap"
     pois = load_pois()
     areas = area_index(pois)
     home = areas.home_areas(profile.hotel.lat, profile.hotel.lon)
@@ -53,7 +94,8 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
         violations.append(Violation(code=code, severity="hard" if hard else "soft", message=message, day=day, item=item))
 
     if profile.start_date is None:
-        unknowns.add("未填写出游日期，具体日期开放情况未核验")
+        unknowns.add(f"未填写出游日期，具体日期开放情况未核验；公交按 {date_label(route.route_date(profile, 1))}起的班次查询"
+                     if hasattr(route, "route_date") and getattr(route, "source", None) == "amap" else "未填写出游日期，具体日期开放情况未核验")
     for day in it.days:
         tick_add("days", 1, f"已核对 {{n}} / {len(it.days)} 天的安排", only={"validate", "repair"})
         window = activity_window(profile, day.day)
@@ -89,17 +131,21 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                         meals += item.cost
                     previous_end = item.end
                     continue
-                needed, mode, cost = travel_function(*position, place.lat, place.lon)
+                with depart_at(route, item.travel_depart if item.travel_depart is not None else previous_end):
+                    arrive, leave = stop_points(item, place)  # 长堤从一头进、另一头出
+                    needed, mode, cost = travel_function(*position, *arrive)
+                    detail = route.detail(*position, *arrive) if hasattr(route, "detail") else item.travel_evidence
                 if previous_end is not None and mode not in {"步行", "原地"}:
                     transit_minutes += needed
                 transport += cost
-                detail = route.detail(*position, place.lat, place.lon) if hasattr(route, "detail") else item.travel_evidence
                 if detail:
                     day_walking += detail.walking_m
                     if not detail.available:
                         add("transport_unavailable", detail.fallback_reason or "没有符合出行方式的路线", day.day, item.name, True)
                     if detail.source == "estimate":
                         unknowns.add("部分交通使用估算，不能作为已核验路线")
+                        if verify:
+                            add("route_unverified", UNVERIFIED, day.day, item.name, True)
                 else:
                     day_walking += round(needed * 75) if mode == "步行" else 0
                     unknowns.add("交通含估算或缺少逐段来源")
@@ -137,7 +183,7 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                         unknowns.add(notice)
                     if place.opening_rules and place.opening_rules.last_entry is not None and item.start > place.opening_rules.last_entry:
                         add("opening_hours", "已超过最后入场时间", day.day, item.name, True)
-                    if item.end - item.start + TOL < place.min_hours * 60:
+                    if item.end - item.start + TOL < visit_hours(place)[0] * 60:
                         add("short_visit", "停留短于已记录建议区间，需核对游览范围", day.day, item.name)
                     if any(norm(name) and (norm(name) in norm(place.name) or norm(place.name) in norm(name)) for name in profile.avoid):
                         add("avoid_visited", "用户明确不去", day.day, item.name, True)
@@ -154,32 +200,27 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                         unknowns.add("部分餐厅营业时段待确认")
                     if place.provider == "chinatravel":
                         unknowns.add("部分餐厅来自历史快照，营业与价格需出发前确认")
-                    diet = dietary_status(place, profile)
-                    if diet == "conflict":
-                        add("diet_conflict", "已知菜系与饮食要求冲突", day.day, item.name, True)
-                    elif diet == "unknown" and profile.dietary:
-                        unknowns.add("饮食要求缺少商家确认，不能视为认证")
-                        strict = STRICT_DIET & set(profile.dietary)
-                        if strict:
-                            requirement = "、".join(sorted(strict))
-                            # 附近没有核验过的餐厅时排程会放宽，这里只提示待确认，不判为行不通
-                            add("diet_unverified", f"没有可核验的{requirement}餐厅，这一餐按菜系挑选，须到店确认", day.day, item.name)
-                            unknowns.add(f"{requirement}要求没有可核验依据，相关餐厅须到店确认")
+                    if spice_conflict(place, profile):
+                        add("diet_conflict", "不吃辣，但这家以辣味菜为主", day.day, item.name, True)
                     for kind, bounds in (("lunch", LUNCH), ("dinner", DINNER)):
                         if bounds[0] - 30 <= item.start <= bounds[1] + 30 and item.end - item.start >= 30:
                             matched_meals.add(kind)
-                position = (place.lat, place.lon)
+                position = stop_points(item, place)[1]
+                day_walking += walk_length_m(item)
                 previous_end = item.end
             if previous_end is not None:
                 previous_end = max(previous_end, max((slot.end for slot in day.reserved_meals), default=0))
-                back, mode, cost = travel_function(*position, profile.hotel.lat, profile.hotel.lon)
+                with depart_at(route, day.return_depart if day.return_depart is not None else previous_end):
+                    back, mode, cost = travel_function(*position, profile.hotel.lat, profile.hotel.lon)
+                    detail = route.detail(*position, profile.hotel.lat, profile.hotel.lon) if hasattr(route, "detail") else day.return_leg
                 transport += cost
-                detail = route.detail(*position, profile.hotel.lat, profile.hotel.lon) if hasattr(route, "detail") else day.return_leg
                 day_walking += detail.walking_m if detail else round(back * 75) if mode == "步行" else 0
                 if detail and not detail.available:
                     add("transport_unavailable", "返程没有符合出行方式的方案", day.day, hard=True)
                 if detail and detail.source == "estimate":
                     unknowns.add("部分交通使用估算，不能作为已核验路线")
+                    if verify:
+                        add("route_unverified", UNVERIFIED, day.day, "返程", True)
                 if previous_end + back > window["end"] + TOL or first_start is not None and first_start < window["start"] - TOL:
                     add("day_overlong", f"行程超出所选时段 {hm(window['start'])}–{hm(window['end'])}", day.day, hard=True)
         zones = [areas.area_of(item.ref_id) for item in day.items if item.kind == "poi" and item.ref_id in pois]
@@ -222,12 +263,37 @@ def validate_itinerary(it: Itinerary, profile: UserProfile, travel_fn: TravelFn 
                     unknowns.add("未落实的餐费尚未计入预算合计")
             else:
                 covered_meals += 1
+    visited_ids = {item.ref_id for day in it.days for item in day.items if item.kind == "poi"}
+    grouped = bundles()
+    must_names: dict[int, str] = {}
     for required in profile.must_visit:
+        if (hit := match_place(required, pois)) is not None:
+            must_names.setdefault(umbrella_of(hit, grouped), required)
+    day_ids = [[item.ref_id for item in day.items if item.kind == "poi"] for day in it.days]
+    # 只为说明漏排原因：读缓存或估算，不为此联网（试探用的包装本来就只读缓存）
+    quiet_leg = (lambda *points: route.leg(*points, live=False)) if isinstance(route, Travel) else travel_function
+    for required in profile.must_visit:
+        # 必去是同一景区里的某一处（如灵隐寺）时，排了这个景区就算安排了（见 app/bundles.py）
+        hit = match_place(required, pois)
+        if hit is not None and umbrella_of(hit, grouped) in visited_ids:
+            continue
         if not any(norm(required) in norm(name) or norm(name) in norm(required) for name in visited_names):
-            add("must_visit_missing", f"必去景点「{required}」未安排", hard=True)
+            reason = ""
+            partner = far_must_partner(umbrella_of(hit, grouped), day_ids, set(must_names), quiet_leg) if hit is not None else None
+            if partner is not None:
+                other, minutes, mode = partner
+                target = pois[umbrella_of(hit, grouped)]
+                km = haversine_km(pois[other].lat, pois[other].lon, target.lat, target.lon)
+                where = (f"和必去「{must_names[other]}」" if len(it.days) == 1
+                         else f"每天都已有一处离它较远的必去，最近的「{must_names[other]}」与它")
+                reason = (f"：{where}相距约 {km:.0f} 公里，{mode}约 {minutes} 分钟，超过景点之间单段 {HARD_INTERSTOP_RIDE_MIN} 分钟的上限"
+                          f"（只有每天出发和返程不限），排不进同一天；可以加一天，或少选一处")
+            add("must_visit_missing", f"必去景点「{required}」未安排{reason}", hard=True)
     total = tickets + meals + transport
     if total > profile.budget + 1e-6:
-        add("over_budget", f"预计 {total:.0f} 元，超出预算 {profile.budget:.0f} 元", hard=True)
+        hint = "；超支主要来自打车，可改坐公交或提高预算" if transport_dominates(transport, tickets + meals) and profile.transport == "taxi" else ""
+        add("over_budget", f"预计 {total:.0f} 元（门票 {tickets:.0f}、餐饮 {meals:.0f}、交通 {transport:.0f}），"
+                           f"超出预算 {profile.budget:.0f} 元{hint}", hard=True)
     passed = not any(item.severity == "hard" for item in violations)
     constraint_status = "passed" if passed else "failed"
     arrangement_status = "missing" if missing_meals else ("needs_confirmation" if meal_confirmations else "complete")
@@ -250,12 +316,13 @@ def validate_node(state: dict) -> dict:
     restaurants = catalog.restaurants if catalog else load_restaurants()
     if route:
         route.finalize(state["itinerary"], state["profile"], restaurants)
-    report = validate_itinerary(state["itinerary"], state["profile"], travel_fn=route.leg if route else None, restaurants=restaurants)
+    report = validate_itinerary(state["itinerary"], state["profile"], travel_fn=route.leg if route else None, restaurants=restaurants,
+                                strict_routes=True)
     from ..planning_quality import quality_key
     score = quality_key(state["itinerary"], report, count_idle=True)
     best = state.get("best_candidate")
     if best is None or score < best["score"]:
-        best = {"score":score, "report":report.model_copy(deep=True),
+        best = {"score":score, "report":report.model_copy(deep=True), "taxi_overrides":set(getattr(route, "taxi_overrides", ())),
                 **{field:deepcopy(state.get(field, [])) for field in ("itinerary", "selected", "day_orders", "dropped")}}
     return {"report":report, "best_candidate":best,
             "log":[f"校验：约束{'通过' if report.constraint_status == 'passed' else '未通过'}；安排{report.arrangement_status}；证据{report.evidence_status}；完整可执行{'是' if report.complete_executable else '否'}"]}

@@ -54,7 +54,7 @@ onBeforeUnmount(() => { viewer.value = null })
         <button v-for="(photo, index) in photos" :key="photo.fingerprint" type="button" class="gallery-slide"
           :aria-label="`放大查看第 ${index + 1} 张图片${photo.caption ? '：' + photo.caption : ''}`" @click="open(index)">
           <img :src="photo.thumb_url || photo.url" :alt="photo.caption || `${name} 图片 ${index + 1}`" :loading="index === 0 ? 'eager' : 'lazy'"
-            :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async" referrerpolicy="no-referrer"
+            :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async" referrerpolicy="no-referrer" data-fade
             @error="broken = new Set([...broken, photo.fingerprint])">
           <span v-if="photo.caption || photo.source === 'amap_related'" class="gallery-caption">{{ photo.caption || photo.source_label.replace('高德地图 · ', '') }}</span>
         </button>

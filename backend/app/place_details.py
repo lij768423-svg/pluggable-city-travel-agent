@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import OrderedDict
 import re
 import threading
+from .bundles import visit_hours
 from .cities import current_city
 from .amap import AmapError, MissingSnapshotError, get_router, pt, straight_km
 from .amap_limits import RequestBudget
@@ -60,7 +61,7 @@ def describe_place(place, kind: str) -> dict:
         return {"kind": kind, "id": place.id, "name": place.name, "introduction": summary,
                 "highlights": guide or [HIGHLIGHTS[tag] for tag in place.interests if tag in HIGHLIGHTS][:3] or ["结合现场介绍与个人兴趣安排游览"],
                 "audiences": place.audience, "tags": place.interests,
-                "duration": f"{round(place.min_hours * 60)}–{round(place.max_hours * 60)} 分钟", "opening": f"{hm(place.open_min)}–{hm(place.close_min)}",
+                "duration": "–".join(str(round(hours * 60)) for hours in visit_hours(place)) + " 分钟", "opening": f"{hm(place.open_min)}–{hm(place.close_min)}",
                 "tips": [text for text in (place.review_note, place.seasonal_note, place.duration_source, "适合人群和游览建议是项目推荐标签，非场馆认证") if text],
                 "content_source": "项目自有补充资料：坐标、开放、票价逐字段注明来源（含用户提供与规则推断，核对者为AI），介绍与标签为项目整理，非场馆官方说明"
                     if place.catalog_source == "supplement" else

@@ -18,6 +18,11 @@ from app.prompts import BASELINE_SYSTEM, profile_to_text, baseline_system
 from app.schemas import DayPlan, Item, Itinerary, UserProfile
 
 
+# 整份行程一次输出，思考按系统设置（adaptive）进行。2026-10-24 c01 试采集中 8192（被抬到 12000）全被思考用完、正文为空，
+# 所以给一次性出整份行程的基线留足余量；32000 已用一次实际调用确认接口接受。
+LONG_OUTPUT_TOKENS = 32000
+
+
 class _BItem(BaseModel):
     type: Literal["attraction", "restaurant"]
     name: str
@@ -47,7 +52,7 @@ def run_pure_llm(profile: UserProfile, llm: LLM | None = None) -> Itinerary:
     out: BaselineOut = chat_json(llm, [
         {"role": "system", "content": baseline_system()},
         {"role": "user", "content": "用户画像：\n" + profile_to_text(profile)},
-    ], BaselineOut, tag="baseline_pure_llm", max_tokens=8192)
+    ], BaselineOut, tag="baseline_pure_llm", max_tokens=LONG_OUTPUT_TOKENS)
     poi_names = {i: p.name for i, p in load_pois().items()}
     rest_names = {i: r.name for i, r in load_restaurants().items()}
     days = []

@@ -1,0 +1,553 @@
+{
+  "version": "2026-10-21-onboard-v1",
+  "reviewed_at": "2026-10-21",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。；待核清单经 Codex 上网核对（AI 核对，未做人工或现场核验）。；清单外条目经 Claude 上网补核（check-zero-price.csv，AI 核对，未做人工或现场核验）。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    },
+    "check-9": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/meridian-view-center-78519/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-55": {
+      "url": "https://cgj.sz.gov.cn/xsmh/gysz/twf/dgwy/content/post_10841226.html",
+      "published_at": null,
+      "verification": "observed",
+      "facts": "政府介绍南山公园主峰为大南山；数据坐标落同一山体附近，策展判断为重复登山目的地，保留54南山公园，暂停泛名55独立推荐"
+    },
+    "check-81": {
+      "url": "https://us.trip.com/travel-guide/attraction/shenzhen/dameisha-seashore-walkway-69529792/?curr=HKD&locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-86": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/shekou-port-18648668?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-129": {
+      "url": "https://us.trip.com/travel-guide/attraction/shenzhen/luohu-art-museum-111989126/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-152": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/shayu-chongkou-18150008/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-167": {
+      "url": "https://www.trip.com/travel-guide/attraction/shenzhen/lychee-park-92626/?curr=TWD&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-172": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/nantou-ancient-town-museum-18137387/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-194": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/yuanlianwan-park-18134243/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-197": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/honghu-park-83255",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-212": {
+      "url": "https://tw.trip.com/travel-guide/attraction/shenzhen/pingshan-hakka-village-83262/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-217": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shenzhen/sihai-park-97782?curr=SGD&locale=zh-SG",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-219": {
+      "url": "https://hk.trip.com/travel-guide/attraction/shenzhen/bihai-bay-park-69263423",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2 - 3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-228": {
+      "url": "https://you.ctrip.com/sight/shenzhen26/2482943.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "景区介绍明确求水山景区/求水山公园为同一南岭村园区；保留id=108，暂停本条独立推荐以免同日重复"
+    },
+    "check-262": {
+      "url": "https://sg.trip.com/travel-guide/attraction/shenzhen/nanshan-library-18185955?curr=SGD&locale=zh-SG",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-281": {
+      "url": "https://hk.trip.com/travel-guide/attraction/shenzhen/dapeng-ancient-city-museum-58280092/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-288": {
+      "url": "https://hk.trip.com/travel-guide/attraction/shenzhen/bao-an-jesus-lord-hall-18126930?curr=VND&locale=zh-HK",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1-2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-zero-price-10": {
+      "url": "https://lxs.cncn.com/88583/n708212",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "旅行社票务页：港珠澳大桥航线普通位成人176–246元（按班次），团购109元起；按最低档成人票"
+    },
+    "check-zero-price-20": {
+      "url": "https://m.bendibao.com/show744816.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "本地宝深圳沙滩介绍：西涌参考门票成人28元；旺季周末节假日自驾须预约通行（页面无日期）"
+    },
+    "check-zero-price-37": {
+      "url": "https://m.bendibao.com/jingdian/xianhuzhiwuyuan/price/",
+      "published_at": "2025",
+      "verification": "curator_inference",
+      "facts": "本地宝2025年文章：成人全价票15元，6–18岁与学生半价，60岁以上免费；须公众号或小程序预约"
+    },
+    "check-zero-price-53": {
+      "url": "data/shenzhen/onboarding-review/check.csv",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "与 id=1 锦绣中华民俗村是同一园区（一张门票），保留 id=1"
+    },
+    "check-zero-price-71": {
+      "url": "https://www.dahepiao.com/lvyounews1/20250403508379.html",
+      "published_at": "2025-04",
+      "verification": "curator_inference",
+      "facts": "大河票务网：成人票138元起，长者104元、儿童69元；深圳机场码头往返约100分钟"
+    },
+    "check-zero-price-185": {
+      "url": "https://m.bendibao.com/show972834.html",
+      "published_at": "2024",
+      "verification": "curator_inference",
+      "facts": "本地宝：单人观光票30元（另有攻略称成人20元），1.2米以下与60岁以上免票；按30元"
+    }
+  },
+  "places": [
+    {
+      "id": 0,
+      "name": "世界之窗",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 8.0
+      },
+      "note": "原表 2.0–3.0 小时明显偏短，按模型估计调为 5.0–8.0 小时"
+    },
+    {
+      "id": 3,
+      "name": "深圳欢乐谷",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 9.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 5.0–9.0 小时"
+    },
+    {
+      "id": 5,
+      "name": "东部华侨城",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 8.0
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 4.0–8.0 小时"
+    },
+    {
+      "id": 9,
+      "name": "地王观光·深港之窗",
+      "sources": [
+        "check-9"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 10,
+      "name": "大湾区一号（港珠澳大桥航线）",
+      "sources": [
+        "check-zero-price-10"
+      ],
+      "changes": {
+        "price": 176
+      },
+      "note": "2026-10-21 AI核对（Claude）：旅行社票务页：港珠澳大桥航线普通位成人176–246元（按班次），团购109元起；按最低档成人票"
+    },
+    {
+      "id": 18,
+      "name": "深圳华侨城旅游度假区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 7.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–7.0 小时"
+    },
+    {
+      "id": 20,
+      "name": "西涌",
+      "sources": [
+        "check-zero-price-20"
+      ],
+      "changes": {
+        "price": 28
+      },
+      "note": "2026-10-21 AI核对（Claude）：本地宝深圳沙滩介绍：西涌参考门票成人28元；旺季周末节假日自驾须预约通行（页面无日期）"
+    },
+    {
+      "id": 24,
+      "name": "观澜海洋世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.5
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–3.5 小时"
+    },
+    {
+      "id": 25,
+      "name": "东部华侨城大侠谷",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 7.0
+      },
+      "note": "原表 1.5–2.0 小时明显偏短，按模型估计调为 4.0–7.0 小时"
+    },
+    {
+      "id": 35,
+      "name": "海上世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 37,
+      "name": "仙湖植物园",
+      "sources": [
+        "check-zero-price-37"
+      ],
+      "changes": {
+        "price": 15
+      },
+      "note": "2026-10-21 AI核对（Claude）：本地宝2025年文章：成人全价票15元，6–18岁与学生半价，60岁以上免费；须公众号或小程序预约"
+    },
+    {
+      "id": 53,
+      "name": "锦绣中华",
+      "sources": [
+        "check-zero-price-53"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Claude）：与 id=1 锦绣中华民俗村是同一园区（一张门票），保留 id=1"
+    },
+    {
+      "id": 55,
+      "name": "南山",
+      "sources": [
+        "check-55"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：政府介绍南山公园主峰为大南山；数据坐标落同一山体附近，策展判断为重复登山目的地，保留54南山公园，暂停泛名55独立推荐"
+    },
+    {
+      "id": 63,
+      "name": "西涌滨海旅游度假区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–6.0 小时"
+    },
+    {
+      "id": 71,
+      "name": "海上彩虹号",
+      "sources": [
+        "check-zero-price-71"
+      ],
+      "changes": {
+        "price": 138
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：成人票138元起，长者104元、儿童69元；深圳机场码头往返约100分钟"
+    },
+    {
+      "id": 81,
+      "name": "大梅沙海滨栈道",
+      "sources": [
+        "check-81"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 86,
+      "name": "蛇口口岸",
+      "sources": [
+        "check-86"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 92,
+      "name": "海昌·乐漫冰雪王国(深圳海雅店)",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 2.0–5.0 小时"
+    },
+    {
+      "id": 94,
+      "name": "奈尔宝家庭中心(卓悦店)",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 3.5
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–3.5 小时"
+    },
+    {
+      "id": 129,
+      "name": "罗湖美术馆",
+      "sources": [
+        "check-129"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 152,
+      "name": "沙鱼涌",
+      "sources": [
+        "check-152"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 167,
+      "name": "荔枝公园",
+      "sources": [
+        "check-167"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 172,
+      "name": "南头古城博物馆",
+      "sources": [
+        "check-172"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 185,
+      "name": "小凉帽农场",
+      "sources": [
+        "check-zero-price-185"
+      ],
+      "changes": {
+        "price": 30
+      },
+      "note": "2026-10-21 AI核对（Claude）：本地宝：单人观光票30元（另有攻略称成人20元），1.2米以下与60岁以上免票；按30元"
+    },
+    {
+      "id": 194,
+      "name": "月亮湾公园",
+      "sources": [
+        "check-194"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 197,
+      "name": "洪湖公园",
+      "sources": [
+        "check-197"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 212,
+      "name": "大万世居",
+      "sources": [
+        "check-212"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 217,
+      "name": "四海公园",
+      "sources": [
+        "check-217"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 219,
+      "name": "碧海湾公园",
+      "sources": [
+        "check-219"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2 - 3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 228,
+      "name": "求水山公园",
+      "sources": [
+        "check-228"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：景区介绍明确求水山景区/求水山公园为同一南岭村园区；保留id=108，暂停本条独立推荐以免同日重复"
+    },
+    {
+      "id": 231,
+      "name": "塘朗山郊野公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–4.0 小时"
+    },
+    {
+      "id": 262,
+      "name": "南山图书馆",
+      "sources": [
+        "check-262"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 281,
+      "name": "深圳市大鹏新区古城博物馆",
+      "sources": [
+        "check-281"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 288,
+      "name": "宝安耶稣君王堂",
+      "sources": [
+        "check-288"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1-2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    }
+  ]
+}

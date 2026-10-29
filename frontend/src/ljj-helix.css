@@ -1,0 +1,210 @@
+/* ljj.world /projects 双螺旋页样式的逐条副本（2026-10-21 用户：“完全按照原版排版，一个字不改”）。
+   由线上页面 CSSOM 中命中该页元素的全部规则导出，只在每个选择器前加了 .ljj-scope 作用域，规则内容未改。 */
+.ljj-scope { --accent: #b93b28; --line-strong: #15161375; --surface: #e9eae6; --line: #15161329; --bg: #f3f4f1; --pastel-blue: transparent; --text: #151613; --shadow-strong: #1516132e; --pastel-peach: transparent; --pastel-purple: transparent; --pastel-green: transparent; --surface-raised: #f8f9f6; --accent-ink: #f8f9f6; --mono: "Geist Mono Variable", "SFMono-Regular", Consolas, monospace; --muted: #696b64; --kinetic-spotlight: #b93b2833; --muted-strong: #383a35; --display: "Manrope Variable", "Geist Variable", "Noto Sans CJK SC", sans-serif; font-family: "Geist Variable", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; color: var(--text); background: var(--bg); }
+.ljj-scope button, .ljj-scope a { -webkit-tap-highlight-color: transparent; }
+.ljj-scope a { color: inherit; text-decoration: none; }
+.ljj-scope img { max-width: 100%; display: block; }
+.ljj-scope :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.ljj-scope .section-shell { width: min(100% - 112px, 1440px); margin-inline: auto; }
+.ljj-scope .project-index { border-block: 1px solid var(--line-strong); background: var(--surface); padding-block: 150px; }
+.ljj-scope .index-items { display: grid; }
+.ljj-scope .index-item { border-bottom: 1px solid var(--line); grid-template-columns: 48px minmax(180px, 0.9fr) minmax(260px, 1.35fr) minmax(145px, 0.72fr) minmax(190px, 0.9fr) auto; align-items: center; gap: 24px; min-width: 0px; padding: 24px 0px; transition: padding 0.26s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s, background 0.18s; display: grid; }
+@media (width <= 1180px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 72px, 1440px); } }
+@media (width <= 1180px) { .ljj-scope .index-item { grid-template-columns: 40px minmax(160px, 0.9fr) minmax(220px, 1.35fr) minmax(130px, 0.75fr) auto; gap: 18px; } }
+@media (width <= 860px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 40px, 1440px); } }
+@media (width <= 860px) { .ljj-scope .build-path, .ljj-scope .featured, .ljj-scope .selected, .ljj-scope .tool-lab, .ljj-scope .about, .ljj-scope .project-index { padding-block: 104px; } }
+@media (width <= 860px) { .ljj-scope .index-item { grid-template-columns: 38px minmax(150px, 0.9fr) minmax(220px, 1.3fr) auto; } }
+@media (width <= 680px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 32px, 1440px); } }
+@media (width <= 680px) { .ljj-scope .build-path, .ljj-scope .featured, .ljj-scope .selected, .ljj-scope .tool-lab, .ljj-scope .about, .ljj-scope .project-index { padding-block: 82px; } }
+@media (width <= 680px) { .ljj-scope .index-items { contain: none; scroll-snap-type: none; grid-template-columns: minmax(0px, 1fr); grid-auto-flow: row; gap: 12px; padding: 14px 0px 4px; overflow: visible; } }
+@media (width <= 680px) { .ljj-scope .index-item { border: 1px solid var(--line-strong); background: var(--bg); flex-direction: column; align-items: stretch; gap: 0px; min-height: 0px; padding: 22px; display: flex; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope *, .ljj-scope ::before, .ljj-scope ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }
+.ljj-scope .project-index { background: var(--pastel-blue); border: 0px; padding-block: 132px; }
+.ljj-scope .index-item { border-color: var(--line); border-radius: 8px; margin-top: 6px; padding: 22px 14px; }
+@media (width <= 1080px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 48px, 1480px); } }
+@media (width <= 860px) { .ljj-scope .build-path, .ljj-scope .featured, .ljj-scope .selected, .ljj-scope .tool-lab, .ljj-scope .about, .ljj-scope .project-index { padding-block: 96px; } }
+@media (width <= 680px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 32px, 1480px); } }
+@media (width <= 680px) { .ljj-scope .build-path, .ljj-scope .featured, .ljj-scope .selected, .ljj-scope .tool-lab, .ljj-scope .about, .ljj-scope .project-index { padding-block: 78px; } }
+@media (width <= 680px) { .ljj-scope .index-item, .ljj-scope .index-item:is(:hover, :focus-visible, :focus-within) { border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--text); border-radius: 8px; margin-top: 0px; padding: 20px; } }
+@media (width <= 680px) { .ljj-scope .route-main { min-height: calc(-64px + 100dvh); } }
+.ljj-scope .project-index .project-cloud { grid-template-columns: repeat(4, minmax(0px, 280px)); justify-content: space-between; gap: 28px 34px; padding: 30px 2px 22px; display: grid; overflow: visible; }
+.ljj-scope .project-index .project-cloud .index-item, .ljj-scope .project-index .project-cloud .index-item:is(:hover, :focus-visible, :focus-within) { min-width: 0px; min-height: 276px; color: var(--text); background: 0px 0px; border: 0px; border-radius: 0px; margin: 0px; padding: 0px; display: block; overflow: visible; }
+.ljj-scope .project-index .project-cloud .index-item:nth-child(4n+1) { margin-top: 12px; }
+.ljj-scope .project-index .project-cloud .index-item:nth-child(4n+2) { margin-top: 42px; }
+.ljj-scope .project-index .project-cloud .index-item:nth-child(4n+4) { margin-top: 26px; }
+.ljj-scope .project-card-float { height: 100%; animation: 7.6s ease-in-out 0s infinite normal none running project-fly-a; }
+.ljj-scope .project-cloud .index-item:nth-child(4n+2) .project-card-float { animation-name: project-fly-b; animation-duration: 8.8s; animation-delay: -3.1s; }
+.ljj-scope .project-cloud .index-item:nth-child(4n+3) .project-card-float { animation-name: project-fly-c; animation-duration: 7.1s; animation-delay: -1.8s; }
+.ljj-scope .project-cloud .index-item:nth-child(4n+4) .project-card-float { animation-name: project-fly-d; animation-duration: 9.2s; animation-delay: -4.4s; }
+.ljj-scope .project-card-link:hover .project-card-float, .ljj-scope .project-card-link:focus-visible .project-card-float { animation-play-state: paused; }
+.ljj-scope .project-card-link { height: 100%; min-height: 276px; color: var(--text); text-decoration: none; display: block; }
+.ljj-scope .project-card-surface { border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); height: 100%; min-height: 276px; color: var(--text); box-shadow: 0 18px 42px color-mix(in srgb, var(--shadow-strong) 62%, transparent); border-radius: 8px; grid-template-rows: auto 108px minmax(68px, 1fr) auto; gap: 12px; padding: 14px; transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s, box-shadow 0.26s; display: grid; overflow: hidden; }
+.ljj-scope .project-card-surface.project-card-product { background: var(--pastel-peach); }
+.ljj-scope .project-card-surface.project-card-ai { background: var(--pastel-purple); }
+.ljj-scope .project-card-surface.project-card-system { background: var(--pastel-green); }
+.ljj-scope .project-card-link:focus-visible { outline: 3px solid var(--text); outline-offset: 4px; border-radius: 8px; }
+.ljj-scope .project-card-media, .ljj-scope .project-card-mark { border: 1px solid color-mix(in srgb, var(--text) 12%, transparent); background: var(--surface-raised); border-radius: 5px; min-width: 0px; overflow: hidden; }
+.ljj-scope .project-card-media img { object-fit: cover; object-position: left top; width: 100%; height: 100%; transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1); display: block; }
+.ljj-scope .project-card-link:hover .project-card-media img { transform: scale(1.035); }
+@media (width <= 1080px) { .ljj-scope .project-index .project-cloud { grid-template-columns: repeat(3, minmax(0px, 280px)); } }
+@media (width <= 1080px) { .ljj-scope .project-index .project-cloud .index-item:nth-child(4n+1), .ljj-scope .project-index .project-cloud .index-item:nth-child(4n+2), .ljj-scope .project-index .project-cloud .index-item:nth-child(4n+4) { margin-top: 18px; } }
+@media (width <= 760px) { .ljj-scope .project-index .project-cloud { grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 18px; } }
+@media (width <= 760px) { .ljj-scope .project-index .project-cloud .index-item, .ljj-scope .project-index .project-cloud .index-item:nth-child(4n+1), .ljj-scope .project-index .project-cloud .index-item:nth-child(4n+2), .ljj-scope .project-index .project-cloud .index-item:nth-child(4n+4) { min-height: 270px; margin-top: 0px; } }
+@media (width <= 520px) { .ljj-scope .project-index .project-cloud { grid-template-columns: minmax(0px, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .project-card-float { animation: auto ease 0s 1 normal none running none; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .project-card-link, .ljj-scope .project-card-link:is(:hover, :focus-visible) .project-card-surface { transform: none; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title { isolation: isolate; background: var(--bg); min-height: calc(-72px + 100dvh); padding-block: 0px; overflow: hidden; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title > .section-shell { grid-template-rows: auto minmax(0px, 1fr); row-gap: 14px; min-height: calc(-72px + 100dvh); padding-block: 22px 18px; display: grid; position: relative; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud { height: auto; min-height: 0px; padding: 0px; display: block; position: absolute; inset: 0px; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item, .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+4) { left: var(--orbit-x,50%); top: var(--orbit-y,50%); width: clamp(160px, 12.5vw, 184px); height: 124px; min-height: 0px; margin: 0px; position: absolute; translate: -50% -50%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-card-link, .ljj-scope .project-index.has-stage-title .project-card-surface { height: 100%; min-height: 0px; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-card-surface { grid-template-rows: auto 42px minmax(18px, 1fr) auto; gap: 4px; padding: 8px; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:first-child { --orbit-x: 50%; --orbit-y: 12%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(2) { --orbit-x: 71%; --orbit-y: 17.1%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(3) { --orbit-x: 86.4%; --orbit-y: 31%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(4) { --orbit-x: 92%; --orbit-y: 50%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(5) { --orbit-x: 86.4%; --orbit-y: 69%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(6) { --orbit-x: 71%; --orbit-y: 82.9%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(7) { --orbit-x: 50%; --orbit-y: 88%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(8) { --orbit-x: 29%; --orbit-y: 82.9%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(9) { --orbit-x: 13.6%; --orbit-y: 69%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(10) { --orbit-x: 8%; --orbit-y: 50%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(11) { --orbit-x: 13.6%; --orbit-y: 31%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud-count-12 .index-item:nth-child(12) { --orbit-x: 29%; --orbit-y: 17.1%; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item .project-card-float { animation-name: project-orbit-fly-a; animation-duration: 8.4s; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+2) .project-card-float { animation-name: project-orbit-fly-b; animation-duration: 9.2s; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+3) .project-card-float { animation-name: project-orbit-fly-c; animation-duration: 7.8s; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+4) .project-card-float { animation-name: project-orbit-fly-d; animation-duration: 9.8s; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title, .ljj-scope .project-index.has-stage-title > .section-shell { min-height: calc(-64px + 100dvh); } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title > .section-shell { row-gap: 9px; padding-block: 12px 10px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title .project-cloud { padding: 0px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item, .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+4) { width: 152px; height: 86px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title .project-card-surface { grid-template-rows: auto 28px minmax(14px, 1fr); gap: 3px; padding: 5px; } }
+@media (width <= 1080px) { .ljj-scope .project-index.has-stage-title { padding-block: 58px 96px; overflow: visible; } }
+@media (width <= 1080px) { .ljj-scope .project-index.has-stage-title > .section-shell { display: block; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .project-index.has-stage-title .project-card-float { animation: auto ease 0s 1 normal none running none; } }
+.ljj-scope h1, .ljj-scope h2, .ljj-scope h3, .ljj-scope p, .ljj-scope a, .ljj-scope button, .ljj-scope span { letter-spacing: 0px; }
+.ljj-scope ::selection { background: var(--accent); color: var(--accent-ink); }
+.ljj-scope :focus-visible { outline-color: var(--accent); }
+.ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 72px, 1480px); }
+.ljj-scope .route-main { min-height: calc(-68px + 100dvh); }
+.ljj-scope .project-index { background: var(--bg); border: 0px; }
+.ljj-scope .project-index .project-cloud .index-item, .ljj-scope .project-index .project-cloud .index-item:is(:hover, :focus-visible, :focus-within) { color: var(--text); background: 0px 0px; border: 0px; border-radius: 0px; }
+.ljj-scope .project-card-link:focus-visible { outline: 2px solid var(--accent); border-radius: 0px; }
+.ljj-scope .project-card-surface, .ljj-scope .project-card-surface.project-card-product, .ljj-scope .project-card-surface.project-card-ai, .ljj-scope .project-card-surface.project-card-system { border-right: 0px; border-bottom: 0px; border-left: 0px; border-image: initial; border-top: 1px solid var(--line-strong); box-shadow: none; background: 0px 0px; border-radius: 0px; }
+.ljj-scope .project-card-media, .ljj-scope .project-card-mark { border-color: var(--line); background: var(--surface); border-radius: 0px; }
+.ljj-scope .project-card-media img { filter: grayscale(0.42) saturate(0.78); transition: filter 0.24s, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1); }
+.ljj-scope .project-card-link:hover .project-card-media img { filter: grayscale(0) saturate(); }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title { background: var(--bg); min-height: calc(-68px + 100dvh); } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title > .section-shell { grid-template-rows: auto minmax(0px, 1fr); row-gap: 10px; min-height: calc(-68px + 100dvh); padding-block: 18px 16px; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item, .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+4) { width: 184px; height: 116px; } }
+@media (width >= 1081px) { .ljj-scope .project-index.has-stage-title .project-card-surface { grid-template-rows: auto 42px minmax(18px, 1fr) auto; gap: 4px; padding: 7px 0px 0px; } }
+@media (width <= 1080px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 48px, 1480px); } }
+@media (width <= 860px) { .ljj-scope .build-path, .ljj-scope .featured, .ljj-scope .selected, .ljj-scope .tool-lab, .ljj-scope .about, .ljj-scope .project-index { padding-block: 88px; } }
+@media (width <= 680px) { .ljj-scope .section-shell, .ljj-scope .nav-shell { width: min(100% - 32px, 1480px); } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .site-menu-inner, .ljj-scope .route-main { min-height: calc(-64px + 100dvh); } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title, .ljj-scope .project-index.has-stage-title > .section-shell { min-height: calc(-64px + 100dvh); } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item, .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-cloud .index-item:nth-child(4n+4) { width: 152px; height: 90px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title .project-card-surface { grid-template-rows: auto 28px minmax(14px, 1fr); gap: 3px; padding-top: 4px; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .hero-project-card, .ljj-scope .hero-card-media img, .ljj-scope .project-card-media img, .ljj-scope .project-card-surface { transition: none; } }
+.ljj-scope .project-dna-page { background: var(--bg); min-height: calc(-68px + 100dvh); position: relative; overflow: hidden; }
+.ljj-scope .home-story, .ljj-scope .project-dna-page { background-color: var(--bg); background-image: linear-gradient(to right, color-mix(in srgb, var(--line) 30%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 30%, transparent) 1px, transparent 1px); background-position: 0px 0px; background-size: 40px 40px; }
+.ljj-scope .project-dna-shell { min-height: calc(-68px + 100dvh); position: relative; }
+.ljj-scope .project-dna-heading { z-index: 42; pointer-events: none; align-items: baseline; gap: 12px; display: flex; position: absolute; top: 18px; left: 2px; }
+.ljj-scope .project-dna-heading h1 { font-family: var(--mono); margin: 0px; font-size: 0.76rem; font-weight: 680; line-height: 1; }
+.ljj-scope .project-dna-heading p { border-left: 1px solid var(--line-strong); color: var(--muted); font-family: var(--mono); margin: 0px; padding-left: 12px; font-size: 0.64rem; line-height: 1; }
+@media (width >= 1081px) { .ljj-scope .project-index.project-dna-page, .ljj-scope .project-index.project-dna-page > .project-dna-shell { height: calc(-68px + 100dvh); min-height: calc(-68px + 100dvh); } }
+@media (width >= 1081px) { .ljj-scope .project-index.project-dna-page > .project-dna-shell { width: calc(100% - 36px); max-width: none; padding: 0px; display: block; } }
+@media (width >= 1081px) { .ljj-scope .project-dna-page .project-helix { width: 100%; height: 100%; padding: 0px; position: absolute; inset: 0px; } }
+@media (width <= 1080px) { .ljj-scope .project-dna-page { min-height: 0px; overflow: visible; } }
+@media (width <= 1080px) { .ljj-scope .project-dna-shell { min-height: 0px; padding-block: 42px 72px; } }
+@media (width <= 1080px) { .ljj-scope .project-dna-heading { margin-bottom: 28px; position: relative; top: auto; left: auto; } }
+@media (width <= 1080px) { .ljj-scope .project-dna-heading h1 { font-size: 0.8rem; } }
+@media (width <= 767px) { .ljj-scope .route-main, .ljj-scope .route-main.is-systems-route { height: auto; min-height: calc(-64px + 100svh); overflow: visible; } }
+@media (width <= 767px) { .ljj-scope .project-dna-shell { width: calc(100% - 32px); padding-block: 30px 64px; } }
+@media (width <= 767px) { .ljj-scope .project-dna-heading { pointer-events: auto; flex-wrap: wrap; row-gap: 8px; width: 100%; margin: 0px 0px 20px; position: relative; top: auto; left: auto; } }
+@media (width <= 767px) { .ljj-scope .project-dna-heading h1 { font-size: 0.92rem; } }
+@media (width <= 767px) { .ljj-scope .project-helix-nodes { gap: 16px; } }
+@media (width <= 767px) { .ljj-scope .project-index.has-stage-title .project-helix .helix-node, .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+4) { height: 230px; } }
+@media (width <= 767px) { .ljj-scope .project-helix .helix-node .project-card-link { min-height: 44px; } }
+.ljj-scope .route-main { z-index: 1; background-color: rgba(0, 0, 0, 0); position: relative; }
+.ljj-scope .hero-card-media, .ljj-scope .project-card-surface, .ljj-scope .project-overview-media, .ljj-scope .platform-media, .ljj-scope .infra-media { isolation: isolate; position: relative; }
+.ljj-scope .hero-card-media::before, .ljj-scope .project-card-surface::before, .ljj-scope .project-overview-media::after, .ljj-scope .platform-media::after, .ljj-scope .infra-media::after, .ljj-scope .gallery-stage::after, .ljj-scope .law-stage::after { content: ""; z-index: 3; pointer-events: none; background: radial-gradient(circle 150px at var(--spotlight-x,50%) var(--spotlight-y,50%), var(--kinetic-spotlight), transparent 72%); opacity: 0; transition: opacity 0.26s; position: absolute; }
+.ljj-scope .hero-card-media::before, .ljj-scope .project-card-surface::before, .ljj-scope .project-overview-media::after, .ljj-scope .platform-media::after, .ljj-scope .infra-media::after { inset: 0px; }
+.ljj-scope .project-card-surface > * { z-index: 1; position: relative; }
+.ljj-scope .project-card-kinetic { height: 100%; transform: perspective(760px) translate3d(var(--orbit-shift-x,0), var(--orbit-shift-y,0), 0) rotateX(var(--orbit-tilt-x,0deg)) rotateY(var(--orbit-tilt-y,0deg)); transform-style: preserve-3d; will-change: transform; transition: transform 0.18s ease-out, filter 0.22s; }
+.ljj-scope .project-index.has-stage-title::before { display: none; }
+.ljj-scope .project-index.has-stage-title > .section-shell { z-index: 1; position: relative; }
+.ljj-scope .project-helix { z-index: 49; perspective: 1200px; transform-style: preserve-3d; isolation: isolate; position: relative; }
+.ljj-scope .project-index.project-dna-page { background-color: var(--bg); background-image: linear-gradient(to right, color-mix(in srgb, var(--line) 30%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 30%, transparent) 1px, transparent 1px); background-position: 0px 0px; background-size: 40px 40px; }
+.ljj-scope .project-helix-axis-seed { z-index: 2; background: color-mix(in srgb, var(--accent) 82%, var(--text)); pointer-events: none; transform-origin: 50% center; height: 4px; margin-top: -2px; position: absolute; top: 50%; left: 48px; right: 48px; }
+.ljj-scope .project-helix[data-axis-seed-expired="true"] .project-helix-axis-seed, .ljj-scope .project-helix[data-helix-expanded="true"] .project-helix-axis-seed { visibility: hidden; opacity: 0 !important; }
+.ljj-scope .project-helix-canvas, .ljj-scope .project-helix-nodes { width: 100%; height: 100%; position: absolute; inset: 0px; }
+.ljj-scope .project-helix-canvas { z-index: 0; pointer-events: none; }
+.ljj-scope .project-helix-nodes { z-index: 3; pointer-events: none; transform-style: preserve-3d; }
+.ljj-scope .project-index.has-stage-title .project-helix .helix-node, .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+4) { width: clamp(196px, 15vw, 224px); height: 168px; opacity: var(--helix-opacity,0); pointer-events: none; translate: none; transform: translate3d(var(--helix-x,50%), var(--helix-y,50%), 0) translate(-50%, -50%) scale(var(--helix-scale,.9)) rotateY(var(--helix-rotate,0deg)); transform-style: preserve-3d; transform-origin: 50% center; will-change: transform, opacity; margin: 0px; transition: opacity 0.18s, filter 0.22s; position: absolute; top: 0px; left: 0px; }
+.ljj-scope .project-helix .helix-node .project-card-link { pointer-events: auto; }
+.ljj-scope .project-helix .helix-node .project-card-float { animation: auto ease 0s 1 normal none running none !important; }
+.ljj-scope .project-helix .helix-node .project-card-surface { border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); background: var(--surface-raised); min-height: 0px; box-shadow: 0 18px 42px color-mix(in srgb, var(--shadow-strong) 54%, transparent); grid-template-rows: minmax(0px, 1fr) 56px; gap: 0px; padding: 0px; display: grid; overflow: hidden; }
+.ljj-scope .project-helix .helix-node .project-card-surface::before { display: none; }
+.ljj-scope .project-helix .helix-node .project-card-media, .ljj-scope .project-helix .helix-node .project-card-mark { background: var(--surface); border: 0px; min-height: 0px; }
+.ljj-scope .project-helix .helix-node .project-card-media img { object-position: center center; filter: grayscale(0.12) saturate(0.92); }
+.ljj-scope .helix-poster-caption { border-top: 1px solid var(--line); background: var(--surface-raised); align-content: center; gap: 4px; min-width: 0px; padding: 8px 10px 9px; display: grid; }
+.ljj-scope .helix-poster-caption > span { color: var(--muted-strong); font-family: var(--mono); white-space: nowrap; text-overflow: ellipsis; font-size: 0.52rem; line-height: 1; overflow: hidden; }
+.ljj-scope .helix-poster-caption > div { justify-content: space-between; align-items: center; gap: 8px; min-width: 0px; display: flex; }
+.ljj-scope .helix-poster-caption h2 { font-family: var(--display); white-space: nowrap; text-overflow: ellipsis; margin: 0px; padding-block: 1px; font-size: 0.84rem; font-weight: 690; line-height: 1.25; overflow: hidden; }
+.ljj-scope .helix-poster-caption svg { width: 14px; height: 14px; color: var(--accent); flex: 0 0 auto; transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1); }
+@media (width <= 1080px) { .ljj-scope .project-index.has-stage-title::before, .ljj-scope .project-stage-title::before, .ljj-scope .project-helix-canvas, .ljj-scope .project-helix-axis-seed { display: none; } }
+@media (width <= 1080px) { .ljj-scope .project-index.has-stage-title .project-helix { display: block; position: relative; inset: auto; overflow: visible; } }
+@media (width <= 1080px) { .ljj-scope .project-helix-nodes { grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 22px; display: grid; position: relative; inset: auto; } }
+@media (width <= 1080px) { .ljj-scope .project-index.has-stage-title .project-helix .helix-node, .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+4) { opacity: 1; width: auto; height: 220px; position: relative; top: auto; left: auto; transform: none !important; } }
+@media (width <= 680px) { .ljj-scope .project-helix-nodes { grid-template-columns: 1fr; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-index.has-stage-title .project-helix .helix-node, .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+1), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+2), .ljj-scope .project-index.has-stage-title .project-helix .helix-node:nth-child(4n+4) { width: 160px; height: 120px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .project-helix .helix-node .project-card-surface { grid-template-rows: minmax(0px, 1fr) 44px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .helix-poster-caption { padding: 6px 8px 7px; } }
+@media (width >= 1081px) and (height <= 800px) { .ljj-scope .helix-poster-caption h2 { font-size: 0.74rem; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .magnetic-target, .ljj-scope .hero-card-media img, .ljj-scope .project-card-kinetic, .ljj-scope .project-stage-title { transition: none !important; transform: translate(0px, 0px) !important; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .project-index.has-stage-title .project-cloud .index-item .project-card-float { animation: auto ease 0s 1 normal none running none !important; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .project-helix .helix-node { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .ljj-scope .hero-card-media::before, .ljj-scope .project-card-surface::before, .ljj-scope .project-overview-media::after, .ljj-scope .platform-media::after, .ljj-scope .infra-media::after, .ljj-scope .gallery-stage::after, .ljj-scope .law-stage::after { display: none; } }
+.ljj-scope .home-story, .ljj-scope .home-story > [data-home-scene="intro"], .ljj-scope .project-index.project-dna-page, .ljj-scope .about-page, .ljj-scope .server-story, .ljj-scope .server-story-stage { background-color: rgba(0, 0, 0, 0); }
+@keyframes project-fly-a { 
+  0%, 100% { transform: translate(-3px, 4px) rotate(-0.8deg); }
+  34% { transform: translate(10px, -11px) rotate(0.35deg); }
+  68% { transform: translate(-8px, -2px) rotate(-1.25deg); }
+}
+@keyframes project-fly-b { 
+  0%, 100% { transform: translate(5px, -3px) rotate(0.9deg); }
+  38% { transform: translate(-10px, 9px) rotate(-0.35deg); }
+  72% { transform: translate(8px, 5px) rotate(1.35deg); }
+}
+@keyframes project-fly-c { 
+  0%, 100% { transform: translateY(6px) rotate(-0.35deg); }
+  30% { transform: translate(-9px, -8px) rotate(0.85deg); }
+  64% { transform: translate(11px, -4px) rotate(-0.7deg); }
+}
+@keyframes project-fly-d { 
+  0%, 100% { transform: translate(-4px, -5px) rotate(0.5deg); }
+  42% { transform: translate(9px, 10px) rotate(-0.8deg); }
+  76% { transform: translate(-11px, 3px) rotate(1.1deg); }
+}
+@keyframes project-orbit-fly-a { 
+  0%, 100% { transform: translate(-2px, 2px) rotate(-0.25deg); }
+  34% { transform: translate(3px, -4px) rotate(0.2deg); }
+  68% { transform: translate(-3px, -1px) rotate(-0.3deg); }
+}
+@keyframes project-orbit-fly-b { 
+  0%, 100% { transform: translate(2px, -2px) rotate(0.25deg); }
+  38% { transform: translate(-4px, 3px) rotate(-0.2deg); }
+  72% { transform: translate(3px, 2px) rotate(0.3deg); }
+}
+@keyframes project-orbit-fly-c { 
+  0%, 100% { transform: translateY(3px) rotate(-0.2deg); }
+  30% { transform: translate(-3px, -3px) rotate(0.25deg); }
+  64% { transform: translate(4px, -2px) rotate(-0.25deg); }
+}
+@keyframes project-orbit-fly-d { 
+  0%, 100% { transform: translate(-2px, -2px) rotate(0.2deg); }
+  42% { transform: translate(3px, 4px) rotate(-0.25deg); }
+  76% { transform: translate(-4px, 1px) rotate(0.3deg); }
+}

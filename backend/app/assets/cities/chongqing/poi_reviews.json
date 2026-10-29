@@ -1,0 +1,824 @@
+{
+  "version": "2026-10-21-onboard-v1",
+  "reviewed_at": "2026-10-21",
+  "scope": "scripts/onboard_city.py 通用规则修正，未做人工或现场核验。；待核清单经 Codex 上网核对（AI 核对，未做人工或现场核验）。；清单外条目经 Claude 上网补核（check-zero-price.csv，AI 核对，未做人工或现场核验）。",
+  "sources": {
+    "onboard_rules": {
+      "url": "scripts/onboard_city.py",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "接入脚本通用规则：越界隔离、偏短时长按模型估计调长（只加不减）、大型乐园整日；时长为估计，不是现场事实。"
+    },
+    "check-12": {
+      "url": "https://www.ljxq.gov.cn/jz/ljjd_504288/zwgk/zfxxgkml/jczwgk/ggwhfwly/ggfw/ggwlmulu/202603/t20260304_15491947.html",
+      "published_at": "2026-03-04",
+      "verification": "observed",
+      "facts": "政府景区公示全日成人平日200元、高峰日220元；按高峰价220元做预算，官网/现场当日公告优先，不取学生或夜场价"
+    },
+    "check-47": {
+      "url": "https://my.trip.com/travel-guide/attraction/chongqing/chongqing-yangtze-river-cableway-south-station-65183944?curr=MYR&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-63": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/the-people-s-great-hall-78177/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20–60分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-71": {
+      "url": "https://hk.trip.com/travel-guide/attraction/chongqing/huang-guan-escalator-22865168",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20 - 40分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.6667小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-74": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/qiansimen-bridge-31672376/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-81": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/luohan-temple-78171/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-92": {
+      "url": "https://my.trip.com/travel-guide/attraction/chongqing/nanbin-rd-94859?curr=SGD&locale=en-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-93": {
+      "url": "https://hk.trip.com/travel-guide/attraction/chongqing/kuixing-tower-52125766",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20 - 45分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.75小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-94": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/graffiti-street-24653347/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-117": {
+      "url": "https://hk.trip.com/travel-guide/attraction/chongqing/flying-over-chongqing-109734535",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-139": {
+      "url": "https://you.ctrip.com/sight/chongqing158/1921774.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "携程当前暂停营业、恢复时间待定；暂退出推荐，不把暑期漂流状态视为全年，不认定永久停业"
+    },
+    "check-141": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/chongqing-skyview-observation-tower-143217998",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-145": {
+      "url": "https://my.trip.com/travel-guide/attraction/chongqing/chongqing-grand-theater-94887?curr=MYR&locale=zh-MY",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-160": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/people-s-liberation-monument-70022346",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-176": {
+      "url": "https://sg.trip.com/travel-guide/attraction/chongqing/guiyuan-garden-78165",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-179": {
+      "url": "https://m.sanxia-china.com/sanxia/s203.html?routeid=572&ydate=2026-8-7",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "新高湖为奉节—宜昌等2天1晚客滚游轮，票价按航期/舱等；跨城多日产品不适合本系统单城市小时级景点推荐，暂隔离，不填750元起为统一全价"
+    },
+    "check-184": {
+      "url": "https://my.trip.com/travel-guide/attraction/chongqing/huayan-temple-78168/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-209": {
+      "url": "https://www.trip.com/travel-guide/attraction/chongqing/chongqing-unicorn-starry-sky-art-museum-130842816",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-225": {
+      "url": "https://touch.piao.qunar.com/touch/detail_4054731693.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "第三方独立水上乐园成人票标准价39.9元，仅作未官方核实的参考预算；18.99元是索道套票、29.9元是儿童票，不能混用，开园季节仍需出发前核对"
+    },
+    "check-236": {
+      "url": "https://www.trip.com/travel-guide/attraction/chongqing/chongqing-yangtze-river-bridge-15123865",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议20 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-261": {
+      "url": "https://sg.trip.com/travel-guide/attraction/chongqing/comrade-liu-bocheng-memorial-hall-15135693?curr=AUD&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.8–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.8–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-268": {
+      "url": "https://www.trip.com/travel-guide/attraction/chongqing/kaixuan-road-elevator-24650965/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议5–10 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-269": {
+      "url": "https://my.trip.com/travel-guide/attraction/chongqing/nanbin-road-bell-tower-34304419/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-272": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/sky-corridor-36271652/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-277": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/city-15118980/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-287": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/jiangjieshi-chongqing-xingying-site-51965414?poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-297": {
+      "url": "https://www.trip.com/travel-guide/attraction/chongqing/railway-no4-village-63073774/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-315": {
+      "url": "https://www.trip.com/travel-guide/attraction/chongqing/zhuoshui-lounge-bridge-78963626?curr=&locale=en-XX&poiType=3",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-319": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/tushan-temple-90395/",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-323": {
+      "url": "https://th.trip.com/travel-guide/attraction/chongqing/wujiang-no3-bridge-31075201?curr=MYR&locale=en-XX",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-328": {
+      "url": "https://sg.trip.com/travel-guide/attraction/pengshui-county/qilitang-98280750?curr=MNT&locale=en-SG",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议0.5-1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-342": {
+      "url": "https://tw.trip.com/travel-guide/attraction/chongqing/sanmao-former-residence-39850237?curr=TWD&locale=zh-TW",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    "check-zero-price-75": {
+      "url": "https://www.dahepiao.com/news1/yanchu/20250724522681.html",
+      "published_at": "2025-07",
+      "verification": "curator_inference",
+      "facts": "大河票务网：驻场杂技秀《极限快乐2》票档93–261元，按最低档93元（2025年夏季演出期资料）"
+    },
+    "check-zero-price-91": {
+      "url": "https://www.dahepiao.com/lvyounews1/20200416132387.html",
+      "published_at": "2021-09",
+      "verification": "curator_inference",
+      "facts": "大河票务网攻略：门票75元起（资料较旧，可能已调整）"
+    },
+    "check-zero-price-229": {
+      "url": "https://www.maigoo.com/citiao/215643.html",
+      "published_at": null,
+      "verification": "curator_inference",
+      "facts": "买购网：门票20元/人（重庆抗战遗址博物馆黄山官邸区；另有攻略称优惠票10元，各源不一）"
+    }
+  },
+  "places": [
+    {
+      "id": 12,
+      "name": "重庆欢乐谷",
+      "sources": [
+        "check-12",
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 8.0,
+        "price": 220
+      },
+      "note": "原表 2.5–3.0 小时明显偏短，按模型估计调为 5.0–8.0 小时；2026-10-21 AI核对（Codex）：政府景区公示全日成人平日200元、高峰日220元；按高峰价220元做预算，官网/现场当日公告优先，不取学生或夜场价"
+    },
+    {
+      "id": 31,
+      "name": "金佛山",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 4.0,
+        "max_hours": 7.0
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 4.0–7.0 小时"
+    },
+    {
+      "id": 32,
+      "name": "梦幻奥陶纪景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 1.0–2.0 小时明显偏短，按模型估计调为 3.0–6.0 小时"
+    },
+    {
+      "id": 38,
+      "name": "酉阳桃花源",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 47,
+      "name": "重庆长江索道南站",
+      "sources": [
+        "check-47"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 48,
+      "name": "乐和乐都动物主题乐园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "day_anchor": true,
+        "onsite_dining": true,
+        "min_hours": 5.0,
+        "max_hours": 7.0
+      },
+      "note": "大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 53,
+      "name": "云阳龙缸国家地质公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.5 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 63,
+      "name": "人民大礼堂",
+      "sources": [
+        "check-63"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20–60分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 71,
+      "name": "皇冠大扶梯",
+      "sources": [
+        "check-71"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.6667
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20 - 40分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.6667小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 74,
+      "name": "千厮门大桥",
+      "sources": [
+        "check-74"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 75,
+      "name": "重庆国际马戏城",
+      "sources": [
+        "check-zero-price-75"
+      ],
+      "changes": {
+        "price": 93
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网：驻场杂技秀《极限快乐2》票档93–261元，按最低档93元（2025年夏季演出期资料）"
+    },
+    {
+      "id": 81,
+      "name": "罗汉寺",
+      "sources": [
+        "check-81"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 85,
+      "name": "天坑寨子景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 91,
+      "name": "重庆杜莎夫人蜡像馆",
+      "sources": [
+        "check-zero-price-91"
+      ],
+      "changes": {
+        "price": 75
+      },
+      "note": "2026-10-21 AI核对（Claude）：大河票务网攻略：门票75元起（资料较旧，可能已调整）"
+    },
+    {
+      "id": 92,
+      "name": "南滨路",
+      "sources": [
+        "check-92"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 93,
+      "name": "魁星楼",
+      "sources": [
+        "check-93"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.75
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20 - 45分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.3333–0.75小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 94,
+      "name": "涂鸦一条街",
+      "sources": [
+        "check-94"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 95,
+      "name": "重庆野生动物世界",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 5.0,
+        "max_hours": 7.0,
+        "day_anchor": true,
+        "onsite_dining": true
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.5–6.0 小时；大型主题乐园，参照杭州乐园按整日游玩、园内用餐"
+    },
+    {
+      "id": 96,
+      "name": "钓鱼城",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 108,
+      "name": "南天湖景区",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 3.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–3.0 小时"
+    },
+    {
+      "id": 117,
+      "name": "飞跃重庆(东方广场店)",
+      "sources": [
+        "check-117"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 135,
+      "name": "绿色星球动物主题公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 5.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–5.0 小时"
+    },
+    {
+      "id": 139,
+      "name": "龙浒峡漂流",
+      "sources": [
+        "check-139"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：携程当前暂停营业、恢复时间待定；暂退出推荐，不把暑期漂流状态视为全年，不认定永久停业"
+    },
+    {
+      "id": 141,
+      "name": "重庆城上天幕乐游观光塔",
+      "sources": [
+        "check-141"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 145,
+      "name": "重庆大剧院",
+      "sources": [
+        "check-145"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 160,
+      "name": "人民解放纪念碑",
+      "sources": [
+        "check-160"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议15–30分鐘，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 176,
+      "name": "桂园",
+      "sources": [
+        "check-176"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 179,
+      "name": "新高湖游船(奉节港)",
+      "sources": [
+        "check-179"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "2026-10-21 AI核对（Codex）：新高湖为奉节—宜昌等2天1晚客滚游轮，票价按航期/舱等；跨城多日产品不适合本系统单城市小时级景点推荐，暂隔离，不填750元起为统一全价"
+    },
+    {
+      "id": 184,
+      "name": "华岩寺",
+      "sources": [
+        "check-184"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2–3小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 201,
+      "name": "重庆武隆天生三桥风景区-天龙天坑",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 3.0,
+        "max_hours": 6.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 3.0–6.0 小时"
+    },
+    {
+      "id": 209,
+      "name": "重庆独角兽星空艺术馆",
+      "sources": [
+        "check-209"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 3.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–3 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–3小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 225,
+      "name": "美心红酒小镇水上乐园",
+      "sources": [
+        "check-225"
+      ],
+      "changes": {
+        "price": 39.9
+      },
+      "note": "2026-10-21 AI核对（Codex）：第三方独立水上乐园成人票标准价39.9元，仅作未官方核实的参考预算；18.99元是索道套票、29.9元是儿童票，不能混用，开园季节仍需出发前核对"
+    },
+    {
+      "id": 229,
+      "name": "黄山蒋介石官邸",
+      "sources": [
+        "check-zero-price-229"
+      ],
+      "changes": {
+        "price": 20
+      },
+      "note": "2026-10-21 AI核对（Claude）：买购网：门票20元/人（重庆抗战遗址博物馆黄山官邸区；另有攻略称优惠票10元，各源不一）"
+    },
+    {
+      "id": 236,
+      "name": "重庆长江大桥",
+      "sources": [
+        "check-236"
+      ],
+      "changes": {
+        "min_hours": 0.3333,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议20 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.3333–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 261,
+      "name": "刘伯承同志纪念馆",
+      "sources": [
+        "check-261"
+      ],
+      "changes": {
+        "min_hours": 0.8,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.8–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.8–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 268,
+      "name": "凯旋路电梯",
+      "sources": [
+        "check-268"
+      ],
+      "changes": {
+        "min_hours": 0.25,
+        "max_hours": 0.5
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议5–10 minutes，仅作为项目排程参考，非官方保证或实测；不含往返交通；为进出/拍照保留15–30分钟项目缓冲；按0.25–0.5小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 269,
+      "name": "南滨路钟楼",
+      "sources": [
+        "check-269"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按2–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 271,
+      "name": "西山公园",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 3.5
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–3.5 小时"
+    },
+    {
+      "id": 272,
+      "name": "天空悬廊",
+      "sources": [
+        "check-272"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 277,
+      "name": "东水门及古城墙",
+      "sources": [
+        "check-277"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 279,
+      "name": "重庆山城高空跳伞基地",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 2.0,
+        "max_hours": 4.0
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 2.0–4.0 小时"
+    },
+    {
+      "id": 282,
+      "name": "28度活水馆",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "min_hours": 1.5,
+        "max_hours": 3.5
+      },
+      "note": "原表 0.5–1.0 小时明显偏短，按模型估计调为 1.5–3.5 小时"
+    },
+    {
+      "id": 287,
+      "name": "国民政府军事委员会旧址-重庆行营",
+      "sources": [
+        "check-287"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 297,
+      "name": "铁路四村",
+      "sources": [
+        "check-297"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2 hours，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 315,
+      "name": "天下第一风雨廊桥",
+      "sources": [
+        "check-315"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 319,
+      "name": "涂山寺",
+      "sources": [
+        "check-319"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 323,
+      "name": "乌江三桥",
+      "sources": [
+        "check-323"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5–1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 328,
+      "name": "七里塘",
+      "sources": [
+        "check-328"
+      ],
+      "changes": {
+        "min_hours": 0.5,
+        "max_hours": 1.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议0.5-1 hour，仅作为项目排程参考，非官方保证或实测；不含往返交通；按0.5–1小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 342,
+      "name": "三毛故居(区级文物)",
+      "sources": [
+        "check-342"
+      ],
+      "changes": {
+        "min_hours": 1.0,
+        "max_hours": 2.0
+      },
+      "note": "2026-10-21 AI核对（Codex）：Trip.com景点页建议1–2小時，仅作为项目排程参考，非官方保证或实测；不含往返交通；按1–2小时排程，深度讲解、排队、阅读/演出需额外预留"
+    },
+    {
+      "id": 343,
+      "name": "万隆水上嘉年华",
+      "sources": [
+        "onboard_rules"
+      ],
+      "changes": {
+        "recommendable": false
+      },
+      "note": "名称是限时活动（如“2024……嘉年华”），已暂停推荐"
+    }
+  ]
+}

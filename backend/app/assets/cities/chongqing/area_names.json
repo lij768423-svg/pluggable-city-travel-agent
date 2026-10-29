@@ -1,0 +1,126 @@
+{
+  "version": "2026-10-21-codex-review-v1",
+  "scope": "自动聚类；2026-10-21 Codex 对照全部聚类成员审阅展示名，非用户逐项认可，非行政边界，不验证坐标或重做聚类。",
+  "areas": [
+    {
+      "anchor_id": 0,
+      "name": "洪崖洞·解放碑"
+    },
+    {
+      "anchor_id": 1,
+      "name": "武隆天生三桥"
+    },
+    {
+      "anchor_id": 3,
+      "name": "杨家坪·动物园"
+    },
+    {
+      "anchor_id": 8,
+      "name": "白帝城·瞿塘峡"
+    },
+    {
+      "anchor_id": 9,
+      "name": "磁器口·歌乐山"
+    },
+    {
+      "anchor_id": 10,
+      "name": "大足石刻"
+    },
+    {
+      "anchor_id": 13,
+      "name": "巫山小三峡"
+    },
+    {
+      "anchor_id": 19,
+      "name": "丰都鬼城"
+    },
+    {
+      "anchor_id": 22,
+      "name": "南山风景区"
+    },
+    {
+      "anchor_id": 25,
+      "name": "李子坝·鹅岭"
+    },
+    {
+      "anchor_id": 27,
+      "name": "朝天门·南滨路"
+    },
+    {
+      "anchor_id": 29,
+      "name": "两路口·枇杷山"
+    },
+    {
+      "anchor_id": 32,
+      "name": "万盛石林"
+    },
+    {
+      "anchor_id": 33,
+      "name": "十八梯·山城巷"
+    },
+    {
+      "anchor_id": 36,
+      "name": "涪陵·白鹤梁"
+    },
+    {
+      "anchor_id": 47,
+      "name": "南山·龙门浩"
+    },
+    {
+      "anchor_id": 48,
+      "name": "乐和乐都"
+    },
+    {
+      "anchor_id": 54,
+      "name": "融创文旅城"
+    },
+    {
+      "anchor_id": 56,
+      "name": "观音桥·不夜九街"
+    },
+    {
+      "anchor_id": 62,
+      "name": "龚滩古镇"
+    },
+    {
+      "anchor_id": 78,
+      "name": "濯水古镇"
+    },
+    {
+      "anchor_id": 86,
+      "name": "阿依河"
+    },
+    {
+      "anchor_id": 94,
+      "name": "黄桷坪涂鸦街"
+    },
+    {
+      "anchor_id": 96,
+      "name": "钓鱼城"
+    },
+    {
+      "anchor_id": 119,
+      "name": "两江影视城"
+    },
+    {
+      "anchor_id": 162,
+      "name": "工业博物馆"
+    },
+    {
+      "anchor_id": 168,
+      "name": "圣名游乐城"
+    },
+    {
+      "anchor_id": 169,
+      "name": "鸿恩寺·红岩村"
+    },
+    {
+      "anchor_id": 221,
+      "name": "黄水度假区"
+    },
+    {
+      "anchor_id": 271,
+      "name": "万州西山公园"
+    }
+  ]
+}

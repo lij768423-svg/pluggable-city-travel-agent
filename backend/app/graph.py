@@ -156,8 +156,9 @@ def run_plan(query: str = "", form: dict[str, Any] | None = None, *, llm: LLM | 
         used = Usage()
         used.add(llm.usage)
         delta = {k: (v - getattr(before, k) if isinstance(v, (int, float)) else v)
-                 for k, v in vars(used).items() if k != "by_tag"}
+                 for k, v in vars(used).items() if k not in ("by_tag", "timings")}
         out["usage"] = {**delta, "total_tokens": delta["prompt_tokens"] + delta["completion_tokens"]}
+        out["llm_timings"] = used.timings[len(before.timings):]  # 只取本次规划的调用
         out["seconds"] = round(time.time() - t0, 2)
         out["poi_catalog"] = catalog.reference()
         return finish_result(out, progress)
@@ -181,6 +182,8 @@ def finish_result(out: dict, progress=None) -> dict:
         out["log"].extend(list(dict.fromkeys(catalog.notices)))
         out["restaurant_stats"] = {"online_candidates":catalog.online_count, "searches":len(catalog.queries)}
     if route:
+        if best is not None and hasattr(route, "taxi_overrides"):
+            route.taxi_overrides = set(best.get("taxi_overrides", ()))  # 与最佳方案那一轮的交通方式一致
         route.finalize(out["itinerary"], out["profile"], out["restaurants"])
     out["travel_stats"] = route.stats() if route is not None else {"source": "estimate"}
     if progress is not None:

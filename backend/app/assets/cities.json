@@ -164,5 +164,421 @@
       "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
       "derived_at": "2026-10-20T13:02:36.206678+00:00"
     }
+  },
+  "beijing": {
+    "key": "beijing",
+    "name": "北京",
+    "name_full": "北京市",
+    "province": "北京市",
+    "amap_city": "北京",
+    "adcode": "110000",
+    "bounds": [
+      39.393,
+      41.111,
+      115.373,
+      117.565
+    ],
+    "default_origin": {
+      "name": "王府井附近（默认参考起点）",
+      "lat": 39.923984,
+      "lon": 116.410292
+    },
+    "map_center": {
+      "lat": 39.923984,
+      "lon": 116.410292
+    },
+    "data_dir": "data/beijing",
+    "assets_dir": "app/assets/cities/beijing",
+    "supplement_dir": "data/beijing/poi_supplement",
+    "calibration": "data/beijing/travel_calibration.json",
+    "local_cuisine": "北京菜|京菜|烤鸭|宫廷菜",
+    "local_cuisine_labels": {
+      "北京菜": "北京菜",
+      "京菜": "北京菜",
+      "烤鸭": "北京烤鸭",
+      "宫廷菜": "宫廷菜"
+    },
+    "evening_streets": {
+      "284": "盛华屯夜市",
+      "191": "三里屯酒吧一条街",
+      "29": "南锣鼓巷",
+      "120": "五道营胡同"
+    },
+    "brand": "北京行记",
+    "hotel_areas": [
+      "王府井",
+      "前门",
+      "国贸",
+      "三里屯",
+      "中关村"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T03:15:57.992945+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T03:34:30.942113+00:00"
+    }
+  },
+  "shanghai": {
+    "key": "shanghai",
+    "name": "上海",
+    "name_full": "上海市",
+    "province": "上海市",
+    "amap_city": "上海",
+    "adcode": "310000",
+    "bounds": [
+      30.626,
+      31.923,
+      120.807,
+      122.297
+    ],
+    "default_origin": {
+      "name": "南京东路附近（默认参考起点）",
+      "lat": 31.237736,
+      "lon": 121.485915
+    },
+    "map_center": {
+      "lat": 31.237736,
+      "lon": 121.485915
+    },
+    "data_dir": "data/shanghai",
+    "assets_dir": "app/assets/cities/shanghai",
+    "supplement_dir": "data/shanghai/poi_supplement",
+    "calibration": "data/shanghai/travel_calibration.json",
+    "local_cuisine": "本帮|上海菜|沪菜|江浙",
+    "local_cuisine_labels": {
+      "本帮": "本帮菜",
+      "上海菜": "上海菜",
+      "沪菜": "上海菜",
+      "江浙": "江浙菜"
+    },
+    "evening_streets": {
+      "319": "观光夜市(威尼斯水城之夜)",
+      "351": "老外街101",
+      "17": "南京路步行街",
+      "39": "田子坊",
+      "71": "新天地"
+    },
+    "brand": "上海行记",
+    "hotel_areas": [
+      "外滩",
+      "人民广场",
+      "南京西路",
+      "陆家嘴",
+      "徐家汇",
+      "五角场"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T03:15:59.091861+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T04:11:16.585099+00:00"
+    }
+  },
+  "guangzhou": {
+    "key": "guangzhou",
+    "name": "广州",
+    "name_full": "广州市",
+    "province": "广东省",
+    "amap_city": "广州",
+    "adcode": "440100",
+    "bounds": [
+      22.495,
+      23.983,
+      112.909,
+      114.11
+    ],
+    "default_origin": {
+      "name": "北京路附近（默认参考起点）",
+      "lat": 23.120067,
+      "lon": 113.2676
+    },
+    "map_center": {
+      "lat": 23.120067,
+      "lon": 113.2676
+    },
+    "data_dir": "data/guangzhou",
+    "assets_dir": "app/assets/cities/guangzhou",
+    "supplement_dir": "data/guangzhou/poi_supplement",
+    "calibration": "data/guangzhou/travel_calibration.json",
+    "local_cuisine": "粤菜|广府|早茶|茶餐厅",
+    "local_cuisine_labels": {
+      "粤菜": "粤菜",
+      "广府": "广府菜",
+      "早茶": "广式早茶",
+      "茶餐厅": "茶餐厅"
+    },
+    "evening_streets": {
+      "294": "庙前夜市",
+      "299": "沿江路酒吧街",
+      "22": "北京路步行街",
+      "25": "永庆坊",
+      "28": "上下九步行街"
+    },
+    "brand": "广州行记",
+    "hotel_areas": [
+      "北京路",
+      "珠江新城",
+      "体育西",
+      "天河",
+      "上下九",
+      "琶洲"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T03:16:00.166915+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T04:43:20.104232+00:00"
+    }
+  },
+  "shenzhen": {
+    "key": "shenzhen",
+    "name": "深圳",
+    "name_full": "深圳市",
+    "province": "广东省",
+    "amap_city": "深圳",
+    "adcode": "440300",
+    "bounds": [
+      22.346,
+      22.912,
+      113.701,
+      114.678
+    ],
+    "default_origin": {
+      "name": "华侨城附近（默认参考起点）",
+      "lat": 22.537254,
+      "lon": 113.976116
+    },
+    "map_center": {
+      "lat": 22.537254,
+      "lon": 113.976116
+    },
+    "data_dir": "data/shenzhen",
+    "assets_dir": "app/assets/cities/shenzhen",
+    "supplement_dir": "data/shenzhen/poi_supplement",
+    "calibration": "data/shenzhen/travel_calibration.json",
+    "local_cuisine": "粤菜|潮汕|客家|广府",
+    "local_cuisine_labels": {
+      "粤菜": "粤菜",
+      "潮汕": "潮汕菜",
+      "客家": "客家菜",
+      "广府": "广府菜"
+    },
+    "evening_streets": {
+      "89": "西乡夜市街",
+      "17": "东门老街",
+      "35": "海上世界",
+      "99": "水围1368文化街区"
+    },
+    "brand": "深圳行记",
+    "hotel_areas": [
+      "福田",
+      "华侨城",
+      "科技园",
+      "蛇口",
+      "前海",
+      "罗湖"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T05:05:17.961156+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T05:18:29.331548+00:00"
+    }
+  },
+  "chengdu": {
+    "key": "chengdu",
+    "name": "成都",
+    "name_full": "成都市",
+    "province": "四川省",
+    "amap_city": "成都",
+    "adcode": "510100",
+    "bounds": [
+      30.04,
+      31.485,
+      102.943,
+      104.948
+    ],
+    "default_origin": {
+      "name": "天府广场附近（默认参考起点）",
+      "lat": 30.657361,
+      "lon": 104.069198
+    },
+    "map_center": {
+      "lat": 30.657361,
+      "lon": 104.069198
+    },
+    "data_dir": "data/chengdu",
+    "assets_dir": "app/assets/cities/chengdu",
+    "supplement_dir": "data/chengdu/poi_supplement",
+    "calibration": "data/chengdu/travel_calibration.json",
+    "local_cuisine": "川菜|成都菜|火锅|串串",
+    "local_cuisine_labels": {
+      "川菜": "川菜",
+      "成都菜": "川菜",
+      "火锅": "川味火锅",
+      "串串": "串串香"
+    },
+    "evening_streets": {
+      "147": "铁像寺水街",
+      "66": "奎星楼街",
+      "22": "春熙路",
+      "18": "锦里古街",
+      "15": "宽窄巷子"
+    },
+    "brand": "成都行记",
+    "hotel_areas": [
+      "春熙路",
+      "太古里",
+      "宽窄巷子",
+      "武侯祠",
+      "金融城",
+      "环球中心"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T05:39:47.867251+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T05:54:03.806839+00:00"
+    }
+  },
+  "chongqing": {
+    "key": "chongqing",
+    "name": "重庆",
+    "name_full": "重庆市",
+    "province": "重庆市",
+    "amap_city": "重庆",
+    "adcode": "500000",
+    "bounds": [
+      28.11,
+      32.251,
+      105.24,
+      110.25
+    ],
+    "default_origin": {
+      "name": "解放碑附近（默认参考起点）",
+      "lat": 29.561635,
+      "lon": 106.577985
+    },
+    "map_center": {
+      "lat": 29.561635,
+      "lon": 106.577985
+    },
+    "data_dir": "data/chongqing",
+    "assets_dir": "app/assets/cities/chongqing",
+    "supplement_dir": "data/chongqing/poi_supplement",
+    "calibration": "data/chongqing/travel_calibration.json",
+    "local_cuisine": "重庆菜|渝菜|江湖菜|火锅|川菜",
+    "local_cuisine_labels": {
+      "重庆菜": "重庆菜",
+      "渝菜": "重庆菜",
+      "江湖菜": "江湖菜",
+      "火锅": "重庆火锅",
+      "川菜": "川菜"
+    },
+    "evening_streets": {
+      "264": "不夜九街",
+      "56": "观音桥步行街",
+      "14": "解放碑步行街"
+    },
+    "brand": "重庆行记",
+    "hotel_areas": [
+      "解放碑",
+      "观音桥",
+      "南坪",
+      "大坪",
+      "沙坪坝",
+      "江北嘴"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T06:11:12.940205+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T06:28:40.115606+00:00"
+    }
+  },
+  "wuhan": {
+    "key": "wuhan",
+    "name": "武汉",
+    "name_full": "武汉市",
+    "province": "湖北省",
+    "amap_city": "武汉",
+    "adcode": "420100",
+    "bounds": [
+      29.919,
+      31.411,
+      113.654,
+      115.133
+    ],
+    "default_origin": {
+      "name": "汉口江滩附近（默认参考起点）",
+      "lat": 30.57657,
+      "lon": 114.297248
+    },
+    "map_center": {
+      "lat": 30.57657,
+      "lon": 114.297248
+    },
+    "data_dir": "data/wuhan",
+    "assets_dir": "app/assets/cities/wuhan",
+    "supplement_dir": "data/wuhan/poi_supplement",
+    "calibration": "data/wuhan/travel_calibration.json",
+    "local_cuisine": "湖北菜|鄂菜|武汉菜|楚菜",
+    "local_cuisine_labels": {
+      "湖北菜": "湖北菜",
+      "鄂菜": "湖北菜",
+      "武汉菜": "湖北菜",
+      "楚菜": "湖北菜"
+    },
+    "evening_streets": {
+      "107": "意大利风情街",
+      "246": "虎泉夜市美食广场",
+      "37": "楚河汉街",
+      "56": "吉庆民俗街",
+      "19": "江汉路步行街"
+    },
+    "brand": "武汉行记",
+    "hotel_areas": [
+      "江汉路",
+      "汉口江滩",
+      "黄鹤楼",
+      "楚河汉街",
+      "光谷",
+      "街道口"
+    ],
+    "provenance": {
+      "bounds": "高德行政区边界外扩 0.05° 的粗筛矩形，不是行政边界",
+      "generated_by": "scripts/onboard_city.py",
+      "generated_at": "2026-10-21T06:47:04.648500+00:00",
+      "reviewer": "自动生成，未经人工复核",
+      "default_origin": "景点分布中位点最近的住宿（数据集历史坐标）",
+      "hotel_areas": "住宿店名中常见的分店区域词",
+      "night_streets": "带夜景夜游兴趣的商业街区，未核实夜间营业",
+      "derived_at": "2026-10-21T07:09:58.670832+00:00"
+    }
   }
 }
