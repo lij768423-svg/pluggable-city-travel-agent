@@ -5,7 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { PhArrowLeft, PhCheck, PhArrowClockwise, PhWarningCircle } from '@phosphor-icons/vue'
 import { planStages as baseStages, type PlanProgressState } from '../planProgress'
 
-const props = defineProps<{ city: CityInfo; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null }>()
+const props = defineProps<{ city: CityInfo; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null; queue?: { position: number; limit: number } | null }>()
 const planStages = computed(() => baseStages.map(stage => ({ ...stage,
   title: stage.id === 'finalize' ? `整理你的${props.city.brand}` : stage.title,
   description: stage.id === 'retrieve' ? `从${props.city.name}地点库召回符合条件的候选` : stage.description,
@@ -25,7 +25,9 @@ function follow(pane: HTMLElement | undefined) {
 watch(() => props.output, () => follow(outputPane.value)())
 // 思考内容增长很快，始终贴着底部看最新一段
 watch([() => props.think, expanded], async () => { await nextTick(); if (thinkPane.value) thinkPane.value.scrollTop = thinkPane.value.scrollHeight })
-const current = computed(() => props.progress.active === 'repair' ? '正在调整有冲突的安排' : props.progress.active === 'refine' ? '正在按合理性指标精修行程' :
+// 同时生成的份数满了就在排队：标题报第几位，轮到了自动开始
+const queued = computed(() => props.busy && !props.error && props.queue ? props.queue : null)
+const current = computed(() => queued.value ? `排队中 · 你排在第 ${queued.value.position} 位` : props.progress.active === 'repair' ? '正在调整有冲突的安排' : props.progress.active === 'refine' ? '正在按合理性指标精修行程' :
   planStages.value.find(stage => stage.id === props.progress.active)?.title ?? '正在连接规划服务')
 // elapsed 每秒变化，借它让思考秒数随之刷新
 const thinkingSeconds = computed(() => (props.elapsed, props.thinking ? Math.max(1, Math.round((Date.now() - props.thinking.started) / 1000)) : 0))
@@ -164,7 +166,8 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
     <p class="progress-intro">{{ error ? '出行条件已为你保留。' : '从想去的地方，到走得通的一天。' }}</p>
     <div class="progress-caption" role="status" aria-live="polite" aria-atomic="true">
       <strong><RevealText :text="error ? '生成已暂停' : current" /></strong>
-      <span v-if="!error">{{ progress.active === 'repair' ? `第 ${progress.round + (progress.details.repair ? 0 : 1)} 轮调整` : `已完成 ${progress.completed.length} / ${planStages.length} 项` }}</span>
+      <span v-if="queued">同时最多生成 {{ queued.limit }} 份</span>
+      <span v-else-if="!error">{{ progress.active === 'repair' ? `第 ${progress.round + (progress.details.repair ? 0 : 1)} 轮调整` : `已完成 ${progress.completed.length} / ${planStages.length} 项` }}</span>
     </div>
     <div class="progress-segments" aria-hidden="true"><i v-for="stage in planStages" :key="stage.id" :class="{ done: progress.completed.includes(stage.id), active: busy && progress.active === stage.id }" /></div>
     <ol class="progress-steps">
@@ -178,6 +181,7 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
       </li>
     </ol>
     <p v-if="error" class="progress-error" role="alert"><PhWarningCircle :size="18" />{{ error }}</p>
+    <p v-else-if="queued" class="progress-note"><time>已等待 {{ clock }}</time>轮到你会自动开始；排队时离开页面，这次不扣次数。</p>
     <p v-else class="progress-note"><time>已用时 {{ clock }}</time>{{ elapsed >= 60 ? '这一步仍在处理，模型选点或交通查询可能需要更久。' : '进度随实际执行更新，当前步骤完成后继续。' }}<span v-if="progress.round > 0">已进行 {{ progress.round }} 轮自动调整。</span></p>
     <div v-if="error" class="progress-actions"><button type="button" class="progress-retry" @click="emit('retry')"><PhArrowClockwise :size="16" />重新尝试</button></div>
     <button type="button" class="output-toggle" :aria-expanded="expanded" aria-controls="generation-output" @click="expanded = !expanded">{{ expanded ? '收起实时输出 −' : '展开实时输出 +' }}<span>模型回答与执行记录</span></button>

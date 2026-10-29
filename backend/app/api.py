@@ -20,6 +20,7 @@ from .cities import current_city
 from . import config
 from . import accounts
 from . import access, onboarding_status, stay_audit
+from .plan_queue import PLAN_QUEUE
 from .data import load_pois, load_restaurants, tag_source
 from .geo import bd09_to_gcj02, hm
 from .graph import run_plan
@@ -175,8 +176,9 @@ class UnderstandRequest(BaseModel):
 def understand_request(req: UnderstandRequest, request: Request) -> dict[str, Any]:
     """规划前的“我是这么理解的”：解析一句话、标明每项来源并预检；不扣每天的生成次数。"""
     accounts.same_origin(request)
-    access.require_login(request)
+    user = access.require_login(request)
     access.rate_limit(request, "understand")
+    access.guard_understand(user, req.query)
     city = enabled_city(req.form.get("city") or "hangzhou")
     try:
         with use_catalog(published_catalog(city)):
@@ -195,8 +197,9 @@ def plan(req: PlanRequest, request: Request, response: Response) -> dict[str, An
     access.guard_plan(request)
     owner = accounts.principal(request, response)
     try:
-        r = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=refine_enabled(req),
-                     travel_source=req.travel_source, guide_mode=req.guide_mode)
+        with PLAN_QUEUE.slot():
+            r = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=refine_enabled(req),
+                         travel_source=req.travel_source, guide_mode=req.guide_mode)
     except ValidationError:
         raise HTTPException(status_code=422, detail="出游条件格式不正确，请检查日期、活动时段、预算和起点。") from None
     except CityDisabled as error:
@@ -211,12 +214,14 @@ def plan(req: PlanRequest, request: Request, response: Response) -> dict[str, An
 @app.post("/api/plan/stream")
 async def plan_stream(req: PlanRequest, request: Request):
     accounts.same_origin(request)
-    access.guard_plan(request)
+    charge = access.guard_plan(request)
     cookie_response = Response()
     owner = accounts.principal(request, cookie_response)
     def generate(progress):
-        result = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=refine_enabled(req),
-                          travel_source=req.travel_source, guide_mode=req.guide_mode, progress=progress)
+        # 排队时报位置；排队时离开页面就出队并退回这次扣的次数，开始生成后离开不退
+        with PLAN_QUEUE.slot(progress, on_leave=lambda: access.refund(charge)):
+            result = run_plan(req.query, req.form, select_mode=req.select_mode, enable_repair=req.enable_repair, enable_refine=refine_enabled(req),
+                              travel_source=req.travel_source, guide_mode=req.guide_mode, progress=progress)
         request_meta = {"select_mode": req.select_mode, "enable_repair": req.enable_repair, "enable_refine": refine_enabled(req), "guide_mode": req.guide_mode, "input": req.model_dump()}
         session = SESSIONS.create(result, request_meta, owner)
         return deliver_plan(result, session, 0)

@@ -156,6 +156,12 @@ class AccountStore:
             database.execute("DELETE FROM plan_quota WHERE day < date(?, '-30 day')", (day,))
         return True
 
+    def refund(self, day: str, keys: list[str]) -> None:
+        """排队时离开的那次不算：各退一次（不低于 0）。"""
+        with self._quota_lock, self.connect() as database:
+            for key in keys:
+                database.execute("UPDATE plan_quota SET count=count-1 WHERE day=? AND key=? AND count>0", (day, key))
+
     def list(self, user_id: str, offset: int = 0) -> dict:
         with self.connect() as database:
             rows = database.execute("SELECT id,title,created,updated,json_extract(plan_json,'$.profile.days') AS days,json_extract(plan_json,'$.profile.start_date') AS start_date FROM trips WHERE user_id=? ORDER BY updated DESC,id DESC LIMIT 21 OFFSET ?", (user_id, offset)).fetchall()

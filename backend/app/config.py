@@ -39,6 +39,11 @@ PLAN_LIMIT_USER = int(os.environ.get("TTA_PLAN_LIMIT_USER", "0") or 0)   # 每�
 # 不受每日次数限制的账号（用户名，逗号分隔），如站长自己的账号；仍然要求登录，也不占所在 IP 的额度
 UNLIMITED_USERS = frozenset(name.strip() for name in os.environ.get("TTA_UNLIMITED_USERS", "").split(",") if name.strip())
 PLAN_LIMIT_IP = int(os.environ.get("TTA_PLAN_LIMIT_IP", "0") or 0)       # 每个 IP 每天可生成次数，0 = 不限
+PLAN_LIMIT_SITE = int(os.environ.get("TTA_PLAN_LIMIT_SITE", "0") or 0)   # 全站每天可生成次数（护住模型与高德额度），0 = 不限
+# 每个账号每天“一句话说需求”/跟 AI 说的次数（每段新文字算一次，同一段改表重算不算），0 = 不限
+UNDERSTAND_LIMIT_USER = int(os.environ.get("TTA_UNDERSTAND_LIMIT_USER", "0") or 0)
+PLAN_CONCURRENCY = int(os.environ.get("TTA_PLAN_CONCURRENCY", "0") or 0)  # 同时生成几份，其余排队；0 = 不排队
+PLAN_QUEUE_MAX = int(os.environ.get("TTA_PLAN_QUEUE_MAX", "30") or 0)     # 最多几人排队，满了请稍后再来；0 = 不限
 RATE_LIMIT = os.environ.get("TTA_RATE_LIMIT", "0") == "1"                # 外部数据接口按 IP 限频
 INVITE_CODES = frozenset(code.strip() for code in os.environ.get("TTA_INVITE_CODES", "").split(",") if code.strip())
 PUBLIC_HOSTS = frozenset(host.strip().lower() for host in os.environ.get("TTA_PUBLIC_HOSTS", "").split(",") if host.strip())

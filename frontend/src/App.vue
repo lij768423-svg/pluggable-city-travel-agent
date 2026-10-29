@@ -152,6 +152,7 @@ const activeDay = ref(1)
 const editing = ref(true)
 const elapsed = ref(0)
 const planProgress = ref(emptyProgress())
+const planQueue = ref<{ position: number; limit: number } | null>(null)
 const progressVisible = ref(false)
 const lastRequest = ref<PlanRequest | null>(null)
 let planController: AbortController | null = null
@@ -638,6 +639,7 @@ async function run(req: PlanRequest) {
   outputText.value = ''; outputTag = ''; outputAttempt = 0; modelThinking.value = null; thinkText.value = ''
   progressVisible.value = true
   planProgress.value = emptyProgress()
+  planQueue.value = null
   lastRequest.value = req
   const controller = new AbortController()
   planController = controller
@@ -654,6 +656,8 @@ async function run(req: PlanRequest) {
     expandedMeal.value = null
     toast.value = null
     const result = await postPlan(req, event => {
+      if (event.type === 'queue') { planQueue.value = { position: event.position, limit: event.limit }; return }
+      planQueue.value = null
       if (event.type === 'model') {
         if (event.tag !== outputTag || event.attempt !== outputAttempt || event.source === 'cache') {
           outputText.value += `\n\n—— ${event.tag} · ${event.source === 'cache' ? '已缓存的回答' : `实时回答${event.attempt > 1 ? ` · 第 ${event.attempt} 次尝试` : ''}`} ——\n`
@@ -864,7 +868,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       </div>
 
       <div ref="scroller" class="panel-scroll" :class="{ 'progress-scroll': progressVisible }">
-        <PlanProgress :city="draftCity" v-if="progressVisible" :progress="planProgress" :elapsed="elapsed" :error="error" :busy="loading" :output="outputText" :think="thinkText" :thinking="modelThinking" @back="leaveProgress" @retry="lastRequest && run(lastRequest)" />
+        <PlanProgress :city="draftCity" v-if="progressVisible" :progress="planProgress" :elapsed="elapsed" :error="error" :busy="loading" :output="outputText" :think="thinkText" :thinking="modelThinking" :queue="planQueue" @back="leaveProgress" @retry="lastRequest && run(lastRequest)" />
         <p v-if="error && !progressVisible" class="notice bad" role="alert"><PhWarningCircle :size="16" />{{ error }}</p>
 
         <section v-show="showForm && !progressVisible" class="form-wrap">

@@ -182,3 +182,7 @@ cd ../frontend && npm run build
 默认部署不是多副本服务：部分限流计数和编辑会话保存在进程内存中。MCP 入口应只在私网或可信反代后开放。
 
 欢迎通过 Issue 报告可复现的路线问题，也可以按 [贡献说明](CONTRIBUTING.md) 提交改进，新城市的接入经验也欢迎。
+
+## 友情链接
+
+- [LINUX DO](https://linux.do)：新的理想型社区。

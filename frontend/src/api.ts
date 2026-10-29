@@ -168,7 +168,9 @@ export const getMeta = (city?: string, signal?: AbortSignal) => fetch(`/api/meta
 export const searchPlaces = (query: string, city: string, signal?: AbortSignal) =>
   fetch(`/api/places/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`, { signal }).then(r => j<{ places: OriginPlace[] }>(r))
 export interface ModelOutputEvent { type: 'model'; tag: string; text: string; think?: string; source: 'live' | 'cache'; attempt: number; phase?: 'waiting' | 'thinking' | 'answer'; thought?: number }
-export async function postPlan(req: PlanRequest, onProgress: (event: import('./planProgress').PlanProgressEvent | ModelOutputEvent) => void,
+// 同时生成的份数有上限，其余排队：服务端每隔几秒报一次排第几位
+export interface QueueEvent { type: 'queue'; position: number; limit: number }
+export async function postPlan(req: PlanRequest, onProgress: (event: import('./planProgress').PlanProgressEvent | ModelOutputEvent | QueueEvent) => void,
   signal: AbortSignal): Promise<PlanResponse> {
   const response = await fetch('/api/plan/stream', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req), signal,
@@ -181,7 +183,7 @@ export async function postPlan(req: PlanRequest, onProgress: (event: import('./p
   const parse = (line: string): PlanResponse | undefined => {
     if (!line.trim()) return
     const event = JSON.parse(line)
-    if (event.type === 'progress' || event.type === 'model') onProgress(event)
+    if (event.type === 'progress' || event.type === 'model' || event.type === 'queue') onProgress(event)
     if (event.type === 'error') throw new Error(event.message)
     if (event.type === 'result') return event.plan as PlanResponse
   }
