@@ -18,7 +18,7 @@ from .cities import DEFAULT_CITY, ensure_enabled
 from .planning_context import poi_catalog
 from .poi_catalog import published_catalog, use_catalog
 from .refine import refine_node
-from .nodes.retrieve import retrieve_node
+from .nodes.retrieve import retrieve_node, use_popularity
 from .nodes.schedule import schedule_node
 from .nodes.select import select_node
 from .nodes.validate import validate_node
@@ -39,6 +39,9 @@ class PlanState(TypedDict, total=False):
     initial_selected_ids: list[int]
     schedule_attempts: Annotated[list[dict], operator.add]
     enable_repair: bool
+    enable_gap_fill: bool  # 空档补点（nodes/meals.py）；run_plan 不传时跟随 enable_repair
+    day_split: str  # "area" 片区为主（本系统）| "capacity" 按游玩时长装箱（E2 的 B−片区）
+    max_repair_rounds: int
     enable_refine: bool
     refined: bool
     refine_scores: dict
@@ -70,7 +73,7 @@ def _finish(state: PlanState) -> str:
 
 
 def _after_validate(state: PlanState) -> str:
-    if (state["report"].passed and state["report"].experience_status == "complete") or not state.get("enable_repair", True) or state.get("repair_round", 0) >= MAX_ROUNDS:
+    if (state["report"].passed and state["report"].experience_status == "complete") or not state.get("enable_repair", True) or state.get("repair_round", 0) >= state.get("max_repair_rounds", MAX_ROUNDS):
         return _finish(state)
     return "repair"
 
@@ -122,13 +125,21 @@ _GRAPH = None
 def run_plan(query: str = "", form: dict[str, Any] | None = None, *, llm: LLM | None = None,
              select_mode: str = "llm", enable_repair: bool = True, use_solver: bool = True,
              travel_source: str | None = None, guide_mode: str = "off", progress=None,
-             enable_refine: bool = False) -> dict[str, Any]:
+             enable_refine: bool = False, enable_gap_fill: bool | None = None, day_split: str = "area",
+             max_repair_rounds: int = MAX_ROUNDS, popularity: str = "tiered") -> dict[str, Any]:
+    # 最后四个是 E2 消融开关（docs/评测协议v2.md 第 2 节），默认值就是本系统 B；网页和 MCP 都不传。
     if guide_mode not in {"off", "pilot"}:
         raise ValueError("未知攻略模式")
     if select_mode not in {"llm", "rule", "jev"}:
         raise ValueError("未知选点模式")
     if select_mode == "jev" and guide_mode != "off":
         raise ValueError("Jev 选点试验暂不与攻略试验混用")
+    if day_split not in {"area", "capacity"}:
+        raise ValueError("未知分天方式")
+    if popularity not in {"tiered", "flat", "off"}:
+        raise ValueError("未知知名度模式")
+    if not 0 <= max_repair_rounds <= 8:
+        raise ValueError("修复轮数应在 0–8 之间")
     global _GRAPH
     if _GRAPH is None:
         _GRAPH = build_graph()
@@ -146,11 +157,13 @@ def run_plan(query: str = "", form: dict[str, Any] | None = None, *, llm: LLM | 
     catalog = poi_catalog.get() or published_catalog(city)
     if catalog.city != city:
         raise ValueError("任务目录与所选城市不一致")
-    with use_catalog(catalog):
+    with use_catalog(catalog), use_popularity(popularity):
         out = graph.invoke({"query": query, "form": form or {}, "llm": llm, "select_mode": select_mode,
                              "enable_repair": enable_repair, "enable_refine": enable_refine, "use_solver": use_solver, "meal_factor": 1.0,
                              "travel_source": travel_source, "guide_mode": guide_mode,
-                             "repair_round": 0, "log": []}, {"recursion_limit": 50})
+                             "enable_gap_fill": enable_repair if enable_gap_fill is None else enable_gap_fill,
+                             "day_split": day_split, "max_repair_rounds": max_repair_rounds,
+                             "repair_round": 0, "log": []}, {"recursion_limit": 50 + 10 * max(0, max_repair_rounds - MAX_ROUNDS)})
         if progress is not None:
             progress(stage_event("finalize", "running", out))
         used = Usage()
@@ -185,6 +198,8 @@ def finish_result(out: dict, progress=None) -> dict:
         if best is not None and hasattr(route, "taxi_overrides"):
             route.taxi_overrides = set(best.get("taxi_overrides", ()))  # 与最佳方案那一轮的交通方式一致
         route.finalize(out["itinerary"], out["profile"], out["restaurants"])
+    from .lodging import suggest_lodging
+    out["lodging"] = suggest_lodging(out, route)  # 起点不定的多日行程才有；只给建议，不改行程
     out["travel_stats"] = route.stats() if route is not None else {"source": "estimate"}
     if progress is not None:
         progress(stage_event("finalize", "completed", out))

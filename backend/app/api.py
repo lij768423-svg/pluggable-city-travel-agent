@@ -29,7 +29,7 @@ from .places import PlaceSearchError, search_places
 from .navigation import NavigationRequest, NavigationBoundsError, get_navigation
 from .place_details import PlaceDetailsRequest, get_place_details
 from .schemas import (AUDIENCES, COMPANION_LABELS, FAMILIARITY_LEVELS, INTERESTS, PACE_LABELS, SPICE_LEVELS, Hotel, TripContext, UserProfile,
-                      MealEditPreviewRequest, MealEditCommitRequest)
+                      MealEditPreviewRequest, MealEditCommitRequest, PaceEditPreviewRequest, PoiEditPreviewRequest)
 from .sessions import SESSIONS, SessionNotFound, StaleRevision, PreviewNotFound
 from .mcp_login import router as mcp_login_router
 from .progress import stream_plan_events
@@ -306,10 +306,9 @@ def swap_meal_endpoint(plan_id: str, req: SwapMealRequest, request: Request) -> 
     raise HTTPException(status_code=428, detail="请先查看更换预览，再确认提交；原行程保持不变。")
 
 
-@app.post("/api/plans/{plan_id}/meal-preview")
-def preview_meal_endpoint(plan_id: str, req: MealEditPreviewRequest, request: Request) -> dict[str, Any]:
+def edit_preview(plan_id: str, revision: int, request: Request, build) -> dict[str, Any]:
+    """换餐、换景点、调节奏共用：在当前版本的副本上算预览，原行程不变。"""
     from copy import deepcopy
-    from .meal_edits import build_preview
     from .replan import ReplanError
     accounts.same_origin(request)
     access.rate_limit(request, "swap")
@@ -317,17 +316,17 @@ def preview_meal_endpoint(plan_id: str, req: MealEditPreviewRequest, request: Re
         session = SESSIONS.get(plan_id)
         accounts.authorize_session(session, request)
         ensure_editable(session.result())
-        if req.revision != session.current:
+        if revision != session.current:
             raise StaleRevision()
-        updated, change = build_preview(deepcopy(session.result(req.revision)), req)
+        updated, change = build(deepcopy(session.result(revision)))
         if session.request.get("source") == "mcp":
             from .mcp_domain import delivery_status
             if delivery_status(updated, allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"] not in {"ready", "draft"}:
                 raise HTTPException(422, "预览未达到MCP真实路线与证据门槛，原行程保持不变。")
-        payload = serialize_plan(updated, session.request, plan_id, req.revision, change)
+        payload = serialize_plan(updated, session.request, plan_id, revision, change)
         if session.request.get("source") == "mcp":
             updated["delivery_status"] = delivery_status(updated, allow_unverified_draft=session.request.get("allow_unverified_draft", False))["status"]
-        preview = SESSIONS.add_preview(plan_id, req.revision, updated, change)
+        preview = SESSIONS.add_preview(plan_id, revision, updated, change)
     except SessionNotFound:
         raise HTTPException(410, EXPIRED) from None
     except StaleRevision:
@@ -342,8 +341,41 @@ def preview_meal_endpoint(plan_id: str, req: MealEditPreviewRequest, request: Re
             "can_commit": updated["report"].passed, "change": change, "plan": payload}
 
 
-@app.post("/api/plans/{plan_id}/meal-commit")
-def commit_meal_endpoint(plan_id: str, req: MealEditCommitRequest, request: Request) -> dict[str, Any]:
+@app.post("/api/plans/{plan_id}/meal-preview")
+def preview_meal_endpoint(plan_id: str, req: MealEditPreviewRequest, request: Request) -> dict[str, Any]:
+    from .meal_edits import build_preview
+    return edit_preview(plan_id, req.revision, request, lambda result: build_preview(result, req))
+
+
+@app.post("/api/plans/{plan_id}/poi-preview")
+def preview_poi_endpoint(plan_id: str, req: PoiEditPreviewRequest, request: Request) -> dict[str, Any]:
+    from .poi_edits import build_poi_preview
+    return edit_preview(plan_id, req.revision, request, lambda result: build_poi_preview(result, req))
+
+
+@app.post("/api/plans/{plan_id}/pace-preview")
+def preview_pace_endpoint(plan_id: str, req: PaceEditPreviewRequest, request: Request) -> dict[str, Any]:
+    from .poi_edits import build_pace_preview
+    return edit_preview(plan_id, req.revision, request, lambda result: build_pace_preview(result, req))
+
+
+@app.get("/api/plans/{plan_id}/poi-options")
+def poi_options_endpoint(plan_id: str, request: Request, day: int = Query(ge=1, le=5), item_index: int = Query(ge=0, le=60)) -> dict[str, Any]:
+    """换景点的备选：只来自这份行程的候选，同片区、同类型排在前面。"""
+    from .poi_edits import options_for
+    from .replan import ReplanError
+    try:
+        session = SESSIONS.get(plan_id)
+        accounts.authorize_session(session, request)
+        return {"revision": session.current, "options": options_for(session.result(), day, item_index)}
+    except SessionNotFound:
+        raise HTTPException(410, EXPIRED) from None
+    except ReplanError as error:
+        raise HTTPException(error.status, error.message) from None
+
+
+def edit_commit(plan_id: str, req: MealEditCommitRequest, request: Request) -> dict[str, Any]:
+    """换餐、换景点、调节奏共用：提交前按预览记下的路线再校验一次，通过才生成新版本。"""
     from .meal_edits import validate_preview
     from .replan import ReplanError
     accounts.same_origin(request)
@@ -382,6 +414,21 @@ def commit_meal_endpoint(plan_id: str, req: MealEditCommitRequest, request: Requ
     return deliver_plan(updated, session, revision, change)
 
 
+@app.post("/api/plans/{plan_id}/meal-commit")
+def commit_meal_endpoint(plan_id: str, req: MealEditCommitRequest, request: Request) -> dict[str, Any]:
+    return edit_commit(plan_id, req, request)
+
+
+@app.post("/api/plans/{plan_id}/poi-commit")
+def commit_poi_endpoint(plan_id: str, req: MealEditCommitRequest, request: Request) -> dict[str, Any]:
+    return edit_commit(plan_id, req, request)
+
+
+@app.post("/api/plans/{plan_id}/pace-commit")
+def commit_pace_endpoint(plan_id: str, req: MealEditCommitRequest, request: Request) -> dict[str, Any]:
+    return edit_commit(plan_id, req, request)
+
+
 @app.get("/api/plans/{plan_id}")
 def current_plan_endpoint(plan_id: str, request: Request) -> dict[str, Any]:
     try:
@@ -410,6 +457,50 @@ def revert_endpoint(plan_id: str, req: RevertRequest, request: Request) -> dict[
     except StaleRevision:
         raise HTTPException(status_code=409, detail="行程刚刚被修改过，不能撤销旧版本的操作。") from None
     return deliver_plan(result, session, revision)
+
+
+class LodgingReplanRequest(BaseModel):
+    revision: int = Field(ge=0)
+    hotel_id: str = Field(min_length=1, max_length=40)
+
+
+@app.post("/api/plans/{plan_id}/lodging-replan")
+def lodging_replan_endpoint(plan_id: str, req: LodgingReplanRequest, request: Request) -> dict[str, Any]:
+    """按住哪儿卡片里的一家推荐住处重排：景点沿用、不调模型；不扣当天次数但要排队，每份行程最多 MAX_REPLANS 次，可撤销。"""
+    from .lodging import MAX_REPLANS, replan_with_hotel
+    from .plan_queue import QueueFull
+    from .replan import ReplanError
+    accounts.same_origin(request)
+    access.rate_limit(request, "swap")
+    try:
+        session = SESSIONS.get(plan_id)
+        accounts.authorize_session(session, request)
+        current = session.result()
+        ensure_editable(current)
+        if req.revision != session.current:
+            raise StaleRevision(f"当前版本是 {session.current}")
+        if session.request.get("source") == "mcp":  # MCP 行程有自己的交付门槛，不从网页改起点
+            raise HTTPException(409, "这份行程来自 MCP，请在对话里换起点后重新规划。")
+        if session.request.get("lodging_replans", 0) >= MAX_REPLANS:
+            raise HTTPException(429, f"这份行程已经按住处重排过 {MAX_REPLANS} 次，可以撤销后保留满意的一版，或重新生成。")
+        PLAN_QUEUE.check_room()
+        with PLAN_QUEUE.slot():
+            updated = replan_with_hotel(current, req.hotel_id)
+        revision = SESSIONS.append(plan_id, req.revision, updated)
+        session.request["lodging_replans"] = session.request.get("lodging_replans", 0) + 1
+    except SessionNotFound:
+        raise HTTPException(410, EXPIRED) from None
+    except StaleRevision:
+        raise HTTPException(409, "行程已经变化，请刷新后再选住处。") from None
+    except QueueFull:
+        raise HTTPException(429, "现在排队的人太多，原行程保持不变，请过几分钟再试。") from None
+    except ReplanError as error:
+        raise HTTPException(error.status, error.message) from None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "重排暂未完成，原行程保持不变，请稍后重试。") from None
+    return deliver_plan(updated, session, revision)
 
 
 def plan_catalog(plan_id: str | None, request: Request, city: str | None = None):

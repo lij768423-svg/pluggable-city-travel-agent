@@ -5,6 +5,7 @@ import type { PlanResponse } from '../api'
 const props = defineProps<{ plan: PlanResponse }>()
 const t = computed(() => props.plan.report.totals)
 const isMealSwap = computed(() => props.plan.meta.operation === 'meal_swap' || Boolean(props.plan.change))
+const editLabel = computed(() => ({ poi_swap: '本次景点调整', pace_adjust: '本次节奏调整' } as Record<string, string>)[props.plan.meta.operation ?? ''] ?? '本次用餐安排更新')
 const CODE: Record<string, string> = {
   unknown_place: '库外地点', opening_hours: '营业时间', travel_time: '交通时间不足', time_order: '时间倒置',
   duplicate_poi: '景点重复', over_budget: '超预算', diet_conflict: '口味不符（不吃辣）', diet_unverified: '饮食要求待确认', day_overlong: '超出每日活动时间',
@@ -68,8 +69,11 @@ const rows = computed(() => [
       <template v-if="plan.meta.selection.status === 'fallback'"> · 已回退原模型（{{ plan.meta.selection.error }}）</template>
       <template v-else> · {{ plan.meta.selection.cached ? '缓存命中' : '实时评分' }} · {{ plan.meta.selection.confident_candidates }}/{{ plan.meta.selection.candidates }} 个候选采用模型评分，其余沿用规则</template>
     </p>
-    <p v-if="isMealSwap" class="muted tiny">
-      本次用餐安排更新 · {{ plan.seconds }} 秒 · 已重新核对完整行程，无需调用大模型。
+    <p v-if="plan.meta.operation === 'lodging_replan'" class="muted tiny">
+      本次按推荐住处重排 · {{ plan.seconds }} 秒 · 景点沿用原行程的选点，未调用大模型，未跑修复。
+    </p>
+    <p v-else-if="isMealSwap" class="muted tiny">
+      {{ editLabel }} · {{ plan.seconds }} 秒 · 已重新核对完整行程，无需调用大模型。
       原行程的模型选点与修复记录见上方执行过程。
     </p>
     <p v-else class="muted tiny">

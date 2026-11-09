@@ -320,6 +320,7 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .place-facts dd { margin:0; }
 .place-provenance { margin:24px 0 0; padding-top:16px; border-top:1px solid var(--line); font-size:11px!important; }
 .place-provenance a { display:block; color:var(--accent); margin-top:5px; }
+.place-amap-link { display:inline-flex; align-items:center; gap:4px; margin-top:8px; font-size:12px; font-weight:500; color:var(--accent); }
 .navigation-panel .navigation-status { margin:4px 0; font-size:12px; font-weight:400; color:var(--muted); }
 .navigation-retry { color:var(--accent); font-size:12px; margin:4px 0; }
 .navigation-instructions { margin-top:8px; padding-top:8px; border-top:1px solid var(--line-soft); }
@@ -431,6 +432,10 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .self-cost-field small { grid-column:1/-1; color:var(--muted); font-size:11px; }
 .self-meal-action { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--line-soft); font-size:12px; color:var(--muted); }
 .self-meal-action button { color:var(--accent); flex-shrink:0; }
+.pace-action { border-top:0; border-bottom:1px solid var(--line-soft); }
+.pace-buttons { display:flex; gap:16px; }
+.pace-buttons button:disabled { color:var(--faint); cursor:not-allowed; }
+.poi-option-summary { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:var(--muted); }
 @media(max-width:600px) { .meal-preview-dialog { padding:20px 18px; } .preview-numbers { gap:8px; } .preview-numbers dd { font-size:16px; } .preview-numbers small { font-size:10px; } .meal-preview-dialog .confirm-actions { flex-wrap:wrap; } }
 
 /* ── 操作结果提示（可撤销） ───────────────────────── */

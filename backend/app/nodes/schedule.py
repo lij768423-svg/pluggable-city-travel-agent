@@ -58,7 +58,7 @@ def fit_service_min(poi: POI, pace: str, start: int, latest_end: int) -> int:
     return duration
 
 
-def _seed_days(ids: list[int], p: UserProfile) -> list[list[int]]:
+def _seed_days(ids: list[int], p: UserProfile, day_split: str = "area") -> list[list[int]]:
     pois = load_pois()
     D = p.days
     if not ids:
@@ -67,7 +67,7 @@ def _seed_days(ids: list[int], p: UserProfile) -> list[list[int]]:
     if evening:
         # 先给白天分主片区，再把晚间项目挂过去，不能让夜市占用一个完整白天。
         daytime = [identifier for identifier in ids if identifier not in evening]
-        return _attach_evenings(_seed_days(daytime, p), evening, p)
+        return _attach_evenings(_seed_days(daytime, p, day_split), evening, p, use_areas=day_split == "area")
     anchors = [identifier for identifier in ids if pois[identifier].day_anchor]
     if anchors:
         from .retrieve import must_visit_ids
@@ -76,7 +76,7 @@ def _seed_days(ids: list[int], p: UserProfile) -> list[list[int]]:
         groups = [[identifier] for identifier in anchors[:D]]
         remaining = [identifier for identifier in ids if identifier not in anchors[:D]]
         if len(groups) < D:
-            groups.extend(_seed_days(remaining, p.model_copy(update={"days": D - len(groups)})))
+            groups.extend(_seed_days(remaining, p.model_copy(update={"days": D - len(groups)}), day_split))
         else:
             for identifier in remaining:
                 if identifier in required:
@@ -84,11 +84,18 @@ def _seed_days(ids: list[int], p: UserProfile) -> list[list[int]]:
         return groups
     if D == 1 or len(ids) == 1:
         return [list(ids)] + [[] for _ in range(D - 1)]
-    return _area_days(ids, p)
+    return _area_days(ids, p) if day_split == "area" else _capacity_days(ids, p)
 
 
-def _attach_evenings(groups: list[list[int]], identifiers: list[int], p: UserProfile) -> list[list[int]]:
+def _attach_evenings(groups: list[list[int]], identifiers: list[int], p: UserProfile, use_areas: bool = True) -> list[list[int]]:
     pois = load_pois()
+    if not use_areas:  # E2 的 B−片区：夜间项目挂到游玩时间最少、没有整日项目的那天，不看片区
+        groups = [list(group) for group in groups]
+        for identifier in identifiers:
+            available = [index for index, group in enumerate(groups) if not any(pois[i].day_anchor for i in group)]
+            groups[min(available or range(len(groups)), key=lambda index: (
+                closed_on(pois[identifier], p, index + 1), sum(service_min(pois[i], p.pace) for i in groups[index]), index))].append(identifier)
+        return groups
     areas = area_index(pois)
     home = areas.home_areas(p.hotel.lat, p.hotel.lon)
     groups = [list(group) for group in groups]
@@ -202,14 +209,35 @@ def _area_days(ids: list[int], p: UserProfile) -> list[list[int]]:
     return groups + [[] for _ in range(D - len(groups))]
 
 
-def split_days(ids: list[int], p: UserProfile, travel=None) -> list[list[int]]:
+def _capacity_days(ids: list[int], p: UserProfile) -> list[list[int]]:
+    """E2 消融 B−片区（2026-11-08）：按游玩时长贪心装箱，不读片区。
+
+    时长长的先放，每次放进当前最空的一天；同一段连续游览的地点一起放。之后的均衡同样不算片区成本。
+    """
+    pois = load_pois()
+    blocks: dict[str, list[int]] = {}
+    for identifier in ids:
+        blocks.setdefault(experience_key(pois[identifier]), []).append(identifier)
+
+    def load(block: list[int]) -> int:
+        return sum(service_min(pois[i], p.pace) for i in block)
+    days: list[list[int]] = [[] for _ in range(p.days)]
+    loads = [0] * p.days
+    for block in sorted(blocks.values(), key=lambda block: (-load(block), min(block))):
+        index = min(range(p.days), key=lambda day: (loads[day], day))
+        days[index].extend(block)
+        loads[index] += load(block)
+    return days
+
+
+def split_days(ids: list[int], p: UserProfile, travel=None, day_split: str = "area") -> list[list[int]]:
     from ..planning_quality import balance_days
     from ..travel import Travel
 
-    groups = _seed_days(ids, p)
+    groups = _seed_days(ids, p, day_split)
     if p.days < 2 or len(ids) < 2:
         return groups
-    return balance_days(groups, p, travel or Travel("estimate", p.transport))
+    return balance_days(groups, p, travel or Travel("estimate", p.transport), use_areas=day_split == "area")
 
 
 def _nodes(day_ids: list[int], p: UserProfile, travel):
@@ -239,8 +267,22 @@ def _nodes(day_ids: list[int], p: UserProfile, travel):
     return pois, T, svc, allowed, locality
 
 
+# 日内排序要可复现：几种初始解各做一次贪心下降（停在局部最优，与机器快慢无关），取目标最小者，目标相同按这里的先后。
+# 原先引导局部搜索限时 1 秒，搜到哪个解取决于这 1 秒算了多少步，同一输入在机器忙闲不同时可能排出不同顺序
+# （e1-dev12-v3 r2 c03 离线重算对不上录制）。2026-10-31 在 e1-dev12-v3 的 138 个单日实例（估算路程）上，
+# 这五种起点的目标值与限时 1 秒、5 秒的引导局部搜索逐个相同，每次约 40 毫秒（原来每次 1 秒）。
+FIRST_SOLUTIONS = (
+    routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC,
+    routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION,
+    routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_INSERTION,
+    routing_enums_pb2.FirstSolutionStrategy.SAVINGS,
+    routing_enums_pb2.FirstSolutionStrategy.GLOBAL_CHEAPEST_ARC,
+)
+SOLVER_SAFETY_S = 10  # 每种起点的兜底时限，只防极端情况卡住；正常远用不到，用到时结果才可能随机器快慢变化
+
+
 def route_ortools(day_ids: list[int], p: UserProfile, scores: dict[int, float], travel,
-                  time_limit_s: int = 1, must: set[int] | None = None, day: int = 1) -> tuple[list[int], list[int]] | None:
+                  time_limit_s: int = SOLVER_SAFETY_S, must: set[int] | None = None, day: int = 1) -> tuple[list[int], list[int]] | None:
     """返回 (访问顺序, 被舍弃的景点)；无解返回 None。"""
     if not day_ids:
         return [], []
@@ -311,18 +353,25 @@ def route_ortools(day_ids: list[int], p: UserProfile, scores: dict[int, float], 
     visit_transit = [svc[manager.IndexToNode(i)] for i in range(routing.Size())]
     tdim.SetBreakIntervalsOfVehicle(breaks, 0, visit_transit)
 
-    params = pywrapcp.DefaultRoutingSearchParameters()
-    params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    params.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    params.time_limit.seconds = time_limit_s
-    sol = routing.SolveWithParameters(params)
-    if sol is None:
+    best: tuple[int, list[int]] | None = None
+    for strategy in FIRST_SOLUTIONS:
+        params = pywrapcp.DefaultRoutingSearchParameters()
+        params.first_solution_strategy = strategy
+        params.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GREEDY_DESCENT
+        params.time_limit.seconds = time_limit_s
+        sol = routing.SolveWithParameters(params)
+        if sol is None:
+            continue
+        order: list[int] = []
+        idx = sol.Value(routing.NextVar(routing.Start(0)))
+        while not routing.IsEnd(idx):
+            order.append(day_ids[manager.IndexToNode(idx) - 1])
+            idx = sol.Value(routing.NextVar(idx))
+        if best is None or sol.ObjectiveValue() < best[0]:
+            best = (sol.ObjectiveValue(), order)
+    if best is None:
         return None
-    order: list[int] = []
-    idx = sol.Value(routing.NextVar(routing.Start(0)))
-    while not routing.IsEnd(idx):
-        order.append(day_ids[manager.IndexToNode(idx) - 1])
-        idx = sol.Value(routing.NextVar(idx))
+    order = best[1]
     dropped = [pid for pid in day_ids if pid not in order]
     return order, dropped
 
@@ -371,14 +420,15 @@ def route_greedy(day_ids: list[int], p: UserProfile, travel, must: set[int] | No
 
 
 def schedule(selected_ids: list[int], p: UserProfile, scores: dict[int, float], travel,
-             use_solver: bool = True, must: set[int] | None = None) -> tuple[list[list[int]], list[int], list[str]]:
+             use_solver: bool = True, must: set[int] | None = None,
+             day_split: str = "area") -> tuple[list[list[int]], list[int], list[str]]:
     from ..planning_quality import IDLE_HOUR_POINTS, CachedRoute, quality_key
     from .meals import build_itinerary
     from .validate import validate_itinerary
 
-    groups = split_days(selected_ids, p, travel)
+    groups = split_days(selected_ids, p, travel, day_split)
     result = _schedule_groups(groups, selected_ids, p, scores, travel, use_solver, must)
-    seed = _seed_days(selected_ids, p)
+    seed = _seed_days(selected_ids, p, day_split)
     if [sorted(group) for group in groups] == [sorted(group) for group in seed]:
         return result
     alternative = _schedule_groups(seed, selected_ids, p, scores, CachedRoute(travel), use_solver, must)
@@ -444,7 +494,8 @@ def schedule_node(state: dict) -> dict:
     scores = {c.poi_id: c.score for c in state["candidates"]}
     ids = [s.poi_id for s in state["selected"]]
     must = {c.poi_id for c in state["candidates"] if c.breakdown.get("must_visit")}
-    orders, dropped, log = schedule(ids, p, scores, state["travel"], use_solver=state.get("use_solver", True), must=must)
+    orders, dropped, log = schedule(ids, p, scores, state["travel"], use_solver=state.get("use_solver", True), must=must,
+                                  day_split=state.get("day_split", "area"))
     scheduled_ids = [identifier for order in orders for identifier in order]
     absent = sorted(set(ids) - set(scheduled_ids))
     return {"day_orders": orders, "dropped": dropped,

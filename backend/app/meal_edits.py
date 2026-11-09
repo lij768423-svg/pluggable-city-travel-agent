@@ -151,24 +151,44 @@ def _build_preview(original: dict, request: MealEditPreviewRequest) -> tuple[dic
                   "conflicts": [issue.message for issue in updated["report"].hard], "seconds": 0, "live_calls": 0}
         updated["log"].append(f"第{request.day}天{meal}由用户确认自行安排，预留费用{request.estimated_cost:g}元")
     freeze_preview_locations(updated)
-    before_day = original["itinerary"].days[request.day - 1]
-    after_day = updated["itinerary"].days[request.day - 1]
+    return updated, describe_change(original, updated, request.day, change, request.action)
+
+
+def describe_change(original: dict, updated: dict, day: int, change: dict, action: str, replaced: int | None = None) -> dict:
+    """预览里写明这一天实际变了什么。replaced 是用户主动换掉的景点，不算“被移出”，也不列进受影响的站点。
+    added 是用户没点名、跟着变出来的景点，比如改完路线后换了一处夜游。new_notes 是这一天新增的软提示。"""
+    before_day = original["itinerary"].days[day - 1]
+    after_day = updated["itinerary"].days[day - 1]
     before = {(item.kind, item.ref_id, item.meal): item for item in before_day.items}
     after = {(item.kind, item.ref_id, item.meal): item for item in after_day.items}
-    affected = [{"name": item.name, "before_start": item.start, "before_end": item.end,
-                 "after_start": after[key].start if key in after else None, "after_end": after[key].end if key in after else None}
-                for key, item in before.items() if key not in after or (item.start, item.end) != (after[key].start, after[key].end)]
-    def minutes(day, rides: bool = False):
-        return sum(item.travel_min for item in day.items if not rides or item.travel_mode not in {"步行", "原地"}) + (
-            day.return_travel_min if not rides or day.return_leg and day.return_leg.mode not in {"步行", "原地"} else 0)
+    def counterpart(key, item):  # 餐次换了餐厅仍在这一天，不算移出
+        if key in after:
+            return after[key]
+        return next((other for other in after_day.items if other.kind == "meal" and other.meal == item.meal), None) if item.kind == "meal" else None
+    affected = []
+    for key, item in before.items():
+        other = counterpart(key, item)
+        if item.ref_id == replaced or (other is not None and (item.start, item.end, item.name) == (other.start, other.end, other.name)):
+            continue
+        affected.append({"name": item.name, "before_start": item.start, "before_end": item.end,
+                         "after_start": other.start if other else None, "after_end": other.end if other else None,
+                         "after_name": other.name if other and other.name != item.name else None})
+    def minutes(planned, rides: bool = False):
+        return sum(item.travel_min for item in planned.items if not rides or item.travel_mode not in {"步行", "原地"}) + (
+            planned.return_travel_min if not rides or planned.return_leg and planned.return_leg.mode not in {"步行", "原地"} else 0)
+    known = {issue.code for issue in original["report"].violations if issue.day == day}
     old_budget = original["report"].totals.get("total", 0)
     new_budget = updated["report"].totals.get("total", 0)
-    change.update(action=request.action, budget_before=old_budget, budget_after=new_budget,
+    change.update(action=action, budget_before=old_budget, budget_after=new_budget,
                   budget_delta=round(new_budget - old_budget, 1), travel_delta_min=minutes(after_day) - minutes(before_day),
                   ride_delta_min=minutes(after_day, True) - minutes(before_day, True),
+                  walking_before_m=before_day.walking_m, walking_after_m=after_day.walking_m,
                   end_before=day_end(before_day), end_after=day_end(after_day), affected_stops=affected,
-                  removed=[item.name for key, item in before.items() if item.kind == "poi" and key not in after],
+                  removed=[item.name for key, item in before.items() if item.kind == "poi" and key not in after and item.ref_id != replaced],
+                  added=[item.name for key, item in after.items() if item.kind == "poi" and key not in before and item.name != change.get("to")],
+                  new_notes=[issue.message for issue in updated["report"].violations
+                             if issue.day == day and issue.severity != "hard" and issue.code not in known],
                   metrics_before=meal_metrics(original), metrics_after=meal_metrics(updated),
-                  route_source="estimate" if any(item.travel_evidence is None or item.travel_evidence.source == "estimate" for day in updated["itinerary"].days for item in day.items)
-                               or any(day.return_leg is None or day.return_leg.source == "estimate" for day in updated["itinerary"].days if day.items) else "amap")
-    return updated, change
+                  route_source="estimate" if any(item.travel_evidence is None or item.travel_evidence.source == "estimate" for planned in updated["itinerary"].days for item in planned.items)
+                               or any(planned.return_leg is None or planned.return_leg.source == "estimate" for planned in updated["itinerary"].days if planned.items) else "amap")
+    return change

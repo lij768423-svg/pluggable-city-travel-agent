@@ -26,6 +26,7 @@ const notices = computed(() => [...new Set([...(props.item?.notices || []), ...(
             <span v-else>{{ loading ? '正在查询公开评分…' : detail?.rating_status === 'unavailable' ? '评分暂时查询失败' : '暂无公开评分' }}</span>
           </div>
           <p v-if="detail?.rating_at && detail.rating != null" class="field-help">查询于 {{ localQueryDate(detail.rating_at) }}，评分不代表实时营业状况</p>
+          <a v-if="detail?.amap_url" class="place-amap-link" :href="detail.amap_url" target="_blank" rel="noopener noreferrer"><PhMapPin :size="14" />在高德地图打开 ↗</a>
         </header>
         <div class="place-drawer-body">
           <PhotoGallery :media="media" :loading="mediaLoading" :name="item?.name || ''" />

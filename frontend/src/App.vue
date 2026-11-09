@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PhArrowLeft, PhCheck, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
-import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, revertPlan, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
+import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, previewPoi, commitPoi, previewPace, commitPace, type PoiOption, revertPlan, postLodgingReplan, type LodgingHotel, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
 import PlanConfirm from './components/PlanConfirm.vue'
 import AgentChat from './components/AgentChat.vue'
@@ -15,6 +15,7 @@ import NavigationPanel from './components/NavigationPanel.vue'
 import SwapConfirm from './components/SwapConfirm.vue'
 import BrandMark from './components/BrandMark.vue'
 import DayStrip from './components/DayStrip.vue'
+import LodgingCard from './components/LodgingCard.vue'
 import HistoryView from './components/HistoryView.vue'
 import MCPConnect from './components/MCPConnect.vue'
 import { getAccount, logoutAccount, getHistoryDetail, saveHistory, getLinkedTrip, ApiError, type AccountUser, type PlanQuota } from './api'
@@ -172,6 +173,9 @@ const previewLoading = ref(false)
 const selfMeal = ref<'lunch' | 'dinner' | null>(null)
 const selfMealCost = ref(80)
 const swapContext = ref<{ planId: string; revision: number; day: number } | null>(null)
+type PoiEdit = { kind: 'poi'; index: number; option: PoiOption; from: string } | { kind: 'less' | 'more' }
+const poiEdit = ref<PoiEdit | null>(null)
+const editRefused = ref(false) // 换不了或放不下：重新计算也还是这个结果，不给“重新计算”
 let swapPreviewController: AbortController | null = null
 let swapPreviewSequence = 0
 const toast = ref<{ text: string; warn: boolean; undoRevision: number | null } | null>(null)
@@ -243,7 +247,8 @@ const altAnchor = computed(() => {
   return altMarkers.value.length && item?.lat != null && item.lon != null ? { lat: item.lat, lon: item.lon } : null
 })
 const selectedMedia = computed(() => selectedItem.value?.ref_id != null ? placeMedia.value[`${selectedItem.value.kind}:${selectedItem.value.ref_id}`] || null : null)
-const swapFrom = computed(() => selfMeal.value ? '待确认的预留用餐' : swapTarget.value ? currentDay.value?.items[swapTarget.value.index]?.name || '' : '')
+const swapFrom = computed(() => poiEdit.value?.kind === 'poi' ? poiEdit.value.from : selfMeal.value ? '待确认的预留用餐' : swapTarget.value ? currentDay.value?.items[swapTarget.value.index]?.name || '' : '')
+const daytimeStops = computed(() => currentDay.value?.items.filter(item => item.kind === 'poi' && !item.evening).length ?? 0)
 const swapMealKind = computed(() => selfMeal.value || (swapTarget.value ? currentDay.value?.items[swapTarget.value.index]?.meal || null : null))
 const focusedPlace = computed<MapFocus | null>(() => {
   const item = selectedItem.value
@@ -274,7 +279,7 @@ async function loadDayExtras(force = false) {
       return { origin: here, destination: here, mode: '原地', departure }
     }
     return { origin: previous ? leave(previous) : home, destination: item ? arrive(item) : home,
-      mode: item?.travel_mode || current.return_leg?.mode || (result.profile.transport === 'transit' ? '公交/地铁' : '打车'), departure }
+      mode: navigationMode(item?.travel_mode || current.return_leg?.mode, result.profile.transport), departure }
   })
   const references = current.items.filter(item => item.ref_id != null && !placeDetails.value[`${item.kind}:${item.ref_id}`])
     .map(item => ({ kind: item.kind, id: item.ref_id! }))
@@ -415,6 +420,7 @@ function requestSwap(index: number, alternative: MealAlternative) {
   const current = plan.value
   if (!current?.plan_id || current.revision == null) return
   swapContext.value = { planId: current.plan_id, revision: current.revision, day: activeDay.value }
+  poiEdit.value = null
   selfMeal.value = null
   swapTarget.value = { index, alternative }
   swapError.value = ''
@@ -425,11 +431,32 @@ function requestSelfMeal(meal: 'lunch' | 'dinner', cost: number) {
   const current = plan.value
   if (!current?.plan_id || current.revision == null || current.history_readonly) return
   swapContext.value = { planId: current.plan_id, revision: current.revision, day: activeDay.value }
+  poiEdit.value = null
   swapTarget.value = null
   selfMeal.value = meal
   selfMealCost.value = cost
   swapOpen.value = true
   void calculateMealPreview()
+}
+// 估算路段的方式是“公交/打车”，导航接口只认具体方式，按用户选的出行方式查
+function navigationMode(mode: string | null | undefined, transport?: string) {
+  return mode && mode !== '公交/打车' ? mode : transport === 'transit' ? '公交/地铁' : '打车'
+}
+// 换景点、调节奏走同一个确认弹窗：先预览，确认后才更新，可撤销
+function requestPoiEdit(edit: PoiEdit) {
+  const current = plan.value
+  if (!current?.plan_id || current.revision == null || current.history_readonly) return
+  swapContext.value = { planId: current.plan_id, revision: current.revision, day: activeDay.value }
+  swapTarget.value = null
+  selfMeal.value = null
+  poiEdit.value = edit
+  swapOpen.value = true
+  void calculateMealPreview()
+}
+function previewEdit(context: { planId: string; revision: number; day: number }, edit: PoiEdit, signal: AbortSignal) {
+  const base = { revision: context.revision, day: context.day }
+  return edit.kind === 'poi' ? previewPoi(context.planId, { ...base, item_index: edit.index, poi_id: edit.option.poi_id }, signal)
+    : previewPace(context.planId, { ...base, direction: edit.kind }, signal)
 }
 async function calculateMealPreview() {
   swapPreviewController?.abort()
@@ -439,7 +466,9 @@ async function calculateMealPreview() {
   mealPreview.value = null
   swapError.value = ''
   previewLoading.value = false
-  if (!context || (!target && !selfMeal.value)) return
+  editRefused.value = false
+  const edit = poiEdit.value
+  if (!context || (!target && !selfMeal.value && !edit)) return
   if (selfMeal.value && (!Number.isFinite(selfMealCost.value) || selfMealCost.value < 0 || selfMealCost.value > 2000)) {
     swapError.value = '请输入 0–2000 元的预留餐费'
     return
@@ -447,12 +476,13 @@ async function calculateMealPreview() {
   previewLoading.value = true
   swapPreviewController = new AbortController()
   try {
-    const preview = await previewMeal(context.planId, { revision: context.revision, day: context.day,
+    const preview = edit ? await previewEdit(context, edit, swapPreviewController.signal) : await previewMeal(context.planId, { revision: context.revision, day: context.day,
       ...(selfMeal.value ? { action: 'self_arranged' as const, meal: selfMeal.value, estimated_cost: selfMealCost.value }
         : { action: 'replace' as const, item_index: target!.index, restaurant_id: target!.alternative.ref_id }) }, swapPreviewController.signal)
     if (sequence === swapPreviewSequence && swapOpen.value) mealPreview.value = preview
   } catch (failure) {
     if (sequence === swapPreviewSequence && failure instanceof ApiError && failure.status === 409) { await refreshEditedPlan(context.planId); return }
+    if (sequence === swapPreviewSequence && edit && failure instanceof ApiError && failure.status === 422) editRefused.value = true
     if (sequence === swapPreviewSequence && (failure as Error).name !== 'AbortError') swapError.value = (failure as Error).message || '预览暂未完成，原行程保持不变'
   } finally { if (sequence === swapPreviewSequence) previewLoading.value = false }
 }
@@ -470,7 +500,7 @@ async function refreshEditedPlan(planId: string) {
     clearAlternative()
     selectedIndex.value = null
     swapOpen.value = false
-    showToast('行程已被其他操作更新，已同步最新版本。请重新选择餐厅查看预览。', true, null)
+    showToast('行程已被其他操作更新，已同步最新版本。请重新操作查看预览。', true, null)
   } catch { swapError.value = '无法同步当前行程，请稍后重新打开预览' }
 }
 function requestSwapFromDrawer() {
@@ -481,11 +511,15 @@ function requestSwapFromDrawer() {
   requestSwap(index, alternative)
 }
 function describeChange(change: PlanChange | null) {
-  if (!change) return '已更换餐厅'
-  const parts = [`已把第 ${change.day} 天${change.meal === 'lunch' ? '午餐' : '晚餐'}换成「${change.to}」`]
+  if (!change) return '已更新行程'
+  const parts = [change.action === 'replace_poi' ? `已把第 ${change.day} 天的「${change.from}」换成「${change.to}」`
+    : change.action === 'pace_less' ? `第 ${change.day} 天少排了一站，去掉「${change.from}」`
+    : change.action === 'pace_more' ? `第 ${change.day} 天多排了一站，加入「${change.to}」`
+    : `已把第 ${change.day} 天${change.meal === 'lunch' ? '午餐' : '晚餐'}换成「${change.to}」`]
   if (change.shift_min) parts.push(change.shift_min > 0 ? `当天结束时间推迟 ${change.shift_min} 分钟` : `当天提前 ${-change.shift_min} 分钟结束`)
   if (change.reordered) parts.push('调整了景点顺序')
   if (change.removed.length) parts.push(`移出 ${change.removed.join('、')}`)
+  if (change.added?.length) parts.push(`同时加入 ${change.added.join('、')}`)
   if (!change.passed) parts.push(change.conflicts.length ? `仍有 ${change.conflicts.length} 处冲突，可撤销` : '行程仍有待处理的冲突，请查看每日提示')
   return parts.join('；')
 }
@@ -508,15 +542,17 @@ async function confirmSwap() {
   swapBusy.value = true
   swapError.value = ''
   const meal = swapMealKind.value
+  const edit = poiEdit.value
   try {
-    const updated = await commitMeal(context.planId, context.revision, preview.preview_id)
+    const commit = edit?.kind === 'poi' ? commitPoi : edit ? commitPace : commitMeal
+    const updated = await commit(context.planId, context.revision, preview.preview_id)
     navigationCache.delete(context.day)
     clearAlternative()
     drawerOpen.value = false
     expandedMeal.value = null
     plan.value = updated
     swapOpen.value = false
-    const newIndex = updated.days.find(day => day.day === activeDay.value)?.items.findIndex(item => item.kind === 'meal' && item.meal === meal) ?? -1
+    const newIndex = updated.days.find(day => day.day === activeDay.value)?.items.findIndex(item => edit ? item.kind === 'poi' && item.ref_id === updated.change?.poi_id : item.kind === 'meal' && item.meal === meal) ?? -1
     selectedIndex.value = newIndex >= 0 ? newIndex : null
     focusRevision.value++
     showToast(selfMeal.value ? '已确认自行安排用餐，预留费用已计入，可撤销' : describeChange(updated.change), false, current.revision)
@@ -525,6 +561,35 @@ async function confirmSwap() {
     swapError.value = (failure as Error).message || '重新规划失败，原行程保持不变'
     mealPreview.value = null
   } finally { swapBusy.value = false }
+}
+// 住哪儿卡片：按选中的推荐住处重排（景点不变、不调模型，约 1–2 分钟）；成功后给“撤销”
+const lodgingBusy = ref<string | null>(null)
+const lodgingError = ref('')
+async function replanLodging(hotel: LodgingHotel) {
+  const current = plan.value
+  if (lodgingBusy.value || swapBusy.value || !current?.plan_id || current.revision == null) return
+  lodgingBusy.value = hotel.external_id
+  lodgingError.value = ''
+  try {
+    const updated = await postLodgingReplan(current.plan_id, current.revision, hotel.external_id)
+    navigationCache.clear()
+    clearAlternative()
+    plan.value = updated
+    selectedIndex.value = null
+    focusRevision.value++
+    const dropped = updated.dropped.length ? `；未排入：${updated.dropped.join('、')}` : ''
+    // 起点定了以后，去第一站的路程算进来，饭点可能赶不上：原来排上、现在没排上的餐单独说
+    const pending = (result: PlanResponse) => new Set(result.days.flatMap(day => (day.reserved_meals || [])
+      .filter(slot => slot.status !== 'self_arranged' && slot.inside_poi_id == null).map(slot => `${day.day}:${slot.meal}`)))
+    const before = pending(current)
+    const lost = [...pending(updated)].filter(key => !before.has(key))
+      .map(key => { const [day, meal] = key.split(':'); return `第 ${day} 天${meal === 'lunch' ? '午' : '晚'}餐` })
+    const meals = lost.length ? `；${lost.join('、')}没排上，可自行安排` : ''
+    showToast(`已按「${hotel.name}」重新规划${updated.report.passed ? '' : '，仍有冲突，请看每日提示'}${dropped}${meals}，可撤销`, !updated.report.passed || lost.length > 0, current.revision)
+  } catch (failure) {
+    if (failure instanceof ApiError && failure.status === 409) { await refreshEditedPlan(current.plan_id); return }
+    lodgingError.value = (failure as Error).message || '重排暂未完成，原行程保持不变'
+  } finally { lodgingBusy.value = null }
 }
 async function undoSwap() {
   if (swapBusy.value) return
@@ -885,7 +950,15 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
         <template v-if="plan && !showForm && currentDay && !progressVisible">
           <div v-if="plan.delivery_status === 'draft'" class="history-status warning" role="status"><strong>测试草稿 · 待核实</strong><span>{{ plan.verification_notice || '开放时间、票价等尚未全部核实，请出发前确认。' }}</span></div>
           <div class="history-status" :class="{ warning: plan.history_error }"><template v-if="plan.history_readonly"><span>历史行程快照 · 时间与价格以当时安排为准</span><button @click="startEdit">按这些偏好重新规划</button></template><template v-else-if="plan.history_id && !plan.history_error"><span>已保存到 {{ user?.username }} 的历史行程</span></template><template v-else><span>{{ plan.history_error || (user ? '保存后，下次可以继续查看' : '登录账号，收藏这次旅程') }}</span><button :disabled="accountBusy" @click="saveCurrent">{{ accountBusy ? '保存中…' : user ? '保存行程' : '登录并保存' }}</button></template></div>
-          <Timeline :key="`${plan.plan_id ?? 'plan'}-${currentDay.day}`" :day="currentDay" :hotel-name="plan.profile.hotel.name" :open-ends="plan.profile.origin_known === false" :selected-index="selectedIndex" :selected-alternative-id="selectedAlternative?.ref_id ?? null" @focus="focusStop" @details="openStopDetails" @focus-alternative="focusAlternative" @details-alternative="(index, alternative) => focusAlternative(index, alternative, true)"
+          <LodgingCard v-if="plan.lodging" :lodging="plan.lodging" :can-replan="!!plan.plan_id && !plan.history_readonly && !plan.delivery_status" :busy-id="lodgingBusy" :error="lodgingError" @replan="replanLodging" />
+          <div v-if="plan.plan_id && !plan.history_readonly" class="self-meal-action pace-action">
+            <span>这一天的节奏</span>
+            <span class="pace-buttons">
+              <button type="button" :disabled="daytimeStops <= 1" :title="daytimeStops <= 1 ? '这一天白天只有一个景点' : undefined" @click="requestPoiEdit({ kind: 'less' })">少排一站</button>
+              <button type="button" @click="requestPoiEdit({ kind: 'more' })">多排一站</button>
+            </span>
+          </div>
+          <Timeline :key="`${plan.plan_id ?? 'plan'}-${currentDay.day}`" :edit-plan-id="plan.history_readonly ? null : plan.plan_id" :revision="plan.revision" @swap-poi="(index, option) => requestPoiEdit({ kind: 'poi', index, option, from: currentDay!.items[index]!.name })" :day="currentDay" :hotel-name="plan.profile.hotel.name" :open-ends="plan.profile.origin_known === false" :selected-index="selectedIndex" :selected-alternative-id="selectedAlternative?.ref_id ?? null" @focus="focusStop" @details="openStopDetails" @focus-alternative="focusAlternative" @details-alternative="(index, alternative) => focusAlternative(index, alternative, true)"
             @alternatives-toggle="onAlternativesToggle" />
           <p v-for="issue in plan.report.violations.filter(issue => issue.day === currentDay!.day)" :key="`${issue.code}-${issue.item}`" class="notice warn">{{ issue.message }}</p>
           <p v-if="plan.dropped.length" class="aside-note">结合当天主项目、时间与路线，未排入：{{ plan.dropped.join('、') }}</p>
@@ -926,6 +999,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       :media="selectedMedia" :media-loading="mediaLoading" @swap="requestSwapFromDrawer" />
     <SwapConfirm v-model:open="swapOpen" :day="swapContext?.day ?? activeDay" :meal="swapMealKind" :from="swapFrom" :target="swapTarget?.alternative ?? null"
       :preview="mealPreview" :loading="previewLoading" :self-arranged="!!selfMeal" :self-cost="selfMealCost"
+      :edit="poiEdit?.kind ?? null" :to-name="poiEdit?.kind === 'poi' ? poiEdit.option.name : ''" :can-retry="!editRefused"
       :busy="swapBusy" :error="swapError" @confirm="confirmSwap" @retry="calculateMealPreview" @budget="changeSelfMealCost" />
     <div v-if="toast" class="toast" :class="{ warn: toast.warn }" role="status" aria-live="polite">
       <span>{{ toast.text }}</span>

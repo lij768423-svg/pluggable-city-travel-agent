@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 import re
+from urllib.parse import quote
 import threading
 from .bundles import visit_hours
 from .cities import current_city
@@ -52,6 +53,13 @@ def resolve_place(reference: PlaceReference):
         return _restaurants.get(reference.id) or load_restaurants().get(reference.id)
 
 
+def amap_url(name: str, amap_id: str | None = None) -> str:
+    """在高德地图打开：知道高德地点编号就到店铺页，否则按名称在本城搜（URI 的 search 跳转后保留关键词与城市）。"""
+    if amap_id:
+        return f"https://www.amap.com/place/{quote(amap_id)}"
+    return f"https://uri.amap.com/search?keyword={quote(name)}&city={quote(current_city().name)}&view=map&src=pluggable-city-travel-agent&callnative=1"
+
+
 def describe_place(place, kind: str) -> dict:
     if kind == "poi":
         guide = PLACE_GUIDES.get(place.name)
@@ -73,7 +81,8 @@ def describe_place(place, kind: str) -> dict:
                 "onsite_dining": place.onsite_dining,
                 "booking_required": place.opening_rules.booking_required if place.opening_rules else None,
                 "experience_conditions": [condition.model_dump(mode="json") for condition in place.experience_conditions],
-                "field_evidence": {field: evidence.model_dump(mode="json") for field, evidence in place.field_evidence.items()}}
+                "field_evidence": {field: evidence.model_dump(mode="json") for field, evidence in place.field_evidence.items()},
+                "amap_url": amap_url(place.name)}
     return {"kind": kind, "id": place.id, "name": place.name,
             "introduction": f"{place.cuisine or '餐饮'}餐厅。" + (f"历史菜单参考：{'、'.join(dish.strip() for dish in re.split(r'[,，、]', place.dishes) if dish.strip())}。" if place.dishes else "具体菜品以商家当日菜单为准。"),
             "highlights": [f"参考人均 ¥{place.price:g}" if place.price_known else "人均消费暂无可靠数据", "在行程中比较到店时间、预算与绕路成本"],
@@ -83,7 +92,8 @@ def describe_place(place, kind: str) -> dict:
             "content_source": "高德地点资料" if place.provider == "amap" else "ChinaTravel 历史餐厅资料",
             "rating": place.rating, "rating_source": "高德" if place.rating is not None and place.provider == "amap" else None,
             "rating_status": "ready" if place.rating is not None else "pending", "rating_at": place.fetched_at,
-            "address": place.address, "source_url": None}
+            "address": place.address, "source_url": None,
+            "amap_url": amap_url(place.name, place.external_id if place.provider == "amap" else None)}
 
 
 def normalized_name(value: str) -> str:
@@ -123,7 +133,8 @@ def enrich_place(place, detail: dict, router) -> dict:
         rating = rating if 0 < rating <= 5 else None
         enrichment = {"rating": rating, "rating_source": "高德" if rating is not None else None,
                       "rating_status": "ready" if rating is not None else "unrated",
-                      "rating_at": None, "address": str((candidate or {}).get("address") or detail["address"])}
+                      "rating_at": None, "address": str((candidate or {}).get("address") or detail["address"]),
+                      "amap_url": amap_url(place.name, str(candidate["id"]) if candidate and candidate.get("id") else None)}
         router._put(key, enrichment)
         enrichment["rating_at"] = router.records.get(key, {}).get("fetched_at")
         return detail | enrichment

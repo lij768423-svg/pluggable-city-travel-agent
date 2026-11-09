@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 
 from collections import Counter
@@ -43,7 +44,8 @@ def experience_blocks(order: list[int]) -> list[list[int]]:
     return list(blocks.values())
 
 
-def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[list[int]]:
+def balance_days(groups: list[list[int]], profile: UserProfile, route, use_areas: bool = True) -> list[list[int]]:
+    # use_areas=False 只给 E2 的 B−片区（2026-11-08）：均衡时不算片区成本，其余照常
     from .nodes.schedule import day_capacity, service_min
 
     places = load_pois()
@@ -124,7 +126,7 @@ def balance_days(groups: list[list[int]], profile: UserProfile, route) -> list[l
         lost_daytime = max(0, daytime_days - sum(any(not evening_only(places[i]) for block in day for i in block)
                                                  for day in candidate))
         return ((lost_days + lost_daytime) * 10000 + sum(value for value, _ in totals) + sum((load - mean) ** 2 for load in loads) * 240
-                + area_cost(candidate))
+                + (area_cost(candidate) if use_areas else 0))
 
     def locked(day: list[list[int]]) -> bool:
         return any(places[identifier].day_anchor for block in day for identifier in block)
@@ -182,6 +184,23 @@ def quality_key(itinerary: Itinerary, report: ValidationReport, *, count_idle: b
     idle = max(0, report.totals.get("idle_min", 0) - IDLE_FREE_MIN) // 60 * IDLE_HOUR_POINTS if count_idle else 0
     return (len(report.hard), round(sum(weights.get(item.code, 0) for item in report.violations) + idle, 2),
             round(transport * 2 + long_legs + report.totals.get("idle_min", 0) * 0.5 + moves * 20, 2))
+
+
+# 修复回路挑最佳方案时，硬违例个数相同而都超预算：先比漏排的正餐（漏掉的饭用户还得自己花钱吃，不能靠少排一顿省钱），
+# 再比超支幅度（每 5% 一档，几元的差别不压过路线质量），然后才是 quality_key 的软扣分与交通（2026-10-31 用户：“修，比超支多少”）。
+# 起因 e1-dev12-v3 r2 c03：各轮都超预算、硬违例都是 1 个，修复删换景点后空档多、软扣分高，交付了超支最多的原版。
+# 分天与餐序比较仍只用 quality_key：同一批景点之间比，超支差别来自餐和车费，不在那里取舍。
+OVER_BUDGET_STEP = 0.05
+MEAL_GAP_CODES = {"missing_lunch", "missing_dinner"}
+
+
+def repair_choice_key(itinerary: Itinerary, report: ValidationReport, budget: float) -> tuple:
+    hard, soft, tiebreak = quality_key(itinerary, report, count_idle=True)
+    over = report.totals.get("total", 0.0) - budget
+    if over <= 1e-6:
+        return hard, 0, 0, soft, tiebreak
+    gaps = sum(item.code in MEAL_GAP_CODES for item in report.violations)
+    return hard, gaps, math.ceil(over / budget / OVER_BUDGET_STEP - 1e-9), soft, tiebreak
 
 
 def meal_order_candidates(orders: list[list[int]], limit: int = 7) -> list[list[list[int]]]:

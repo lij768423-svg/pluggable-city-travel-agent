@@ -2,11 +2,13 @@
 from __future__ import annotations
 from functools import lru_cache
 from typing import Any
+from urllib.parse import quote
 from fastapi.encoders import jsonable_encoder
 from . import config
 from .data import load_pois, load_restaurants, tag_source
 from .geo import bd09_to_gcj02, hm
 from .place_details import remember_restaurants, describe_place
+from .lodging import MAX_REPLANS
 from .poi_catalog import result_catalog
 
 def gcj(lat: float, lon: float) -> dict[str, float]:
@@ -30,6 +32,26 @@ def hotel_presets(city: str = "hangzhou") -> list[dict[str, Any]]:
             r = hit.iloc[0]
             out.append({"area": area, "name": r["name"], "lat": float(r.lat), "lon": float(r.lon), **{"gcj": gcj(r.lat, r.lon)}})
     return out
+
+
+def lodging_view(lodging: dict[str, Any]) -> dict[str, Any]:
+    """住哪儿卡片：坐标转 GCJ-02，附高德链接（实时房价与预订在高德看）。"""
+    spot = gcj(lodging["lat"], lodging["lon"])
+    # 高德 URI 的 search 跳转后会丢掉 center（2026-10-30 实测），按商圈名在本城搜；没有商圈名就标出这个位置
+    if lodging["area_source"] == "amap_business_area":
+        keyword = f"{lodging['area']} 酒店"
+        search = (f"https://uri.amap.com/search?keyword={quote(keyword)}&city={quote(lodging.get('city', ''))}"
+                  "&view=map&src=pluggable-city-travel-agent&callnative=1")
+        label = f"在高德地图搜「{keyword}」"
+    else:
+        search = (f"https://uri.amap.com/marker?position={spot['lon']},{spot['lat']}&name={quote(lodging['area'])}"
+                  "&src=pluggable-city-travel-agent&coordinate=gaode&callnative=1")
+        label = "在高德地图打开这个位置，再搜周边酒店"
+    hotels = [{**{key: value for key, value in hotel.items() if key not in ("lat", "lon")}, "gcj": gcj(hotel["lat"], hotel["lon"]),
+               "link": f"https://www.amap.com/place/{quote(hotel['external_id'])}" if hotel.get("external_id") else None}
+              for hotel in lodging["hotels"]]
+    return {**{key: value for key, value in lodging.items() if key not in ("lat", "lon", "hotels")},
+            "gcj": spot, "hotels": hotels, "search_link": search, "search_label": label}
 
 
 def city_entry(key: str) -> dict[str, Any]:
@@ -102,6 +124,8 @@ def _serialize_plan(r: dict[str, Any], request_meta: dict[str, Any], plan_id: st
         "plan_id": plan_id, "revision": revision, "change": change,
         # 只有叠加补充目录时才输出目录身份；原库行程的输出与历史格式保持不变
         **({"poi_catalog": r["poi_catalog"]} if (r.get("poi_catalog") or {}).get("supplement_digest") else {}),
+        **({"lodging": {**lodging_view(r["lodging"]), "replans_left": max(0, MAX_REPLANS - request_meta.get("lodging_replans", 0))}}
+           if r.get("lodging") else {}),
         **({"history_id": request_meta["history_id"]} if request_meta.get("history_id") else {}),
         **({"delivery_status": r.get("delivery_status", request_meta.get("delivery_status", "ready")),
             "verification_notice": "测试草稿：开放时间、票价等仍待核实，请出发前确认"

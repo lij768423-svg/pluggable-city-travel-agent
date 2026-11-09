@@ -114,11 +114,12 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
                     meal_factor: float = 1.0, route=None, live: bool = True, catalog=None,
                     pins: dict[tuple[int, str], int] | None = None,
                     user_meals: set[tuple[int, str]] | None = None,
-                    only_day: int | None = None) -> Itinerary:
+                    only_day: int | None = None, used_restaurants: set[int] | None = None) -> Itinerary:
     """route: app.travel.Travel；None 时用估算模型。live=False 时只读缓存（大量试探时用）。
 
     pins：{(第几天, "lunch"/"dinner"): 餐厅 id}，把这一餐固定为指定餐厅（局部重规划用，见 app/replan.py）；
     user_meals：其中由用户亲自选定的餐次，推荐理由会写明"你选定的餐厅"。未出现在 pins 里的餐次照常排序挑选。
+    used_restaurants：只重建一天时，其他日期已经吃过的餐厅，不再选。
     每段路按实际出发时刻（depart，分钟）查公交，并记进 Item.travel_depart / DayPlan.return_depart，定稿与校验按同一时刻重查。
     """
     def leg(a: tuple[float, float], b: tuple[float, float], depart: int) -> tuple[int, str, float]:
@@ -131,7 +132,7 @@ def build_itinerary(day_orders: list[list[int]], p: UserProfile, selected: list[
     reason = {s.poi_id: s.reason for s in selected}
     restaurants = catalog.restaurants if catalog else load_restaurants()
     cap = per_meal_budget(p, meal_factor)
-    used: set[int] = set()
+    used: set[int] = set(used_restaurants or ())
     days, transport = [], 0.0
     hotel = (p.hotel.lat, p.hotel.lon)
 
@@ -388,7 +389,8 @@ def meals_node(state: dict) -> dict:
 
     zones = area_index(load_pois())
     home_zones = zones.home_areas(profile.hotel.lat, profile.hotel.lon)
-    if state.get("enable_repair", True) and check(it, True).passed:
+    # 空档补点。E2 的 B−补点 单独关掉它（2026-11-08）；没传时跟随修复开关，C 两个一起关
+    if state.get("enable_gap_fill", state.get("enable_repair", True)) and check(it, True).passed:
         for _ in range(profile.days * 2):
             current_idle = idle_minutes(it)
             if current_idle < 30:

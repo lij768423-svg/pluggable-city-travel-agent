@@ -1,4 +1,4 @@
-from app.planning_quality import balance_days, choose_meal_aware_plan, meal_order_candidates, quality_key
+from app.planning_quality import balance_days, choose_meal_aware_plan, meal_order_candidates, quality_key, repair_choice_key
 from app.schemas import DayPlan, DayWindow, Item, Itinerary, OpeningRules, POI, UserProfile, ValidationReport, Violation
 from app.travel import Travel
 
@@ -122,6 +122,38 @@ def test_solver_can_drop_remote_optional_stop_but_retains_required(monkeypatch):
     assert required is not None and 2 in required[0]
 
 
+def test_day_routing_does_not_depend_on_search_time(monkeypatch):
+    # 2026-10-31：不再用限时的引导局部搜索（r2 c03 重算对不上录制）；几种起点各做一次贪心下降，结果与时限、机器快慢无关
+    from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+    from app.nodes import schedule
+    places = {identifier: place(identifier, 1) for identifier in range(1, 5)}
+    monkeypatch.setattr("app.nodes.schedule.load_pois", lambda: places)
+
+    class MatrixRoute:
+        def matrix(self, locations):
+            return [[0, 20, 35, 15, 30], [20, 0, 10, 25, 40], [35, 10, 0, 30, 12],
+                    [15, 25, 30, 0, 18], [30, 40, 12, 18, 0]][:len(locations)]
+
+        def leg(self, *coordinates, live=False):
+            return 20, "打车", 0
+
+    seen = []
+    original = pywrapcp.RoutingModel.SolveWithParameters
+
+    def spy(self, params):
+        seen.append((params.local_search_metaheuristic, params.first_solution_strategy))
+        return original(self, params)
+
+    monkeypatch.setattr(pywrapcp.RoutingModel, "SolveWithParameters", spy)
+    profile = UserProfile(days=1, include_evening=False, day_start=480, day_end=1200)
+    scores = {1: 1, 2: 1, 3: 1, 4: 1}
+    first = schedule.route_ortools([1, 2, 3, 4], profile, scores, MatrixRoute())
+    second = schedule.route_ortools([1, 2, 3, 4], profile, scores, MatrixRoute(), time_limit_s=1)
+    assert first is not None and first == second and not first[1]
+    assert {meta for meta, _ in seen} == {routing_enums_pb2.LocalSearchMetaheuristic.GREEDY_DESCENT}
+    assert [strategy for _, strategy in seen] == list(schedule.FIRST_SOLUTIONS) * 2
+
+
 def test_balance_does_not_empty_days_to_reduce_commuting(monkeypatch):
     places = {identifier: place(identifier, 1) for identifier in range(1, 5)}
     monkeypatch.setattr("app.planning_quality.load_pois", lambda: places)
@@ -160,3 +192,47 @@ def test_best_plan_does_not_trade_visits_for_hours_of_idle():
     within = ValidationReport(passed=True, totals={"idle_min": 239}, violations=[])
     assert quality_key(empty, within, count_idle=True)[1] == 0
 
+
+def _budget_report(total, idle, *codes):
+    violations = [Violation(code="over_budget", severity="hard", message="超预算")] if total > 600 else []
+    violations += [Violation(code=code, severity="soft", message="", day=2) for code in codes]
+    return ValidationReport(passed=total <= 600, totals={"total": total, "idle_min": idle}, violations=violations)
+
+
+def test_repair_choice_keeps_the_round_closest_to_budget():
+    # e1-dev12-v3 r2 c03：原版超 32%、排得满；修复后的方案只超 2.5%，空档多。原规则（只比软扣分）留下原版
+    empty = Itinerary(days=[])
+    original = _budget_report(790, 31, "area_scattered", "interstop_ride_long")
+    repaired = _budget_report(615, 431, "early_finish", "long_idle")
+    assert quality_key(empty, original, count_idle=True) < quality_key(empty, repaired, count_idle=True)
+    assert repair_choice_key(empty, repaired, 600) < repair_choice_key(empty, original, 600)
+
+
+def test_repair_choice_does_not_skip_meals_to_save_money():
+    empty = Itinerary(days=[])
+    full = _budget_report(700, 0)
+    skipped = _budget_report(650, 0, "missing_dinner")
+    assert repair_choice_key(empty, full, 600) < repair_choice_key(empty, skipped, 600)
+
+
+def test_repair_choice_ignores_small_overrun_differences_and_plans_within_budget():
+    empty = Itinerary(days=[])
+    # 同在 5%–10% 一档：几元之差不压过片区折返
+    tidy, scattered = _budget_report(645, 0), _budget_report(640, 0, "area_scattered")
+    assert repair_choice_key(empty, tidy, 600) < repair_choice_key(empty, scattered, 600)
+    assert repair_choice_key(empty, _budget_report(630, 0), 600)[2] == 1  # 正好超 5% 仍是第一档
+    # 都在预算内：与原规则一致（南京 12 号的取舍不变）
+    soft = lambda *codes: [Violation(code=code, severity="soft", message="", day=1) for code in codes]
+    lunch_missing = ValidationReport(passed=True, totals={"total": 500, "idle_min": 160}, violations=soft("early_finish", "long_idle", "missing_lunch"))
+    sparse = ValidationReport(passed=True, totals={"total": 400, "idle_min": 552}, violations=soft("early_finish", "long_idle", "early_finish", "long_idle"))
+    assert repair_choice_key(empty, lunch_missing, 600) < repair_choice_key(empty, sparse, 600)
+
+
+def test_validate_node_replaces_best_with_cheaper_repair_round(monkeypatch):
+    from app.nodes.validate import validate_node
+    reports = iter([_budget_report(790, 31, "area_scattered"), _budget_report(615, 431, "early_finish", "long_idle")])
+    monkeypatch.setattr("app.nodes.validate.validate_itinerary", lambda *a, **kw: next(reports))
+    state = {"profile": UserProfile(days=2, budget=600), "itinerary": Itinerary(days=[]), "selected": ["original"]}
+    first = validate_node(state)["best_candidate"]
+    second = validate_node({**state, "selected": ["repaired"], "best_candidate": first})["best_candidate"]
+    assert second["selected"] == ["repaired"]

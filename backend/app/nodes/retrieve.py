@@ -4,6 +4,8 @@ from __future__ import annotations
 import re
 
 from collections import Counter
+from contextlib import contextmanager
+from contextvars import ContextVar
 import math
 
 from ..areas import area_index
@@ -27,18 +29,34 @@ AUDIENCE_OF = {"family_kids": "亲子", "elderly": "老人", "couple": "情侣",
 POPULARITY_VALUE = {"landmark": 1.0, "known": 0.6, "": 0.0}
 POPULARITY_WEIGHT = {"first": 0.3, "visited": 0.15, "local": 0.05}
 NICHE_WEIGHT = 0.2
+# E2 消融（2026-11-08，docs/评测协议v2.md 第 2 节）：tiered 是本系统；flat 不论熟悉程度都按第一次来；
+# off 不加知名度分、不做首访地标保证。只在 run_plan 里设，其他入口都是 tiered。
+POPULARITY_MODE: ContextVar[str] = ContextVar("popularity_mode", default="tiered")
+
+
+@contextmanager
+def use_popularity(mode: str):
+    token = POPULARITY_MODE.set(mode)
+    try:
+        yield mode
+    finally:
+        POPULARITY_MODE.reset(token)
 
 
 def popularity_bonus(poi: POI, profile: UserProfile) -> float:
+    mode = POPULARITY_MODE.get()
+    if mode == "off":
+        return 0.0
     value = POPULARITY_VALUE[poi.popularity]
     if "小众安静" in profile.interests:
         return -NICHE_WEIGHT * value
-    return POPULARITY_WEIGHT[profile.familiarity] * value
+    return POPULARITY_WEIGHT["first" if mode == "flat" else profile.familiarity] * value
 
 
 def needs_landmark(profile: UserProfile) -> bool:
     """第一次来且行程不少于 2 天：至少安排一处城市地标（用户回避的在召回时已排除）。"""
-    return profile.familiarity == "first" and profile.days >= 2
+    mode = POPULARITY_MODE.get()
+    return mode != "off" and (mode == "flat" or profile.familiarity == "first") and profile.days >= 2
 
 
 def _name_hit(name: str, wanted: list[str]) -> bool:

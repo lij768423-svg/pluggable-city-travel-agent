@@ -51,9 +51,17 @@ METHODS = {
     "R": "R ReAct 工具调用",
     "B": "B 本系统（修复开、精修关）",
     "Bplus": "B+ 本系统加精修（线上网页默认）",
-    "C": "C 去掉修复回路",
+    "C": "C 去掉修复回路和空档补点",
     "D": "D 规则选点",
     "E": "E 估算路程排程",
+    # E2 消融的其余各档（docs/评测协议v2.md 第 2 节）；名称里的“−”在命令行里不好打，这里用英文代号
+    "Bcap": "B−片区 按游玩时长分天，不读片区",
+    "Bnoloop": "B−回路 只去掉修复回路",
+    "Bnofill": "B−补点 只去掉空档补点",
+    "Br1": "B−轮1 修复最多 1 轮",
+    "Br5": "B−轮5 修复最多 5 轮",
+    "Bnopop": "B−知名度 去掉知名度项",
+    "Bflat": "B−分档 知名度不分档",
 }
 DEFAULT_METHODS = ["A", "Ap", "R", "B", "D"]
 PLAN_KWARGS = {
@@ -62,7 +70,15 @@ PLAN_KWARGS = {
     "C": dict(select_mode="llm", enable_repair=False, enable_refine=False, travel_source="amap"),
     "D": dict(select_mode="rule", enable_repair=True, enable_refine=False, travel_source="amap"),
     "E": dict(select_mode="llm", enable_repair=True, enable_refine=False, travel_source="estimate"),
+    "Bcap": dict(select_mode="llm", enable_repair=True, enable_refine=False, travel_source="amap", day_split="capacity"),
+    "Bnoloop": dict(select_mode="llm", enable_repair=False, enable_gap_fill=True, enable_refine=False, travel_source="amap"),
+    "Bnofill": dict(select_mode="llm", enable_repair=True, enable_gap_fill=False, enable_refine=False, travel_source="amap"),
+    "Br1": dict(select_mode="llm", enable_repair=True, enable_refine=False, travel_source="amap", max_repair_rounds=1),
+    "Br5": dict(select_mode="llm", enable_repair=True, enable_refine=False, travel_source="amap", max_repair_rounds=5),
+    "Bnopop": dict(select_mode="llm", enable_repair=True, enable_refine=False, travel_source="amap", popularity="off"),
+    "Bflat": dict(select_mode="llm", enable_repair=True, enable_refine=False, travel_source="amap", popularity="flat"),
 }
+TITLES = {"E1": "E1 公平对比", "E2": "E2 消融"}
 VOLATILE = {"fetched_at", "fetched_epoch", "created_at", "captured_at"}
 # 只负责打分、不参与生成的代码：改动它们不必重新采集，用 rescore 从录制重算即可。
 # J1（app/nodes/validate.py）不在其中：它也驱动 B 的修复回路，改了就会改变生成结果。
@@ -103,7 +119,8 @@ def file_hashes(paths) -> dict[str, str]:
     return {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(paths) if path.is_file()}
 
 
-def design_of(cases: list[dict], methods: list[str], cases_dir: Path, reuse: dict | None = None) -> dict:
+def design_of(cases: list[dict], methods: list[str], cases_dir: Path, reuse: dict | None = None,
+              experiment: str = "E1") -> dict:
     from app import config
     from app.cities import city_config
     from app.poi_catalog import published_catalog
@@ -114,7 +131,7 @@ def design_of(cases: list[dict], methods: list[str], cases_dir: Path, reuse: dic
                    for name in ("attractions.parquet", "restaurants.parquet", "accommodations.parquet", "attraction_tags.parquet",
                                 "popularity.json")  # 知名度档位不进目录摘要，这里单独记录
                    if (city_config(city).data_dir / name).is_file()} for city in cities}
-    design = {"protocol": "docs/评测协议v2.md", "experiment": "E1", "methods": {m: METHODS[m] for m in methods},
+    design = {"protocol": "docs/评测协议v2.md", "experiment": experiment, "methods": {m: METHODS[m] for m in methods},
               "plan_kwargs": {m: PLAN_KWARGS[m] for m in methods if m in PLAN_KWARGS},
               "cases_dir": str(cases_dir.relative_to(REPO)) if cases_dir.is_relative_to(REPO) else str(cases_dir),
               "cases": cases, "cases_sha256": digest(cases), "code_sha256": file_hashes(code), "city_data_sha256": data,
@@ -362,7 +379,8 @@ def run_method(method: str, case_dir: Path, profile, candidates, judge, replay: 
 
 
 def run(root: Path, mode: str, methods: list[str], cases_dir: Path, only: list[str] | None,
-        reuse_from: Path | None = None, reuse_methods: list[str] | None = None, judge_online: bool = False) -> None:
+        reuse_from: Path | None = None, reuse_methods: list[str] | None = None, judge_online: bool = False,
+        experiment: str = "E1") -> None:
     """采集、回放或重算。模型调用超时只在本次运行内改为 E1_LLM_TIMEOUT_S，结束后恢复。"""
     from app import config
     if judge_online and mode != "rescore":
@@ -374,7 +392,7 @@ def run(root: Path, mode: str, methods: list[str], cases_dir: Path, only: list[s
     if reference:
         os.environ["TTA_REFERENCE_DATE"] = reference
     try:
-        _run(root, mode, methods, cases_dir, only, started, reuse_from, reuse_methods or [], judge_online)
+        _run(root, mode, methods, cases_dir, only, started, reuse_from, reuse_methods or [], judge_online, experiment)
     finally:
         config.LLM_TIMEOUT = previous_timeout
         if previous_reference is None:
@@ -384,7 +402,7 @@ def run(root: Path, mode: str, methods: list[str], cases_dir: Path, only: list[s
 
 
 def _run(root: Path, mode: str, methods: list[str], cases_dir: Path, only: list[str] | None, started: str,
-         reuse_from: Path | None, reuse_methods: list[str], judge_online: bool = False) -> None:
+         reuse_from: Path | None, reuse_methods: list[str], judge_online: bool = False, experiment: str = "E1") -> None:
     from app.amap import AmapRouter
     from app.llm import OpenAICompatLLM, SnapshotLLM
     from app.nodes.parse import parse_profile
@@ -402,7 +420,7 @@ def _run(root: Path, mode: str, methods: list[str], cases_dir: Path, only: list[
         methods, reuse = list(previous["methods"]), previous.get("reuse")  # 回放沿用采集时的方法与复用来源
     elif reuse_from:
         reuse = reuse_plan(reuse_from, reuse_methods, methods, cases)
-    design = design_of(cases, methods, cases_dir, reuse)
+    design = design_of(cases, methods, cases_dir, reuse, experiment)
     frozen = frozen_design(root, design, mode)
     from scripts.freeze_manifest import create_manifest
     (root / f"manifest-{mode}.json").write_text(json.dumps(create_manifest(), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
@@ -559,7 +577,7 @@ def assess(root: Path, source: str = "replay") -> None:
     table = {method: summary(method) for method in methods}
     num = lambda x, f="{:.1f}": "—" if x is None else f.format(x)  # noqa: E731
     short = lambda sha: (sha or "")[:8]  # noqa: E731
-    lines = ["# E1 公平对比（描述统计）", "",
+    lines = [f"# {TITLES.get(design.get('experiment', 'E1'), design.get('experiment', 'E1'))}（描述统计）", "",
              f"- 协议：`docs/评测协议v2.md`；用例 `{design['cases_dir']}` 共 {len(rows)} 条；模型 {design['model']}（思考 {design['thinking']}）",
              "- 分数来自离线回放（禁止联网），裁判路段来自采集时的高德快照；J1 与 B 的优化目标同源，结论以 J2 为准。",
              "- J2 主口径单段步行上限 1.5 km；J2′ 为敏感性口径，步行上限按系统规则（成人 2.5 km、亲子与老人 1.5 km），两者并列报告。",
@@ -618,18 +636,18 @@ def assess(root: Path, source: str = "replay") -> None:
     print("\n".join(lines))
 
 
-def main() -> None:
+def main(argv: list[str] | None = None, *, experiment: str = "E1", default_methods: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("mode", choices=("capture", "replay", "rescore", "assess"))
     parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--methods", nargs="+", choices=list(METHODS), default=DEFAULT_METHODS)
+    parser.add_argument("--methods", nargs="+", choices=list(METHODS), default=default_methods or DEFAULT_METHODS)
     parser.add_argument("--cases-dir", type=Path, default=BACKEND / "eval" / "cases")
     parser.add_argument("--only", nargs="*", help="只跑指定用例 id")
     parser.add_argument("--reuse-from", type=Path, help="capture：从这个 run 目录复用 --reuse 所列方法的录制")
     parser.add_argument("--reuse", nargs="+", choices=list(METHODS), default=[], help="capture：要复用录制的方法")
     parser.add_argument("--source", default="replay", help="assess：读哪个结果文件（不含 .json），如 rescore-1a2b3c4d")
     parser.add_argument("--judge-online", action="store_true", help="rescore：只让裁判联网补齐缺的路段（结果不作为分数）")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if bool(args.reuse) != bool(args.reuse_from) or (args.reuse and args.mode != "capture"):
         parser.error("--reuse-from 与 --reuse 要一起给出，且只用于 capture")
     if args.mode == "assess":
@@ -640,7 +658,7 @@ def main() -> None:
     else:
         os.environ.pop("TTA_OFFLINE", None)
     run(args.root.resolve(), args.mode, args.methods, args.cases_dir.resolve(), args.only,
-        args.reuse_from.resolve() if args.reuse_from else None, args.reuse, args.judge_online)
+        args.reuse_from.resolve() if args.reuse_from else None, args.reuse, args.judge_online, experiment)
 
 
 if __name__ == "__main__":

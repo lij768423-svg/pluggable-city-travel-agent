@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { PhBus, PhCar, PhHouseLine, PhPersonSimpleWalk } from '@phosphor-icons/vue'
-import type { DayPlan, MealAlternative } from '../api'
+import type { DayPlan, MealAlternative, PoiOption } from '../api'
+import PoiOptions from './PoiOptions.vue'
 
-const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; selectedAlternativeId: number | null; openEnds?: boolean }>()
-const emit = defineEmits<{ focus: [index: number]; details: [index: number]; focusAlternative: [index: number, alternative: MealAlternative]; detailsAlternative: [index: number, alternative: MealAlternative]; alternativesToggle: [index: number, open: boolean] }>()
+const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; selectedAlternativeId: number | null; openEnds?: boolean; editPlanId?: string | null; revision?: number | null }>()
+const emit = defineEmits<{ focus: [index: number]; details: [index: number]; focusAlternative: [index: number, alternative: MealAlternative]; detailsAlternative: [index: number, alternative: MealAlternative]; alternativesToggle: [index: number, open: boolean]; swapPoi: [index: number, option: PoiOption] }>()
 const startsGroup = (index: number) => props.day.items[index]?.visit_group && !props.day.items.slice(0, index).some(item => item.visit_group === props.day.items[index]?.visit_group)
 
 // 片区为主：首次进入某片区时在路段上标出
@@ -70,6 +71,7 @@ const labels = computed(() => {
             </div>
             <p class="field-help">换成备选前先重算当天路线与时间，确认后才更新，其他日期不变，可撤销。</p>
           </details>
+          <PoiOptions v-if="editPlanId && item.kind === 'poi' && !item.evening && !item.score?.must_visit" :key="`${revision}-${i}`" :plan-id="editPlanId" :day="day.day" :item-index="i" @choose="option => emit('swapPoi', i, option)" />
         </div>
       </li>
     </template>

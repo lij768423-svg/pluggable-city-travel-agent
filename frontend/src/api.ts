@@ -48,7 +48,7 @@ export interface PlanItem {
   visit_role?: 'attraction' | 'walk_segment' | 'viewpoint'
   lat?: number
   lon?: number
-  source: 'llm' | 'rule' | 'repair' | 'jev' | 'external_ai' | null
+  source: 'llm' | 'rule' | 'repair' | 'jev' | 'external_ai' | 'user' | null
   score: Record<string, number> | null
   travel_evidence?: LegEvidence | null
   notices?: string[]
@@ -66,19 +66,32 @@ export interface AltMarker { ref_id: number; name: string; label: string; lat: n
 
 export interface PlacePhoto { url: string; thumb_url: string; caption: string; source: 'manual' | 'amap' | 'amap_related'; source_label: string; attribution: string; license: string; source_url: string; fingerprint: string }
 export interface PlaceMedia { kind: 'poi' | 'meal'; id: number; name: string; photos: PlacePhoto[]; status: 'ready' | 'partial' | 'empty' | 'unavailable'; fetched_at: string | null; policy: string }
-export interface PlanChange { day: number; meal: 'lunch' | 'dinner'; from: string; to: string; shift_min: number | null; removed: string[]; reordered: boolean; passed: boolean; conflicts: string[]; seconds: number; live_calls: number }
+export type EditAction = 'replace' | 'self_arranged' | 'replace_poi' | 'pace_less' | 'pace_more'
+export interface PlanChange { day: number; meal: 'lunch' | 'dinner' | null; from: string | null; to: string | null; poi_id?: number; action?: EditAction; shift_min: number | null; removed: string[]; added?: string[]; new_notes?: string[]; reordered: boolean; passed: boolean; conflicts: string[]; seconds: number; live_calls: number }
 
 export interface MealEditPreview {
   preview_id: string; base_revision: number; expires_at: number; can_commit: boolean; plan: PlanResponse
-  change: PlanChange & { action: 'replace' | 'self_arranged'; budget_before: number; budget_after: number; budget_delta: number;
-    travel_delta_min: number; ride_delta_min: number; end_before: number | null; end_after: number | null; route_source: 'amap' | 'estimate';
-    affected_stops: { name: string; before_start: number; before_end: number; after_start: number | null; after_end: number | null }[] }
+  change: PlanChange & { action: EditAction; budget_before: number; budget_after: number; budget_delta: number;
+    travel_delta_min: number; ride_delta_min: number; walking_before_m: number | null; walking_after_m: number | null; end_before: number | null; end_after: number | null; route_source: 'amap' | 'estimate';
+    affected_stops: { name: string; before_start: number; before_end: number; after_start: number | null; after_end: number | null; after_name?: string | null }[] }
 }
 export interface MealEditInput { revision: number; day: number; action?: 'replace' | 'self_arranged'; item_index?: number; restaurant_id?: number; meal?: 'lunch' | 'dinner'; estimated_cost?: number }
 export const previewMeal = (planId: string, body: MealEditInput, signal?: AbortSignal) =>
   fetch(`/api/plans/${encodeURIComponent(planId)}/meal-preview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal }).then(response => j<MealEditPreview>(response))
 export const commitMeal = (planId: string, revision: number, previewId: string) =>
   fetch(`/api/plans/${encodeURIComponent(planId)}/meal-commit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, preview_id: previewId }) }).then(response => j<PlanResponse>(response))
+export interface PoiOption { poi_id: number; name: string; type: string; area: string; same_area: boolean; same_type: boolean; indoor: boolean; price: number; price_verified: boolean; min_hours: number; max_hours: number; distance_km: number; summary: string }
+const postEdit = <T>(planId: string, path: string, body: unknown, signal?: AbortSignal) =>
+  fetch(`/api/plans/${encodeURIComponent(planId)}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal }).then(response => j<T>(response))
+export const getPoiOptions = (planId: string, day: number, itemIndex: number) =>
+  fetch(`/api/plans/${encodeURIComponent(planId)}/poi-options?day=${day}&item_index=${itemIndex}`, { cache: 'no-store' }).then(response => j<{ revision: number; options: PoiOption[] }>(response))
+export const previewPoi = (planId: string, body: { revision: number; day: number; item_index: number; poi_id: number }, signal?: AbortSignal) => postEdit<MealEditPreview>(planId, 'poi-preview', body, signal)
+export const commitPoi = (planId: string, revision: number, previewId: string) => postEdit<PlanResponse>(planId, 'poi-commit', { revision, preview_id: previewId })
+export const previewPace = (planId: string, body: { revision: number; day: number; direction: 'less' | 'more' }, signal?: AbortSignal) => postEdit<MealEditPreview>(planId, 'pace-preview', body, signal)
+export const commitPace = (planId: string, revision: number, previewId: string) => postEdit<PlanResponse>(planId, 'pace-commit', { revision, preview_id: previewId })
+// 按住哪儿卡片里的一家推荐住处重排：景点不变、不调模型，要 1–2 分钟
+export const postLodgingReplan = (planId: string, revision: number, hotelId: string) =>
+  fetch(`/api/plans/${encodeURIComponent(planId)}/lodging-replan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, hotel_id: hotelId }) }).then(response => j<PlanResponse>(response))
 export const getCurrentPlan = (planId: string) => fetch(`/api/plans/${encodeURIComponent(planId)}`, { cache: 'no-store' }).then(response => j<PlanResponse>(response))
 
 export interface LegEvidence { minutes: number; mode: string; source: 'amap' | 'estimate' | 'same_place'; walking_m: number; available: boolean; fallback_reason: string | null }
@@ -86,6 +99,7 @@ export interface PlaceDetail {
   kind: 'poi' | 'meal'; id: number; name: string; introduction: string; highlights: string[]; audiences: string[]; tags: string[]
   duration: string; opening: string; tips: string[]; content_source: string; address: string; source_url: string | null
   rating: number | null; rating_source: string | null; rating_status: 'pending' | 'ready' | 'unrated' | 'unavailable'; rating_at: string | null
+  amap_url?: string | null
 }
 export interface RouteSegment { mode: string; path: [number, number][]; instruction: string; distance_m: number; minutes: number }
 export interface NavigationResult {
@@ -98,6 +112,9 @@ export interface DayPlan { day: number; date?: string | null; items: PlanItem[];
 
 export interface Violation { code: string; severity: 'hard' | 'soft'; day: number | null; item: string | null; message: string }
 
+// 住哪儿卡片（起点不定的多日行程）：不含房价，高德不提供
+export interface LodgingHotel { name: string; tier: string; amap_type: string; rating: number | null; address: string; external_id: string; distance_m: number; gcj: { lat: number; lon: number }; link: string | null }
+export interface Lodging { area: string; area_source: string; gcj: { lat: number; lon: number }; transport: 'taxi' | 'transit'; daily: { day: number; minutes: number }[]; average_minutes: number; default_name: string; default_average_minutes: number; saving_minutes: number; similar: boolean; long_days: number[]; hotels: LodgingHotel[]; chosen?: { name: string; external_id: string; tier: string } | null; replans_left?: number; search_status: 'ok' | 'unavailable' | 'offline'; search_link: string; search_label: string; radius_m: number; fetched_at: string | null; method: string }
 export interface PlanResponse {
   city_info?: CityInfo
   history_id?: string
@@ -105,6 +122,7 @@ export interface PlanResponse {
   delivery_status?: 'ready' | 'draft'
   verification_notice?: string | null
   history_readonly?: boolean
+  lodging?: Lodging
   profile: {
     city?: string
     days: number; budget: number; pace: string; interests: string[]; spice?: 'no' | 'any' | 'love'; familiarity?: 'first' | 'visited' | 'local'; origin_known?: boolean; dietary?: string[]; companions: string; transport: 'taxi' | 'transit'
@@ -122,7 +140,7 @@ export interface PlanResponse {
   log: string[]
   usage: { calls: number; cached_calls: number; total_tokens: number; seconds: number }
   seconds: number
-  meta: { operation?: 'plan' | 'meal_swap' | 'meal_self_arranged'; travel: { source: string; mode_name?: string; live_calls?: number; approx_legs?: number; approx_planning?: number; final_legs?: number; errors?: string[] }; select_mode: string; enable_repair: boolean; repair_rounds: number; llm_model: string; llm_thinking: string | null; tag_source: string; selection?: { provider?: string; model?: string; status?: string; cached?: boolean; seconds?: number; confident_candidates?: number; candidates?: number; error?: string } }
+  meta: { operation?: 'plan' | 'meal_swap' | 'meal_self_arranged' | 'lodging_replan' | 'poi_swap' | 'pace_adjust'; travel: { source: string; mode_name?: string; live_calls?: number; approx_legs?: number; approx_planning?: number; final_legs?: number; errors?: string[] }; select_mode: string; enable_repair: boolean; repair_rounds: number; llm_model: string; llm_thinking: string | null; tag_source: string; selection?: { provider?: string; model?: string; status?: string; cached?: boolean; seconds?: number; confident_candidates?: number; candidates?: number; error?: string } }
 }
 
 export interface PlanRequest {

@@ -314,6 +314,21 @@ class MealEditCommitRequest(BaseModel):
     preview_id: str = Field(min_length=12, max_length=100)
 
 
+class PoiEditPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=0)
+    day: int = Field(ge=1, le=5)
+    item_index: int = Field(ge=0, le=60)
+    poi_id: int
+
+
+class PaceEditPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=0)
+    day: int = Field(ge=1, le=5)
+    direction: Literal["less", "more"]
+
+
 class FieldEvidence(BaseModel):
     basis: Literal["dataset", "model_estimate", "rule", "curator_inference", "observed", "manual_review", "unknown"]
     reference: str
@@ -448,7 +463,7 @@ class Candidate(BaseModel):
 class Selection(BaseModel):
     poi_id: int
     reason: str
-    source: Literal["llm", "rule", "repair", "jev", "external_ai"] = "llm"
+    source: Literal["llm", "rule", "repair", "jev", "external_ai", "user"] = "llm"
     guide_ids: list[str] = Field(default_factory=list)
 
 
