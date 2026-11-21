@@ -1,6 +1,6 @@
 {
   "distribution": "public-source",
-  "source_revision": "11de5a932bfe063d29ef524e1c1f4915d56e47b8",
+  "source_revision": "6f7ee8f4ec0949b1a309cc7e3eaf1f98284f1b7f",
   "guide_samples": 11,
   "excluded": [
     "internal history and deployment documents",
@@ -372,7 +372,7 @@
     "frontend/src/components/SwapConfirm.vue": "24879ae92be079252a8c74527873d09d8928b6c45a5d5d59725e9d19bbd46772",
     "frontend/src/components/Timeline.vue": "0414777632cd6232f2875ad3fcb49211ce09435478cd6c22c2ea087399f0d653",
     "frontend/src/components/UnderstandingTable.vue": "0d86c0b9aabdb76d70f0f4226dd14981a5eef9ec733249f5918cc504e7774cb2",
-    "frontend/src/destination.css": "a617bf140316eedbaff86bb1627a3391a80784ca073d4afcc27aa0141c158e42",
+    "frontend/src/destination.css": "fdd2db47759e8f5e6ff4eec33b7ee8903a94916940b6da635b18976170e83cd9",
     "frontend/src/env.d.ts": "c97fc2b7935fad3e2d50e2fa9c629e4c41a5430aac42c6bdda0c17554bbd1111",
     "frontend/src/journey.css": "d368ecaf71a41bd59c58f5685cc54b7309dca8ebb10458b716c2ce4141f0dc3d",
     "frontend/src/ljj-helix.css": "7df11afaf745a7f1a58ce31346a4a1ddf2e642f1ffae2eae4899024adc19b9ef",

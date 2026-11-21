@@ -60,7 +60,10 @@ img[data-fade].is-loaded { opacity: 1; }
 .preview-content > :not(.confirm-swap):not(.self-cost-field), .navigation-instructions { animation: fade-in .35s ease-out both; }
 @keyframes destination-needle { from { transform: rotate(-20deg) scale(.88); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .destination-page *, .destination-page *::before, .destination-page *::after, .destination-transit, .destination-transit *, .destination-page-enter-active, .destination-page-leave-active, .journey-reveal-enter-active, .journey-reveal-leave-active, .city-scenery-enter-active *, .brand-copy-enter-active, .brand-copy-leave-active { animation: none !important; transition: none !important; transform: none !important; }
+  /* 选城页螺旋卡片（.helix-node）靠 transform 摆到 --helix-x/--helix-y；减少动态效果时 JS 只停转、仍逐张定位，
+     所以不清它的 transform，否则 12 张卡片全叠在舞台左上角。:where() 让选择器优先级与原来相同。 */
+  .destination-page *:where(:not(.helix-node)), .destination-page *::before, .destination-page *::after, .destination-transit, .destination-transit *, .destination-page-enter-active, .destination-page-leave-active, .journey-reveal-enter-active, .journey-reveal-leave-active, .city-scenery-enter-active *, .brand-copy-enter-active, .brand-copy-leave-active { animation: none !important; transition: none !important; transform: none !important; }
+  .destination-page .helix-node { animation: none !important; transition: none !important; }
 }
 
 .brand-name { font: inherit; }
