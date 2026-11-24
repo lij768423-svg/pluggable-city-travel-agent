@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { PhArrowLeft, PhCheck, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
+import { PhArrowLeft, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
+import RollValue from './components/RollValue.vue'
+import DrawCheck from './components/DrawCheck.vue'
+import { useInk } from './motion'
 import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, previewPoi, commitPoi, previewPace, commitPace, type PoiOption, revertPlan, postLodgingReplan, type LodgingHotel, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
 import PlanConfirm from './components/PlanConfirm.vue'
@@ -873,6 +876,14 @@ onMounted(async () => {
   if (mcpConnectionId && !user.value) openAuth('首次配置 MCP：登录后确认授权，以后即可直接使用。')
   await resumeTripLink()
 })
+// 日期标签、规划方式、手机端行程/地图：选中块跟着弹过去（motion.ts）
+const dayTabs = ref<HTMLElement>()
+const modeSwitch = ref<HTMLElement>()
+const mobileSwitch = ref<HTMLElement>()
+useInk(dayTabs, () => [activeDay.value, plan.value?.plan_id, plan.value?.days.length], 12)
+useInk(modeSwitch, () => planMode.value)
+useInk(mobileSwitch, () => mobileView.value)
+const planScope = computed(() => `${plan.value?.plan_id ?? ''}|${plan.value?.history_id ?? ''}`)
 onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer); cityController?.abort(); planController?.abort(); clearInterval(timer); clearTimeout(toastTimer); extrasController?.abort(); alternativeController?.abort(); mediaController?.abort() })
 </script>
 
@@ -903,7 +914,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
         <template v-if="plan && !showForm">
           <div class="bar-actions">
             <button class="ghost-btn" @click="startEdit"><PhPencilSimple :size="16" />修改</button>
-            <button class="ghost-btn" @click="copyPlan"><component :is="copied ? PhCheck : PhCopy" :size="16" />{{ copied ? '已复制' : '复制' }}</button>
+            <button class="ghost-btn copy-btn" :class="{ copied }" @click="copyPlan"><span class="copy-glyph" aria-hidden="true"><PhCopy :size="16" class="copy-glyph-copy" /><DrawCheck v-if="copied" :size="16" :weight="1.8" /></span><RollValue :value="copied ? '已复制' : '复制'" :flash="false" /></button>
           </div>
         </template>
         <button v-else-if="plan && !progressVisible" class="ghost-btn" @click="editing = false"><PhArrowLeft :size="16" />返回行程</button>
@@ -913,9 +924,9 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       <div v-if="plan && !showForm && !progressVisible" class="trip-head">
         <h1>{{ displayCity.name }} {{ plan.profile.days }} 日<span>{{ plan.profile.interests.join(' · ') || '随心逛' }} · {{ paceNames[plan.profile.pace] }} · {{ plan.profile.transport === 'transit' ? '公交地铁' : '打车' }}</span></h1>
         <dl class="trip-stats">
-          <div><dt>人均已安排</dt><dd>¥{{ plan.report.totals.total?.toFixed(0) }}<small>/ {{ plan.profile.budget.toFixed(0) }}</small></dd></div>
-          <div><dt>游览段</dt><dd>{{ poiCount }}</dd></div>
-          <div><dt>正餐</dt><dd>{{ mealCount }}<small v-if="onsiteMealCount">＋{{ onsiteMealCount }} 餐园内预留</small><small v-if="selfArrangedMealCount">＋{{ selfArrangedMealCount }} 餐自行安排</small></dd></div>
+          <div><dt>人均已安排</dt><dd>¥<RollValue :value="plan.report.totals.total?.toFixed(0) ?? ''" :scope="planScope" /><small>/ {{ plan.profile.budget.toFixed(0) }}</small></dd></div>
+          <div><dt>游览段</dt><dd><RollValue :value="poiCount" :scope="planScope" /></dd></div>
+          <div><dt>正餐</dt><dd><RollValue :value="mealCount" :scope="planScope" /><small v-if="onsiteMealCount">＋{{ onsiteMealCount }} 餐园内预留</small><small v-if="selfArrangedMealCount">＋{{ selfArrangedMealCount }} 餐自行安排</small></dd></div>
           <div class="check" :class="{ bad: !plan.report.passed }">
             <component :is="plan.report.passed && plan.report.experience_status === 'complete' ? PhCheckCircle : PhWarningCircle" :size="16" weight="fill" />
             {{ plan.report.passed ? (plan.report.experience_status === 'complete' ? '已知时间与预算可行' : '仍有待完善项') : `${plan.report.violations.filter(v => v.severity === 'hard').length} 处冲突` }}
@@ -925,7 +936,8 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
           {{ plan.report.experience_status === 'complete' ? '用餐与活动安排完整' : '行程仍有待完善项，请查看每日提示' }}
           <span>· {{ plan.report.data_status === 'partial' ? '开放、价格等信息仍需确认' : '已核验数据完整' }}</span>
         </p>
-        <nav class="day-tabs" role="tablist" aria-label="选择日期">
+        <nav ref="dayTabs" class="day-tabs" role="tablist" aria-label="选择日期">
+          <span class="ink" aria-hidden="true" />
           <button v-for="d in plan.days" :key="d.day" role="tab" :aria-selected="activeDay === d.day" :class="{ on: activeDay === d.day }" @click="pickDay(d.day)">
             第 {{ d.day }} 天<small>{{ d.date ? d.date.slice(5) : `${d.items.filter(i => i.kind === 'poi').length} 景点` }}<span v-if="d.areas?.length" class="day-area" :title="d.areas.join('、')">{{ d.areas[0] }}{{ d.areas.length > 1 ? ` 等 ${d.areas.length} 片` : '' }}</span></small>
           </button>
@@ -940,7 +952,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
           <Transition name="loading-note"><p v-if="cityLoading" class="notice" role="status">正在读取{{ draftCity.name }}的起点与偏好…</p></Transition>
           <p v-if="cityError" class="notice bad" role="alert">{{ cityError }} <button type="button" @click="changeCity(selectedCity)">重新读取城市信息</button></p>
           <div class="plan-entry">
-            <div class="mode-switch" role="tablist" aria-label="规划方式"><button type="button" role="tab" :aria-selected="planMode === 'agent'" :class="{ on: planMode === 'agent' }" @click="planMode = 'agent'">跟 AI 说</button><button type="button" role="tab" :aria-selected="planMode === 'form'" :class="{ on: planMode === 'form' }" @click="planMode = 'form'">自己选</button></div>
+            <div ref="modeSwitch" class="mode-switch" role="tablist" aria-label="规划方式"><span class="ink" aria-hidden="true" /><button type="button" role="tab" :aria-selected="planMode === 'agent'" :class="{ on: planMode === 'agent' }" @click="planMode = 'agent'">跟 AI 说</button><button type="button" role="tab" :aria-selected="planMode === 'form'" :class="{ on: planMode === 'form' }" @click="planMode = 'form'">自己选</button></div>
             <AgentChat v-if="planMode === 'agent'" :meta="meta" :messages="agentMessages" :replies="agentReplies" :understanding="agentUnderstanding" :busy="confirmBusy" :error="confirmError" :disabled="loading || cityLoading || !!cityError || !meta" :needs-login="!!meta?.access?.login_to_plan && !user" :quota="quota" @send="sendAgent" @retry="understandAgent" @confirm="startAgentPlan" @reset="resetAgent" />
             <PlanConfirm v-if="planMode === 'form' && confirming" :understanding="confirming.understanding" :meta="meta" :busy="confirmBusy" :error="confirmError" :quota="quota" @patch="patchUnderstanding" @back="confirming = null" @confirm="confirmPlan" />
             <PlanForm v-show="planMode === 'form' && !confirming" :city="draftCity" :meta="meta" :loading="loading || confirmBusy || cityLoading || !!cityError" :quota="quota" :needs-login="!!meta?.access?.login_to_plan && !user" :initial-query="initialQuery" :initial-request="initialRequest" @submit="understandFirst" @hotel-change="previewHotel = $event" />
@@ -991,7 +1003,8 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       </DayStrip>
     </main>
 
-    <nav v-if="plan && !showForm && !progressVisible && !historyOpen" class="mobile-switch" aria-label="切换视图">
+    <nav v-if="plan && !showForm && !progressVisible && !historyOpen" ref="mobileSwitch" class="mobile-switch" aria-label="切换视图">
+      <span class="ink" aria-hidden="true" />
       <button :class="{ on: mobileView === 'route' }" @click="mobileView = 'route'">行程</button>
       <button :class="{ on: mobileView === 'map' }" @click="mobileView = 'map'">地图</button>
     </nav>

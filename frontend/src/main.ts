@@ -3,7 +3,11 @@ import 'leaflet/dist/leaflet.css'
 import '@fontsource-variable/geist'
 import '@fontsource-variable/noto-sans-sc'
 import './style.css'
+import './motion.css'
 import App from './App.vue'
+import { installSprings } from './motion'
+
+installSprings()
 
 // 启动页沿用预载画面的淡入动画，从预载画面动画的实际进度接着播，接替时不闪
 const splashTime = Number(document.getElementById('boot-splash')?.getAnimations()[0]?.currentTime ?? 800)

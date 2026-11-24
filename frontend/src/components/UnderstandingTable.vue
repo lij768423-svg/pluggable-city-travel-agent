@@ -3,9 +3,10 @@
 // 改动先攒着，用户改完点“提交修改”才一次交出去（2026-10-28 用户：不要改一个就调整）。
 // 怎么处理由外层决定：问卷模式直接改字段，跟 AI 说模式把这几处修改合成一句话（列表类整份说“改成”，免得被理解成追加）。
 import { computed, ref, watch } from 'vue'
-import { PhInfo, PhWarningCircle, PhX } from '@phosphor-icons/vue'
+import { PhInfo, PhMinus, PhPlus, PhWarningCircle, PhX } from '@phosphor-icons/vue'
 import type { Hotel, Meta, Understanding, UnderstandingField, UnderstandingIssue } from '../api'
 import OriginPicker from './OriginPicker.vue'
+import RollValue from './RollValue.vue'
 
 const props = withDefaults(defineProps<{ understanding: Understanding; meta: Meta | null; busy: boolean; mode?: 'agent' | 'form' }>(), { mode: 'form' })
 const emit = defineEmits<{ apply: [patch: Record<string, unknown>, phrases: string[]]; pending: [phrases: string[], patch: Record<string, unknown>] }>()
@@ -92,6 +93,18 @@ function pickOrigin(place: Hotel | null) {
   else set('hotel', { name: place.name, lat: place.lat, lon: place.lon })
 }
 
+// 天数用步进：数字逐位翻；到 1 天或 5 天再按，按钮朝按的方向轻推一下，不改值
+const DAYS_MIN = 1
+const DAYS_MAX = 5
+function stepDays(delta: number, event: MouseEvent) {
+  const next = Number(value('days') || DAYS_MIN) + delta
+  if (next >= DAYS_MIN && next <= DAYS_MAX) { change('days', String(next)); return }
+  const button = event.currentTarget as HTMLElement
+  button.classList.remove('kick')
+  void button.offsetWidth
+  button.classList.add('kick')
+}
+
 function change(key: string, raw: string) {
   if (key === 'days' || key === 'budget') {
     const number = Number(raw)
@@ -145,7 +158,7 @@ function addPlace(key: ListKey) {
         <tr v-for="field in rows" :key="field.key" :class="[field.source ? `source-${field.source}` : '', { changed: changed(field.key) }]">
           <th scope="row">{{ field.label }}</th>
           <td>
-            <select v-if="field.key === 'days'" :value="value('days')" :aria-label="field.label" :disabled="busy" @change="change('days', ($event.target as HTMLSelectElement).value)"><option v-for="n in 5" :key="n" :value="n">{{ n }} 天</option></select>
+            <div v-if="field.key === 'days'" class="num-stepper" role="group" :aria-label="field.label"><button type="button" class="kick-left" aria-label="少一天" :aria-disabled="Number(value('days')) <= DAYS_MIN" :disabled="busy" @click="stepDays(-1, $event)" @animationend="($event.currentTarget as HTMLElement).classList.remove('kick')"><PhMinus :size="13" weight="bold" /></button><output aria-live="polite"><RollValue :value="Number(value('days'))" :flash="false" /> 天</output><button type="button" aria-label="多一天" :aria-disabled="Number(value('days')) >= DAYS_MAX" :disabled="busy" @click="stepDays(1, $event)" @animationend="($event.currentTarget as HTMLElement).classList.remove('kick')"><PhPlus :size="13" weight="bold" /></button></div>
             <template v-else-if="field.key === 'start_date'"><input type="date" :value="value('start_date') || ''" :aria-label="field.label" :disabled="busy" @change="change('start_date', ($event.target as HTMLInputElement).value)" /><small v-if="!value('start_date')">{{ field.display }}</small></template>
             <template v-else-if="field.key === 'budget'"><label class="confirm-budget">人均共 <input type="number" min="1" max="100000" :value="budgetShown" aria-label="人均总预算" :disabled="busy" @change="change('budget', ($event.target as HTMLInputElement).value)" /> 元</label><small>{{ value('days') }} 天，平均每天 {{ perDay }} 元；含门票、餐饮、市内交通</small></template>
             <select v-else-if="field.key === 'transport'" :value="value('transport')" :aria-label="field.label" :disabled="busy" @change="change('transport', ($event.target as HTMLSelectElement).value)"><option v-for="(label, key) in TRANSPORT" :key="key" :value="key">{{ label }}</option></select>
@@ -205,6 +218,11 @@ function addPlace(key: ListKey) {
 .confirm-table td small { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; }
 .confirm-table select, .confirm-table input { font: inherit; }
 .confirm-budget input { width: 7em; }
+.num-stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 4px; background: #ffffff; }
+.num-stepper button { display: grid; place-items: center; width: 36px; height: 36px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.num-stepper button:hover:not(:disabled) { color: var(--text); }
+.num-stepper button[aria-disabled=true] { color: #c4c5c1; }
+.num-stepper output { min-width: 3.4em; text-align: center; font-variant-numeric: tabular-nums; }
 .confirm-wide { max-width: 100%; }
 .confirm-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .confirm-link { font: inherit; font-size: 12px; padding: 0; border: 0; background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }

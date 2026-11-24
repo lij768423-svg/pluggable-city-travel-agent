@@ -4,6 +4,7 @@ import { AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDe
   AlertDialogPortal, AlertDialogRoot, AlertDialogTitle } from 'reka-ui'
 import { PhArrowRight, PhWarningCircle } from '@phosphor-icons/vue'
 import type { MealAlternative, MealEditPreview } from '../api'
+import RollValue from './RollValue.vue'
 
 const props = defineProps<{ open: boolean; day: number; meal: 'lunch' | 'dinner' | null; from: string; target: MealAlternative | null;
   preview: MealEditPreview | null; loading: boolean; busy: boolean; error: string; selfArranged: boolean; selfCost: number;
@@ -53,13 +54,13 @@ const retryHint = computed(() => props.edit === 'poi' ? '可以换一个景点�
           <template v-else-if="preview">
             <p v-if="newTime" class="preview-source">{{ edit ? '新景点时段' : '新用餐时段' }} · {{ newTime }}</p>
             <dl class="preview-numbers">
-              <div><dt>人均总费用</dt><dd>¥{{ preview.change.budget_after.toFixed(0) }}<small>{{ delta(preview.change.budget_delta, ' 元') }}</small></dd></div>
+              <div><dt>人均总费用</dt><dd>¥<RollValue :value="preview.change.budget_after.toFixed(0)" :from="(preview.change.budget_after - preview.change.budget_delta).toFixed(0)" /><small>{{ delta(preview.change.budget_delta, ' 元') }}</small></dd></div>
               <div><dt>全天路程耗时</dt><dd>{{ delta(preview.change.travel_delta_min, ' 分钟') }}<small>其中乘车 {{ delta(preview.change.ride_delta_min, ' 分钟') }}</small><small v-if="walking">{{ walking }}</small></dd></div>
-              <div><dt>预计回到起点</dt><dd>{{ clock(preview.change.end_after) }}<small>原安排 {{ clock(preview.change.end_before) }}</small></dd></div>
+              <div><dt>预计回到起点</dt><dd><RollValue :value="clock(preview.change.end_after)" :from="clock(preview.change.end_before)" /><small>原安排 {{ clock(preview.change.end_before) }}</small></dd></div>
             </dl>
             <p class="preview-source">{{ preview.change.route_source === 'estimate' ? '部分交通使用估算，实际路况与营业信息仍需确认。' : '按预览中的导航路线核对；提交时使用同一份路线证据。' }}</p>
             <section v-if="preview.change.affected_stops.length" class="preview-stops"><h3>这些安排会变化</h3>
-              <ul><li v-for="(stop, index) in preview.change.affected_stops" :key="`${stop.name}-${index}`"><span>{{ stop.name }}</span><small>{{ clock(stop.before_start) }}–{{ clock(stop.before_end) }}<PhArrowRight :size="12" />{{ stop.after_start == null ? '移出当天' : `${clock(stop.after_start)}–${clock(stop.after_end)}` }}</small><small v-if="stop.after_name">改在 {{ stop.after_name }}</small></li></ul>
+              <ul><li v-for="(stop, index) in preview.change.affected_stops" :key="`${stop.name}-${index}`"><span>{{ stop.name }}</span><small><s>{{ clock(stop.before_start) }}–{{ clock(stop.before_end) }}</s><PhArrowRight :size="12" /><template v-if="stop.after_start == null">移出当天</template><RollValue v-else :value="`${clock(stop.after_start)}–${clock(stop.after_end)}`" :from="`${clock(stop.before_start)}–${clock(stop.before_end)}`" /></small><small v-if="stop.after_name">改在 {{ stop.after_name }}</small></li></ul>
             </section>
             <p v-else class="preview-source">{{ edit ? '其余景点的时间和顺序保持不变。' : '景点时间和顺序保持不变。' }}</p>
             <p v-if="preview.change.reordered" class="preview-source">当天景点的先后顺序有调整。</p>

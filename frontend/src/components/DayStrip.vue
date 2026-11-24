@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { PhArrowUpRight, PhBus, PhCar, PhHouseLine, PhPersonSimpleWalk } from '@phosphor-icons/vue'
 import type { DayPlan } from '../api'
+import RollValue from './RollValue.vue'
 
 // 地图下方的当天概览：站点卡片横排，点击与左侧时间线一样定位地图
 const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; travelMinutes: number }>()
@@ -26,7 +27,7 @@ watch(() => [props.selectedIndex, props.day.day], async () => {
 <template>
   <section class="day-strip" aria-label="当天概览">
     <header>
-      <h2>第 {{ day.day }} 天<span>{{ stops }} 个地点 · 路上约 {{ travelMinutes }} 分钟 · {{ clock(departAt) }}–{{ clock(returnAt) }}</span></h2>
+      <h2>第 {{ day.day }} 天<span><RollValue :value="stops" :scope="day.day" :flash="false" /> 个地点 · 路上约 <RollValue :value="travelMinutes" :scope="day.day" :flash="false" /> 分钟 · <RollValue :value="`${clock(departAt)}–${clock(returnAt)}`" :scope="day.day" :flash="false" /></span></h2>
       <slot />
     </header>
     <ol ref="track" class="day-strip-track">
@@ -36,7 +37,7 @@ watch(() => [props.selectedIndex, props.day.day], async () => {
         <li class="strip-card" :class="[item.kind, { on: selectedIndex === index }]" :data-index="index">
           <button type="button" class="strip-main" :aria-label="`在地图上定位${item.name}`" @click="emit('focus', index)">
             <span class="strip-badge">{{ labels[index] }}</span>
-            <span class="strip-text"><time>{{ item.start_hm }}–{{ item.end_hm }}</time><strong :title="item.name">{{ item.name }}</strong></span>
+            <span class="strip-text"><time><RollValue :value="`${item.start_hm}–${item.end_hm}`" :flash="false" /></time><strong :title="item.name">{{ item.name }}</strong></span>
           </button>
           <button type="button" class="strip-more" :aria-label="`查看${item.name}的详情`" title="查看详情" @click="emit('details', index)"><PhArrowUpRight :size="14" /></button>
         </li>

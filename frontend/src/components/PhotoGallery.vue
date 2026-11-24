@@ -10,6 +10,11 @@ const broken = ref(new Set<string>())
 const strip = ref<HTMLElement>()
 const current = ref(0)
 const viewer = ref<number | null>(null)
+// 页码点：当前页的小胶囊朝翻页方向先伸过去再收拢（两边沿用快慢不同的弹簧，见 motion.css .ink）
+const DOT = 14 // 点 5px + 间距 9px
+const dotDir = ref<'left' | 'right'>('right')
+watch(current, (now, before) => { dotDir.value = now >= before ? 'right' : 'left' })
+const dotInk = computed(() => ({ left: `${current.value * DOT - 3.5}px`, right: `${(photos.value.length - 1 - current.value) * DOT - 3.5}px` }))
 
 const photos = computed<PlacePhoto[]>(() => (props.media?.photos || []).filter(photo => !broken.value.has(photo.fingerprint)))
 const hasAmap = computed(() => photos.value.some(photo => photo.source !== 'manual'))
@@ -61,6 +66,7 @@ onBeforeUnmount(() => { viewer.value = null })
       </div>
       <div class="gallery-bar">
         <span>{{ current + 1 }} / {{ photos.length }}<template v-if="photos.length < 3"> · 公开图片较少</template></span>
+        <span v-if="photos.length > 1" class="gallery-dots" :data-ink-dir="dotDir" aria-hidden="true"><i v-for="photo in photos" :key="photo.fingerprint" /><b class="ink" :style="dotInk" /></span>
         <span class="gallery-nav">
           <button type="button" aria-label="上一张" :disabled="current === 0" @click="go(-1)"><PhCaretLeft :size="14" weight="bold" /></button>
           <button type="button" aria-label="下一张" :disabled="current >= photos.length - 1" @click="go(1)"><PhCaretRight :size="14" weight="bold" /></button>

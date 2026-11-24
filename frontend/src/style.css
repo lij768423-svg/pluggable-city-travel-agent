@@ -93,7 +93,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .trip-stats dd small { font-size: 12px; font-weight: 400; color: var(--faint); margin-left: 3px; }
 .trip-stats .check { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--accent); padding-bottom: 3px; }
 .trip-stats .check.bad { color: var(--bad); }
-.day-tabs { display: flex; gap: 2px; margin: 14px -4px 0; overflow-x: auto; scrollbar-width: none; }
+.day-tabs { position: relative; display: flex; gap: 2px; margin: 14px -4px 0; overflow-x: auto; scrollbar-width: none; }
 .day-tabs button {
   position: relative; padding: 8px 12px 10px; white-space: nowrap;
   font-weight: 600; color: var(--muted);
@@ -103,7 +103,8 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .route .leg .area-change { color: var(--accent); }
 .day-tabs button:hover { color: var(--text); }
 .day-tabs button.on { color: var(--accent); }
-.day-tabs button.on::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; background: var(--accent); border-radius: 2px; }
+/* 选中下划线是一条共用的 .ink，切换日期时从旧标签伸到新标签（motion.ts useInk） */
+.day-tabs > .ink { bottom: -1px; height: 2px; background: var(--accent); border-radius: 2px; }
 
 /* ── 逐站行程 ──────────────────────────────────────── */
 .route { position: relative; }
@@ -265,8 +266,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
     display: flex; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 1000;
     background: var(--text); border-radius: 999px; padding: 4px; box-shadow: 0 4px 16px #24252240;
   }
-  .mobile-switch button { color: #cecfcc; padding: 7px 18px; border-radius: 999px; font-size: 13px; }
-  .mobile-switch button.on { background: #fff; color: var(--text); font-weight: 600; }
+  .mobile-switch button { position: relative; z-index: 1; color: #cecfcc; padding: 7px 18px; border-radius: 999px; font-size: 13px; transition: color .2s; }
+  .mobile-switch button.on { color: var(--text); font-weight: 600; }
+  .mobile-switch > .ink { top: 4px; bottom: 4px; border-radius: 999px; background: #fff; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 :root { color-scheme: light; }
@@ -380,6 +382,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .gallery-caption { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); padding: 2px 8px; border-radius: 999px; background: #242522b3; color: #fff; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gallery-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .gallery-nav { display: flex; gap: 4px; }
+.gallery-dots { position: relative; display: inline-flex; align-items: center; gap: 9px; height: 12px; }
+.gallery-dots i { width: 5px; height: 5px; border-radius: 50%; background: #d3d4d0; }
+.gallery-dots .ink { top: 3.5px; bottom: 3.5px; border-radius: 999px; background: var(--text); }
 .gallery-nav button { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); }
 .gallery-nav button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .place-drawer-body .gallery-credit { margin-top: 2px; font-size: 11px; line-height: 1.6; color: var(--faint); }

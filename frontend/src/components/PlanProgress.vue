@@ -2,7 +2,8 @@
 import type { CityInfo } from '../api'
 import RevealText from './RevealText.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { PhArrowLeft, PhCheck, PhArrowClockwise, PhWarningCircle } from '@phosphor-icons/vue'
+import { PhArrowLeft, PhArrowClockwise, PhWarningCircle } from '@phosphor-icons/vue'
+import DrawCheck from './DrawCheck.vue'
 import { planStages as baseStages, type PlanProgressState } from '../planProgress'
 
 const props = defineProps<{ city: CityInfo; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null; queue?: { position: number; limit: number } | null }>()
@@ -173,7 +174,7 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
     <ol class="progress-steps">
       <li v-for="(stage, index) in planStages" :key="stage.id" :class="{ done: progress.completed.includes(stage.id), active: isActive(stage.id) }"
         :aria-current="progress.active === stage.id ? 'step' : undefined">
-        <span class="step-symbol" aria-hidden="true"><PhCheck v-if="progress.completed.includes(stage.id)" :size="14" weight="bold" /><span v-else-if="busy && isActive(stage.id)" class="step-pulse" /><span v-else>{{ String(index + 1).padStart(2, '0') }}</span></span>
+        <span class="step-symbol" aria-hidden="true"><DrawCheck v-if="progress.completed.includes(stage.id)" :size="14" :weight="2.4" /><span v-else-if="busy && isActive(stage.id)" class="step-pulse" /><span v-else>{{ String(index + 1).padStart(2, '0') }}</span></span>
         <div><h2>{{ stage.title }}</h2>
           <p v-if="busy && isActive(stage.id) && !progress.completed.includes(stage.id)" class="step-thinking"><span class="thinking-dots" aria-hidden="true"><i /><i /><i /></span>{{ stageLine(stage.id) }}</p>
           <p v-else>{{ progress.details[stage.id] || stage.description }}</p>
@@ -261,8 +262,9 @@ h1 { font-size: clamp(23px, 2.2vw, 29px); letter-spacing: -.04em; font-weight: 6
 .progress-caption strong { font-weight: 600; }
 .progress-caption > span { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .progress-segments { display: flex; gap: 5px; margin: 12px 0 20px; }
-.progress-segments i { flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background .3s; }
-.progress-segments i.done { background: var(--accent); }
+.progress-segments i { position: relative; overflow: hidden; flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background .3s; }
+.progress-segments i::after { content: ''; position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform var(--spring-soft-ms) var(--spring-soft); }
+.progress-segments i.done::after { transform: none; }
 .progress-segments i.active { background: #acadaa; }
 .progress-steps { display: grid; gap: 0; }
 .progress-steps li { position: relative; display: flex; gap: 13px; min-height: 54px; padding-bottom: 9px; color: var(--faint); }
@@ -294,5 +296,5 @@ h1 { font-size: clamp(23px, 2.2vw, 29px); letter-spacing: -.04em; font-weight: 6
   .generation-content { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #d4d5d2 transparent; padding: 0 12px 24px 4px; }
 }
 @media (max-width: 640px) { .plan-progress { display: flex; flex-direction: column; padding: 4px 0 30px; gap: 10px; } .generation-art { position: relative; top: auto; min-height: 0; width: 220px; margin: auto; } .generation-content { width: 100%; } h1 { margin-top: 12px; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, .generation-landscape * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after, .generation-landscape * { animation: none !important; transition: none !important; } }
 </style>

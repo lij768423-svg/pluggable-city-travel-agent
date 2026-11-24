@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { PhBus, PhCar, PhHouseLine, PhPersonSimpleWalk } from '@phosphor-icons/vue'
 import type { DayPlan, MealAlternative, PoiOption } from '../api'
 import PoiOptions from './PoiOptions.vue'
+import RollValue from './RollValue.vue'
 
 const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; selectedAlternativeId: number | null; openEnds?: boolean; editPlanId?: string | null; revision?: number | null }>()
 const emit = defineEmits<{ focus: [index: number]; details: [index: number]; focusAlternative: [index: number, alternative: MealAlternative]; detailsAlternative: [index: number, alternative: MealAlternative]; alternativesToggle: [index: number, open: boolean]; swapPoi: [index: number, option: PoiOption] }>()
@@ -29,7 +30,7 @@ const labels = computed(() => {
 <template>
   <ol v-if="day.items.length" class="route">
     <li class="endpoint">
-      <span class="t">{{ clock(day.items[0]!.start - day.items[0]!.travel_min) }}</span>
+      <span class="t"><RollValue :value="clock(day.items[0]!.start - day.items[0]!.travel_min)" /></span>
       <span class="dot home"><PhHouseLine :size="13" weight="bold" /></span>
       <span class="ep-text">{{ openEnds ? '从第一站开始（去这里的路程没算）' : `从 ${hotelName} 出发` }}</span>
     </li>
@@ -44,7 +45,7 @@ const labels = computed(() => {
       </li>
       <li :id="`stop-${day.day}-${i}`" class="stop" :class="[item.kind, { on: selectedIndex === i }]"
         tabindex="0" :aria-label="`在地图上定位${item.name}`" @click="emit('focus', i)" @keydown.enter.self="emit('focus', i)" @keydown.space.self.prevent="emit('focus', i)">
-        <span class="t">{{ item.start_hm }}<small>{{ item.end_hm }}</small></span>
+        <span class="t"><RollValue :value="item.start_hm" /><small><RollValue :value="item.end_hm" /></small></span>
         <span class="dot">{{ labels[i] }}</span>
         <div class="stop-body">
           <div class="stop-title">
@@ -77,7 +78,7 @@ const labels = computed(() => {
     </template>
     <li v-if="!openEnds" class="leg">返回起点 {{ day.return_travel_min }} 分钟 <span v-if="day.return_leg?.source === 'estimate'" class="source-note">估算</span></li>
     <li class="endpoint">
-      <span class="t">{{ clock(returnAt) }}</span>
+      <span class="t"><RollValue :value="clock(returnAt)" /></span>
       <span class="dot home"><PhHouseLine :size="13" weight="bold" /></span>
       <span class="ep-text">{{ openEnds ? '行程在这里结束（回去的路程没算）' : `回到 ${hotelName}` }}</span>
     </li>

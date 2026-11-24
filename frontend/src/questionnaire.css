@@ -25,13 +25,13 @@
 .qform-steps em { font-style: normal; }
 .qform-num { display: grid; place-items: center; height: 22px; width: 22px; flex-shrink: 0; border: 1px solid var(--line-strong); border-radius: 2px; font-size: 11px; font-family: var(--mono); }
 .qform-steps .active button { color: var(--text); font-weight: 600; }
-.qform-steps .active .qform-num { color: white; background: var(--accent); border-color: var(--accent); animation: qform-num-pop .26s cubic-bezier(.22, 1, .36, 1); }
+.qform-steps .active .qform-num { color: white; background: var(--accent); border-color: var(--accent); animation: qform-num-pop var(--spring-pop-ms) var(--spring-pop); }
 @keyframes qform-num-pop { from { transform: scale(.82); } }
 .qform-steps .complete .qform-num { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
 .qform-head { flex-shrink: 0; padding: 22px 30px 0; }
 .qform-head h2 { font-size: clamp(27px, 2.7vw, 34px); line-height: 1.3; font-weight: 650; letter-spacing: -.03em; outline: none; }
 .qform-track { height: 2px; background: #e9eae6; margin-top: 18px; }
-.qform-track span { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--accent); transition: transform .4s cubic-bezier(.22, 1, .36, 1); }
+.qform-track span { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--accent); transition: transform var(--spring-soft-ms) var(--spring-soft); }
 .qform-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; padding: 20px 30px 24px; }
 .qstep { min-width: 0; border: 0; padding: 0; margin: 0; display: grid; gap: 20px; }
 .qstep.entering { animation: question-arrive .28s ease-out both; }
@@ -279,6 +279,7 @@
 .plan-entry > .mode-switch { align-self: flex-start; }
 .plan-entry > .questionnaire.qform { flex: 1 1 auto; height: auto; min-height: 0; max-width: none; }
 .plan-entry > .qform-card { flex: 0 1 auto; max-height: none; min-height: 0; }
-.mode-switch { display: inline-flex; gap: 4px; padding: 3px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 6px; background: #ffffff; flex-shrink: 0; }
-.mode-switch button { font: inherit; font-size: 13px; padding: 6px 16px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
-.mode-switch button.on { background: #151613; color: #ffffff; }
+.mode-switch { position: relative; display: inline-flex; gap: 4px; padding: 3px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 6px; background: #ffffff; flex-shrink: 0; }
+.mode-switch button { position: relative; z-index: 1; font: inherit; font-size: 13px; padding: 6px 16px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; transition: color .2s; }
+.mode-switch button.on { color: #ffffff; }
+.mode-switch > .ink { top: 3px; bottom: 3px; border-radius: 4px; background: #151613; }

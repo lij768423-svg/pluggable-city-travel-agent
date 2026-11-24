@@ -1,0 +1,57 @@
+/* 共用动效（2026-11-23 第一批）：弹簧由 motion.ts 写进 :root；这里是不支持 linear() 时的兜底。
+   只在状态真的变化时动；系统开“减少动态效果”时全部直接到位（style.css 末尾的全局规则 + 下面的补充）。 */
+:root {
+  --spring-fade: cubic-bezier(.22, 1, .36, 1); --spring-fade-ms: 320ms;
+  --spring-settle: cubic-bezier(.22, 1, .36, 1); --spring-settle-ms: 450ms;
+  --spring-soft: cubic-bezier(.22, 1, .36, 1); --spring-soft-ms: 520ms;
+  --spring-lead: cubic-bezier(.22, 1, .36, 1); --spring-lead-ms: 300ms;
+  --spring-trail: cubic-bezier(.22, 1, .36, 1); --spring-trail-ms: 520ms;
+  --spring-pop: cubic-bezier(.34, 1.56, .64, 1); --spring-pop-ms: 380ms;
+  --spring-roll: cubic-bezier(.22, 1, .36, 1); --spring-roll-ms: 450ms;
+}
+
+/* 伸缩高亮（日期标签、规划方式、手机端行程/地图、相册页码） */
+.ink { position: absolute; left: 0; right: 100%; pointer-events: none;
+  transition: left var(--spring-trail-ms) var(--spring-trail), right var(--spring-lead-ms) var(--spring-lead); }
+[data-ink-dir=left] > .ink { transition: left var(--spring-lead-ms) var(--spring-lead), right var(--spring-trail-ms) var(--spring-trail); }
+.ink-instant > .ink { transition: none !important; }
+
+/* 逐位翻动：只翻变了的那几位，新值从下面上来（数变小时从上面下来） */
+.roll { display: inline; border-radius: 2px; }
+.roll-face { white-space: pre; }
+.roll-col { display: inline-grid; clip-path: inset(0 -2px); }
+.roll-col > span { grid-area: 1 / 1; }
+.roll-in { animation: roll-in var(--spring-roll-ms) var(--spring-roll) var(--roll-delay, 0ms) both; }
+.roll-out { opacity: 0; user-select: none; animation: roll-out var(--spring-roll-ms) var(--spring-roll) var(--roll-delay, 0ms) both; }
+.roll-col[data-dir=down] { --roll-from: -100%; --roll-to: 100%; }
+.roll-col.grow { animation: roll-grow var(--spring-settle-ms) var(--spring-settle) var(--roll-delay, 0ms) both; }
+.roll-col.shrink { animation: roll-shrink var(--spring-settle-ms) var(--spring-settle) var(--roll-delay, 0ms) both; }
+.roll-flash { animation: roll-flash 1.8s ease-out both; }
+@keyframes roll-in { from { opacity: 0; transform: translateY(var(--roll-from, 100%)); } to { opacity: 1; transform: none; } }
+@keyframes roll-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(var(--roll-to, -100%)); } }
+@keyframes roll-grow { from { max-width: 0; } to { max-width: 1.6em; } }
+@keyframes roll-shrink { from { max-width: 1.6em; } to { max-width: 0; } }
+@keyframes roll-flash { from { background-color: #e8e9e4; } to { background-color: transparent; } }
+
+/* 自己画出来的勾 */
+.draw-check { display: block; overflow: visible; animation: check-pop var(--spring-pop-ms) var(--spring-pop) both; }
+.draw-check path { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: check-draw .3s cubic-bezier(.65, 0, .35, 1) 60ms forwards; }
+@keyframes check-draw { to { stroke-dashoffset: 0; } }
+@keyframes check-pop { from { transform: scale(.55); } }
+
+/* 复制按钮：复制图标转开，勾弹进来，“已”字滚进来 */
+.copy-btn .copy-glyph { display: inline-grid; width: 16px; height: 16px; }
+.copy-btn .copy-glyph > * { grid-area: 1 / 1; }
+.copy-glyph-copy { transition: transform var(--spring-settle-ms) var(--spring-settle), opacity .18s ease; }
+.copy-btn.copied .copy-glyph-copy { transform: scale(.4) rotate(-40deg); opacity: 0; }
+
+/* 数字步进：到头时按钮朝按的方向轻推一下 */
+.num-stepper .kick { animation: stepper-kick .36s ease-out; }
+.num-stepper .kick-left { --kick: -3px; }
+@keyframes stepper-kick { 30% { transform: translateX(var(--kick, 3px)); } 65% { transform: translateX(calc(var(--kick, 3px) * -.45)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .draw-check, .draw-check path, .roll-col, .roll-col > span, .roll-flash { animation: none !important; }
+  .draw-check path { stroke-dashoffset: 0; }
+  .roll-out { display: none; }
+}
