@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Lodging, LodgingHotel } from '../api'
+import { vExpand } from '../motion'
 
 const props = defineProps<{ lodging: Lodging; canReplan: boolean; busyId: string | null; error: string }>()
 const emit = defineEmits<{ replan: [hotel: LodgingHotel] }>()
@@ -24,7 +25,7 @@ const distance = (meters: number) => meters < 1000 ? `${Math.round(meters / 10) 
 </script>
 
 <template>
-  <details class="lodging-card">
+  <details v-expand class="lodging-card">
     <summary>
       <span v-if="chosen" class="lodging-title"><span>已按<b>{{ chosen.name }}</b>重新规划</span></span>
       <span v-else class="lodging-title"><span>还没定住处？住在<b>{{ area }}</b>更顺路</span></span>
@@ -74,7 +75,7 @@ const distance = (meters: number) => meters < 1000 ? `${Math.round(meters / 10) 
 .lodging-title { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
 .lodging-title b { font-weight: 700; margin: 0 2px; }
 .lodging-title::after { content: '展开'; font-weight: 400; color: var(--accent); white-space: nowrap; }
-.lodging-card[open] .lodging-title::after { content: '收起'; }
+.lodging-card[open]:not([data-expanding=close]) .lodging-title::after { content: '收起'; }
 .lodging-line { font-size: 12px; color: var(--muted); }
 .lodging-days { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
 .lodging-days li { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: var(--accent-soft); color: var(--muted); font-family: var(--mono); }

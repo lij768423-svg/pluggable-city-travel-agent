@@ -3,7 +3,8 @@ import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted
 import { PhArrowLeft, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
 import RollValue from './components/RollValue.vue'
 import DrawCheck from './components/DrawCheck.vue'
-import { useInk } from './motion'
+import CostBar from './components/CostBar.vue'
+import { useInk, vExpand } from './motion'
 import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, previewPoi, commitPoi, previewPace, commitPace, type PoiOption, revertPlan, postLodgingReplan, type LodgingHotel, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
 import PlanConfirm from './components/PlanConfirm.vue'
@@ -62,6 +63,7 @@ const historyBusy = ref(false)
 const historyAfterLogin = ref(false)
 const initialRequest = ref<PlanRequest | null>(null)
 const outputText = ref('')
+const outputStatic = ref(0)  // 这个位置之前是分隔行或缓存的回答，不逐词浮现
 let identityRevision = 0
 let outputTag = ''
 // 模型思考中：只显示状态与字数，不显示思考内容；waiting = 已发出请求、还没收到任何片段
@@ -704,7 +706,7 @@ async function run(req: PlanRequest) {
   if (meta.value?.access?.login_to_plan && !user.value) { pendingRequest.value = req; openAuth('登录后就能生成行程，已填的条件会保留。'); return }
   loading.value = true
   historyOpen.value = false
-  outputText.value = ''; outputTag = ''; outputAttempt = 0; modelThinking.value = null; thinkText.value = ''
+  outputText.value = ''; outputStatic.value = 0; outputTag = ''; outputAttempt = 0; modelThinking.value = null; thinkText.value = ''
   progressVisible.value = true
   planProgress.value = emptyProgress()
   planQueue.value = null
@@ -730,8 +732,10 @@ async function run(req: PlanRequest) {
         if (event.tag !== outputTag || event.attempt !== outputAttempt || event.source === 'cache') {
           outputText.value += `\n\n—— ${event.tag} · ${event.source === 'cache' ? '已缓存的回答' : `实时回答${event.attempt > 1 ? ` · 第 ${event.attempt} 次尝试` : ''}`} ——\n`
           outputTag = event.tag; outputAttempt = event.attempt; thinkText.value = ''
+          outputStatic.value = outputText.value.length
         }
         outputText.value = (outputText.value + event.text).slice(-32000)
+        if (event.source === 'cache') outputStatic.value = outputText.value.length
         if (event.think) thinkText.value = (thinkText.value + event.think).slice(-THINK_WINDOW)
         if (event.source === 'live' && (event.phase === 'waiting' || event.phase === 'thinking') && !event.text) {
           const waiting = event.phase === 'waiting'
@@ -932,6 +936,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
             {{ plan.report.passed ? (plan.report.experience_status === 'complete' ? '已知时间与预算可行' : '仍有待完善项') : `${plan.report.violations.filter(v => v.severity === 'hard').length} 处冲突` }}
           </div>
         </dl>
+        <CostBar :key="planScope" :totals="plan.report.totals" :budget="plan.profile.budget" :scope="planScope" :estimated-transport="plan.meta.travel?.source !== 'amap'" />
         <p class="quality-line" :class="{ 'needs-attention': plan.report.experience_status !== 'complete' }">
           {{ plan.report.experience_status === 'complete' ? '用餐与活动安排完整' : '行程仍有待完善项，请查看每日提示' }}
           <span>· {{ plan.report.data_status === 'partial' ? '开放、价格等信息仍需确认' : '已核验数据完整' }}</span>
@@ -945,7 +950,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       </div>
 
       <div ref="scroller" class="panel-scroll" :class="{ 'progress-scroll': progressVisible }">
-        <PlanProgress :city="draftCity" v-if="progressVisible" :progress="planProgress" :elapsed="elapsed" :error="error" :busy="loading" :output="outputText" :think="thinkText" :thinking="modelThinking" :queue="planQueue" @back="leaveProgress" @retry="lastRequest && run(lastRequest)" />
+        <PlanProgress :city="draftCity" v-if="progressVisible" :progress="planProgress" :elapsed="elapsed" :error="error" :busy="loading" :output="outputText" :output-static="outputStatic" :think="thinkText" :thinking="modelThinking" :queue="planQueue" @back="leaveProgress" @retry="lastRequest && run(lastRequest)" />
         <p v-if="error && !progressVisible" class="notice bad" role="alert"><PhWarningCircle :size="16" />{{ error }}</p>
 
         <section v-show="showForm && !progressVisible" class="form-wrap">
@@ -978,7 +983,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
             <span>{{ slot.inside_poi_id != null ? '园内' : '预留' }}{{ slot.meal === 'lunch' ? '午餐' : '晚餐' }}尚待确认</span>
             <button v-if="plan.plan_id && !plan.history_readonly" type="button" @click="requestSelfMeal(slot.meal, slot.estimated_cost || 60)">我自行安排这餐 ↗</button>
           </div>
-          <details class="report-block">
+          <details v-expand class="report-block">
             <summary>费用明细与校验详情</summary>
             <ReportPanel :plan="plan" />
           </details>

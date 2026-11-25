@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { getPoiOptions, type PoiOption } from '../api'
+import { vExpand } from '../motion'
 
 const props = defineProps<{ planId: string; day: number; itemIndex: number }>()
 const emit = defineEmits<{ choose: [option: PoiOption] }>()
@@ -24,8 +25,9 @@ const hours = (option: PoiOption) => option.min_hours === option.max_hours ? `${
 </script>
 
 <template>
-  <details class="meal-alternatives poi-options" @click.stop @keydown.enter.stop @keydown.space.stop @toggle="toggled(($event.target as HTMLDetailsElement).open)">
+  <details v-expand class="meal-alternatives poi-options" @click.stop @keydown.enter.stop @keydown.space.stop @toggle="toggled(($event.target as HTMLDetailsElement).open)">
     <summary>换一个景点 <small>· 从这份行程的候选里选</small></summary>
+    <div class="expand-body">
     <p v-if="loading" class="field-help" role="status">正在读取备选…</p>
     <p v-else-if="error" class="field-help budget-error" role="alert">{{ error }}</p>
     <p v-else-if="options && !options.length" class="field-help">这一站暂时没有能换的候选。</p>
@@ -41,5 +43,6 @@ const hours = (option: PoiOption) => option.min_hours === option.max_hours ? `${
       </div>
       <p class="field-help">换之前先重算当天路线与时间，确认后才更新，其他日期不变，可撤销。</p>
     </template>
+    </div>
   </details>
 </template>

@@ -5,6 +5,7 @@ import { PhX, PhStar, PhClock, PhUsers, PhMapPin, PhArrowsClockwise } from '@pho
 import type { PlaceDetail, PlaceMedia, PlanItem } from '../api'
 import { localQueryDate } from '../api'
 import PhotoGallery from './PhotoGallery.vue'
+import { vExpand } from '../motion'
 
 const props = defineProps<{ open: boolean; item: PlanItem | null; detail: PlaceDetail | null; loading: boolean; media: PlaceMedia | null; mediaLoading: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean]; swap: [] }>()
@@ -41,7 +42,7 @@ const notices = computed(() => [...new Set([...(props.item?.notices || []), ...(
               <p v-if="guide.queue_note" class="field-help">{{ guide.queue_note }}</p>
               <p v-if="guide.season_note" class="field-help">{{ guide.season_note }}</p>
               <p class="field-help">{{ guide.publisher }} · {{ guide.source_date || '发布日期未注明' }}</p>
-              <details><summary>来源与使用说明</summary><p class="field-help">{{ guide.attribution }}</p><p v-for="note in guide.caveats" :key="note" class="field-help">{{ note }}</p></details>
+              <details v-expand><summary>来源与使用说明</summary><p class="field-help">{{ guide.attribution }}</p><p v-for="note in guide.caveats" :key="note" class="field-help">{{ note }}</p></details>
             </article>
           </section>
           <section v-if="detail?.highlights.length"><h3>{{ item?.kind === 'meal' ? '到店前参考' : '推荐看点与逛法' }}</h3><ul><li v-for="highlight in detail.highlights" :key="highlight">{{ highlight }}</li></ul></section>

@@ -4,9 +4,11 @@ import RevealText from './RevealText.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { PhArrowLeft, PhArrowClockwise, PhWarningCircle } from '@phosphor-icons/vue'
 import DrawCheck from './DrawCheck.vue'
+import StreamText from './StreamText.vue'
+import { expandHooks } from '../motion'
 import { planStages as baseStages, type PlanProgressState } from '../planProgress'
 
-const props = defineProps<{ city: CityInfo; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null; queue?: { position: number; limit: number } | null }>()
+const props = defineProps<{ city: CityInfo; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; outputStatic?: number; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null; queue?: { position: number; limit: number } | null }>()
 const planStages = computed(() => baseStages.map(stage => ({ ...stage,
   title: stage.id === 'finalize' ? `整理你的${props.city.brand}` : stage.title,
   description: stage.id === 'retrieve' ? `从${props.city.name}地点库召回符合条件的候选` : stage.description,
@@ -186,12 +188,12 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
     <p v-else class="progress-note"><time>已用时 {{ clock }}</time>{{ elapsed >= 60 ? '这一步仍在处理，模型选点或交通查询可能需要更久。' : '进度随实际执行更新，当前步骤完成后继续。' }}<span v-if="progress.round > 0">已进行 {{ progress.round }} 轮自动调整。</span></p>
     <div v-if="error" class="progress-actions"><button type="button" class="progress-retry" @click="emit('retry')"><PhArrowClockwise :size="16" />重新尝试</button></div>
     <button type="button" class="output-toggle" :aria-expanded="expanded" aria-controls="generation-output" @click="expanded = !expanded">{{ expanded ? '收起实时输出 −' : '展开实时输出 +' }}<span>模型回答与执行记录</span></button>
-    <section v-if="expanded" id="generation-output" class="generation-output"><p>回答随实际生成显示；复用内容会标记为缓存。思考过程只在生成期间展示最近一段，不写入行程。</p>
+    <Transition :css="false" v-bind="expandHooks"><section v-if="expanded" id="generation-output" class="generation-output"><p>回答随实际生成显示；复用内容会标记为缓存。思考过程只在生成期间展示最近一段，不写入行程。</p>
       <div v-if="think" class="think-block">
         <span class="think-label">思考过程 · 只保留最近一段</span>
         <div ref="thinkPane" class="think-scroll" tabindex="0" aria-label="模型思考过程"><pre>{{ think }}</pre></div>
       </div>
-      <div ref="outputPane" class="output-scroll" tabindex="0" aria-label="实时模型回答"><pre>{{ output || (thinkingLine ? '' : '暂时没有模型回答。规则选点时不产生模型输出；当前执行进度见上方。') }}</pre><p v-if="thinkingLine" class="thinking-line" role="status"><span class="thinking-dots" aria-hidden="true"><i /><i /><i /></span>{{ thinkingLine }}，正式回答会随后出现</p></div><ul class="execution-records"><li v-for="stage in planStages.filter(item => progress.details[item.id])" :key="stage.id"><strong>{{ stage.title }}</strong>{{ progress.details[stage.id] }}</li><li v-if="progress.details.repair">{{ progress.details.repair }}</li><li v-if="progress.details.refine">{{ progress.details.refine }}</li></ul></section>
+      <div ref="outputPane" class="output-scroll" tabindex="0" aria-label="实时模型回答"><StreamText v-if="output" :text="output" :static-until="outputStatic ?? 0" /><pre v-else>{{ thinkingLine ? '' : '暂时没有模型回答。规则选点时不产生模型输出；当前执行进度见上方。' }}</pre><p v-if="thinkingLine" class="thinking-line" role="status"><span class="thinking-dots" aria-hidden="true"><i /><i /><i /></span>{{ thinkingLine }}，正式回答会随后出现</p></div><ul class="execution-records"><li v-for="stage in planStages.filter(item => progress.details[item.id])" :key="stage.id"><strong>{{ stage.title }}</strong>{{ progress.details[stage.id] }}</li><li v-if="progress.details.repair">{{ progress.details.repair }}</li><li v-if="progress.details.refine">{{ progress.details.refine }}</li></ul></section></Transition>
     </div>
   </section>
 </template>

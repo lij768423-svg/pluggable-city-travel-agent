@@ -159,7 +159,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .report-block > summary { list-style: none; cursor: pointer; padding: 12px 0; font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; }
 .report-block > summary::-webkit-details-marker { display: none; }
 .report-block > summary::after { content: '展开'; font-weight: 400; color: var(--accent); }
-.report-block[open] > summary::after { content: '收起'; }
+.report-block[open]:not([data-expanding=close]) > summary::after { content: '收起'; }
 .report h4 { font-size: 13px; margin: 16px 0 6px; }
 .report p { font-size: 13px; }
 .cost-table { width: 100%; border-collapse: collapse; font-size: 13px; }

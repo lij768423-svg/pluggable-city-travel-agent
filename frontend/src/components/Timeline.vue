@@ -4,6 +4,7 @@ import { PhBus, PhCar, PhHouseLine, PhPersonSimpleWalk } from '@phosphor-icons/v
 import type { DayPlan, MealAlternative, PoiOption } from '../api'
 import PoiOptions from './PoiOptions.vue'
 import RollValue from './RollValue.vue'
+import { vExpand } from '../motion'
 
 const props = defineProps<{ day: DayPlan; hotelName: string; selectedIndex: number | null; selectedAlternativeId: number | null; openEnds?: boolean; editPlanId?: string | null; revision?: number | null }>()
 const emit = defineEmits<{ focus: [index: number]; details: [index: number]; focusAlternative: [index: number, alternative: MealAlternative]; detailsAlternative: [index: number, alternative: MealAlternative]; alternativesToggle: [index: number, open: boolean]; swapPoi: [index: number, option: PoiOption] }>()
@@ -58,7 +59,7 @@ const labels = computed(() => {
             {{ slot.reason }}<br>预留预算 ¥{{ slot.estimated_cost?.toFixed(0) }} / 人，已计入合计，非商户报价。
           </div>
           <div class="stop-actions"><span>{{ selectedIndex === i ? '已在地图定位' : '点击此项定位地图' }}</span><button type="button" :aria-label="`查看${item.name}详情`" @click.stop="emit('details', i)">查看详情 <span aria-hidden="true">↗</span></button></div>
-          <details v-if="item.alternatives?.length" :id="`alts-${day.day}-${i}`" class="meal-alternatives" @click.stop @keydown.enter.stop @keydown.space.stop
+          <details v-if="item.alternatives?.length" v-expand :id="`alts-${day.day}-${i}`" class="meal-alternatives" @click.stop @keydown.enter.stop @keydown.space.stop
             @toggle="emit('alternativesToggle', i, ($event.target as HTMLDetailsElement).open)">
             <summary>另外 {{ item.alternatives.length }} 家备选 <small>· 展开可在地图比较</small></summary>
             <div v-for="(alternative, n) in item.alternatives" :id="`alt-${day.day}-${i}-${alternative.ref_id}`" :key="alternative.ref_id" class="meal-alternative" :class="{ on: selectedAlternativeId === alternative.ref_id }">
