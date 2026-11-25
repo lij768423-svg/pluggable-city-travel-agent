@@ -1,6 +1,6 @@
 /* 「自己选」问卷：左边选项、右边行程票（2026-11-25 用户选定“行程票”布局）。
    选项用浅灰底、不描边，按文字宽度排；选中为墨色。红色只用在当前步骤、滑杆指针和出错。弹簧见 motion.css。 */
-.questionnaire-view { --fill: #f2f3f0; --fill-strong: #e8e9e4; }
+:is(.questionnaire-view, .landing-view) { --fill: #f2f3f0; --fill-strong: #e8e9e4; }
 
 /* 顶部一行：更换目的地、规划方式 */
 .questionnaire-view .panel-bar { height: 52px; gap: 16px; padding: 14px max(32px, calc((100vw - 1180px) / 2 + 32px)) 0; }
@@ -108,6 +108,18 @@
 .ticket-stub { position: relative; padding: 18px 22px 20px; border-radius: 0 0 16px 16px; transform-origin: 6% 0; transition: transform var(--spring-settle-ms) var(--spring-settle); -webkit-mask: radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat; }
 .ticket-stub::before { content: ''; position: absolute; top: 0; left: 20px; right: 20px; border-top: 2px dashed var(--ticket-line); }
 .ticket.tearing .ticket-stub { transform: translateY(9px) rotate(1.6deg); }
+/* 选城页 ⇄ 问卷页（departure.ts 的 swap）：票原地不动，只换左边。--swap-dir 为 1 是进城，-1 是回来换城 */
+.swap-sheet * { animation: none !important; transition: none !important; }
+.swap-sheet { position: fixed; inset: 0; z-index: 55; overflow: hidden; pointer-events: none; }
+.swap-left { position: absolute !important; display: block !important; will-change: transform, opacity; }
+.swap-left > * { width: 100%; height: 100%; margin: 0 !important; }
+[data-swap] .form-wrap { animation: none; }
+[data-swap=run] :is(.tchat-main, .tform-head, .landing-main) { animation: swap-in var(--spring-settle-ms) var(--spring-settle) .19s both; }
+[data-swap=run] .tstep.entering { --from: calc(var(--swap-dir) * 44px) !important; animation-delay: .25s; }
+[data-swap=run] .form-wrap > .notice[role=status] { display: none; }
+[data-swap=run] .panel-bar { animation: expand-in .4s ease-out .1s both; }
+@keyframes swap-in { from { opacity: 0; transform: translateX(calc(var(--swap-dir) * 44px)); } }
+
 /* 选好 → 开始计算（departure.ts）：盖在上面的几层副本，第一帧要和切走前一样，所以里面一律不播动画 */
 .departure-sheet { position: fixed; inset: 0; z-index: 55; overflow: hidden; pointer-events: none; will-change: opacity; }
 .departure-left, .departure-bar { position: absolute !important; display: block !important; will-change: transform, opacity; }
@@ -122,9 +134,13 @@
 .ticket-peek { display: none; }
 .ticket-art { position: relative; height: clamp(140px, 27vh, 250px); overflow: hidden; background: linear-gradient(#f2f3f3, #f9f9f9); }
 .ticket-art :is(img, canvas) { position: absolute; right: -14px; bottom: -14%; height: 118%; max-width: none; mix-blend-mode: multiply; -webkit-mask-image: linear-gradient(to right, transparent 6%, #000 38%); mask-image: linear-gradient(to right, transparent 6%, #000 38%); transform: translate(var(--ticket-px, 0), var(--ticket-py, 0)); transition: transform .5s cubic-bezier(.2, .8, .2, 1), opacity .5s ease; }
+.ticket-art > .photo { right: -60px; bottom: 0; height: 104%; filter: grayscale(1) brightness(1.22); }
+.ticket-art > .ticket-mark { position: absolute; right: 30px; top: 50%; width: 132px; height: 132px; margin-top: -66px; }
+.ticket-mark rect { display: none; }
+.ticket-mark circle:first-of-type { stroke-width: .5; }
 .ticket-city { position: absolute; left: 22px; bottom: 18px; margin: 0; }
 .ticket-city b { display: block; font-size: 52px; line-height: 1; font-weight: 650; letter-spacing: -.04em; color: var(--ticket-ink); }
-.ticket-city span { display: block; margin-top: 10px; font-family: 'Geist Mono Variable', 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: .08em; color: var(--ticket-muted); }
+.ticket-city > span { display: block; margin-top: 10px; font-family: 'Geist Mono Variable', 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: .08em; color: var(--ticket-muted); }
 .ticket-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 16px 22px 18px; margin: 0; color: var(--ticket-ink); }
 .ticket-grid > div { min-width: 0; }
 .ticket-grid .span-2 { grid-column: span 2; }
@@ -329,4 +345,4 @@ dd.long button.ticket-value { display: -webkit-box; -webkit-line-clamp: 2; -webk
   .tlabel { flex-wrap: wrap; }
 }
 /* 矮手机：展开的票不超过一屏 */
-@media (max-width: 900px) and (max-height: 720px) { .ticket-art { height: 84px; } .ticket-city { bottom: 12px; } .ticket-city b { font-size: 32px; } .ticket-city span { margin-top: 6px; } }
+@media (max-width: 900px) and (max-height: 720px) { .ticket-art { height: 84px; } .ticket-city { bottom: 12px; } .ticket-city b { font-size: 32px; } .ticket-city > span { margin-top: 6px; } }

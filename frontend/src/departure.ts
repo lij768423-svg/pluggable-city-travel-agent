@@ -25,7 +25,9 @@ function copy(el: HTMLElement): HTMLElement {
   // 复制出来的 img 会晚一帧才有图；换成画布，当场画好
   const pictures = el.querySelectorAll('img')
   node.querySelectorAll('img').forEach((image, index) => {
-    image.replaceWith(paint(pictures[index]!, image))
+    const picture = pictures[index]!
+    if (picture.offsetWidth && picture.naturalWidth) image.replaceWith(paint(picture, image))
+    else image.remove()  // 没显示或还没取到的图不用画
   })
   return node
 }
@@ -156,3 +158,75 @@ export async function playDeparture({ form, ticket, stub, main, left, boxes, bar
   await new Promise<void>(resolve => { requestAnimationFrame(() => resolve()); setTimeout(resolve, 100) })
   for (const el of pieces) el.remove()
 }
+
+// 选城页 ⇄ 问卷页：票原地不动，只换左边。左边的旧内容用副本滑走；票不盖副本（两份阴影会叠黑、两份字会重影），
+// 真票当帧就在原位，只让变了的那几处（格子里的值、条码、一行小字、按钮）从旧的样子动到新的样子
+interface Face { cells: Map<string, string>; note: string; ground: string; dim: string; bars: string[]; tilt: string }
+export interface Swap { sheet: HTMLElement; frame: HTMLElement; face: Face | null; scroll: number }
+const visible = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)].find(el => el.offsetParent)
+const visibleTicket = () => { const ticket = visible('.tform .ticket, .landing-form .ticket'); return ticket && ticket.offsetHeight > 240 ? ticket : null }
+const cellsOf = (ticket: HTMLElement) => [...ticket.querySelectorAll<HTMLElement>('.ticket-grid > div')].map(cell => ({ label: cell.querySelector('dt')?.textContent ?? '', value: cell.querySelector<HTMLElement>('dd') }))
+const barsOf = (ticket: HTMLElement) => [...ticket.querySelectorAll<HTMLElement>('.ticket-code i')]
+function faceOf(ticket: HTMLElement): Face {
+  const go = ticket.querySelector<HTMLElement>('.ticket-go')
+  return {
+    cells: new Map(cellsOf(ticket).map(({ label, value }) => [label, value?.textContent ?? ''])),
+    note: ticket.querySelector('.ticket-note')?.textContent ?? '',
+    ground: go ? getComputedStyle(go).backgroundColor : '',
+    dim: go ? getComputedStyle(go).opacity : '',
+    bars: barsOf(ticket).map(bar => bar.style.width),
+    tilt: getComputedStyle(ticket).transform,
+  }
+}
+export function captureSwap(): Swap | null {
+  if (reducedMotion()) return null
+  const form = visible('.tform, .landing-form')
+  const left = form?.querySelector<HTMLElement>(':scope > .landing-main, :scope > .tform-left, :scope > .tchat-main')
+  if (!form || !left) return null
+  const top = document.querySelector('.journey-bar')?.getBoundingClientRect().bottom ?? 0
+  const sheet = layer('questionnaire-view landing swap-sheet')
+  Object.assign(sheet.style, { top: `${top}px`, background: 'none' })
+  const frame = layer(`${form.className.replace(/\bmode-\S+/g, '')} swap-left`, left.getBoundingClientRect(), top)
+  for (const { name, value } of form.attributes) if (name.startsWith('data-v-')) frame.setAttribute(name, value)
+  frame.append(copy(left))
+  sheet.append(frame)
+  const ticket = visibleTicket()
+  return { sheet, frame, face: ticket && faceOf(ticket), scroll: scrolled(left).scrollTop }
+}
+
+// 真票从旧的样子动到新的样子：没变的不动，变了的字当帧换掉、往上滑几像素到位，不留空白，也只有一份
+function settleFace(ticket: HTMLElement, face: Face) {
+  const spring = 'cubic-bezier(.16, 1, .3, 1)'
+  const rise = (el: Element | null | undefined, delay: number) => el?.animate([{ opacity: .4, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, delay, easing: spring, fill: 'backwards' })
+  let at = 0
+  for (const { label, value } of cellsOf(ticket)) if (value && (value.textContent ?? '') !== face.cells.get(label)) rise(value, at++ * 14)
+  const note = ticket.querySelector('.ticket-note')
+  if (note && (note.textContent ?? '') !== face.note) rise(note, 0)
+  barsOf(ticket).forEach((bar, index) => { const from = face.bars[index]; if (from && from !== bar.style.width) bar.animate([{ width: from }, { width: bar.style.width }], { duration: 420, easing: spring }) })
+  const go = ticket.querySelector<HTMLElement>('.ticket-go')
+  if (go) {
+    const { backgroundColor, opacity } = getComputedStyle(go)
+    if (backgroundColor !== face.ground || opacity !== face.dim) go.animate([{ backgroundColor: face.ground, opacity: face.dim }, { backgroundColor, opacity }], { duration: 220, easing: 'ease-out' })
+  }
+  if (face.tilt !== 'none' && face.tilt !== getComputedStyle(ticket).transform) ticket.animate([{ transform: face.tilt }, { transform: 'none' }], { duration: 420, easing: spring })
+}
+
+// dir：1 进城，-1 回来换城。在页面已经切过去、还没画出来的时候调用
+export async function playSwap({ sheet, frame, face, scroll }: Swap, dir: 1 | -1) {
+  const shell = document.querySelector<HTMLElement>('.journey-shell')
+  if (!shell) return
+  const left = frame.firstElementChild as HTMLElement
+  shell.style.setProperty('--swap-dir', String(dir))
+  shell.dataset.swap = 'run'
+  document.body.append(sheet)
+  scrolled(left).scrollTop = scroll
+  const ticket = visibleTicket()
+  if (ticket && face) settleFace(ticket, face)
+  setTimeout(() => sheet.remove(), 2000)
+  setTimeout(() => { if (shell.dataset.swap) shell.dataset.swap = 'rest' }, 1000)
+  await new Promise<void>(resolve => { requestAnimationFrame(() => requestAnimationFrame(() => resolve())); setTimeout(resolve, 250) })
+  await Promise.allSettled([frame.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${dir * -32}px)`, opacity: 0 }], { duration: 170, easing: 'ease-out', fill: 'forwards' }).finished])
+  sheet.remove()
+}
+// 离开问卷页（开始规划等）后清掉，下次回到问卷照常播进场
+export function clearSwap() { delete document.querySelector<HTMLElement>('.journey-shell')?.dataset.swap }

@@ -1,8 +1,7 @@
 /* 中性目的地入口：城市并列，选中后再展开城市问卷。 */
 .journey-shell { position: relative; overflow: hidden; }
 .journey-bar { position: relative; z-index: 20; }
-.destination-page { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 3; overflow: hidden auto; overscroll-behavior: contain; background: #f5f7fb; color: #202b41; }
-.destination-error { padding-top: 18px; text-align: center; color: #a34d4d; font-size: 13px; }
+.destination-page { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 3; overflow: hidden auto; overscroll-behavior: contain; }
 .destination-transit { position: absolute; inset: var(--journey-bar-height) 0 0; z-index: 15; display: grid; place-content: center; justify-items: center; gap: 18px; pointer-events: none; background: #fff; animation: destination-transit .62s cubic-bezier(.4,0,.2,1) both; }
 .destination-transit .journey-mark { width: 48px; height: 48px; animation: destination-needle .62s cubic-bezier(.4,0,.2,1) both; }
 /* 2026-10-24 灰白科技风：墨色城市名、红色细线从左画满、等宽小字（启动页沿用预载画面的字体，接替时不变） */
@@ -60,18 +59,11 @@ img[data-fade].is-loaded { opacity: 1; }
 .preview-content > :not(.confirm-swap):not(.self-cost-field), .navigation-instructions { animation: fade-in .35s ease-out both; }
 @keyframes destination-needle { from { transform: rotate(-20deg) scale(.88); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  /* 选城页螺旋卡片（.helix-node）靠 transform 摆到 --helix-x/--helix-y；减少动态效果时 JS 只停转、仍逐张定位，
-     所以不清它的 transform，否则 12 张卡片全叠在舞台左上角。:where() 让选择器优先级与原来相同。 */
-  .destination-page *:where(:not(.helix-node)), .destination-page *::before, .destination-page *::after, .destination-transit, .destination-transit *, .destination-page-enter-active, .destination-page-leave-active, .journey-reveal-enter-active, .journey-reveal-leave-active, .city-scenery-enter-active *, .brand-copy-enter-active, .brand-copy-leave-active { animation: none !important; transition: none !important; transform: none !important; }
-  .destination-page .helix-node { animation: none !important; transition: none !important; }
+  .destination-page *, .destination-page *::before, .destination-page *::after, .destination-transit, .destination-transit *, .destination-page-enter-active, .destination-page-leave-active, .journey-reveal-enter-active, .journey-reveal-leave-active, .city-scenery-enter-active *, .brand-copy-enter-active, .brand-copy-leave-active { animation: none !important; transition: none !important; transform: none !important; }
 }
 
 .brand-name { font: inherit; }
 .destination-boot { animation: none; }
 
-/* 选城页用 ljj-helix.css（ljj.world 项目页样式副本）；这里只补外层底色与报错位置。 */
-.destination-page.ljj-scope { background: var(--bg); }
-/* 2026-10-23 用户要求选城页整页纯白、去掉顶栏与螺旋区之间的色差：顶栏、外壳、启动过场与螺旋底色统一为 #fff（40px 网格线保留） */
-.journey-shell.landing-view, .journey-shell.landing-view .journey-bar, .destination-boot { background: #fff; }
-.destination-page.ljj-scope { --bg: #fff; }
-.ljj-scope > .destination-error { position: absolute; z-index: 60; left: 0; right: 0; bottom: 18px; }
+/* 启动过场纯白（2026-10-23 用户）；选城页和问卷页用同一张网格底（questionnaire.css） */
+.journey-shell.landing-view .journey-bar, .destination-boot { background: #fff; }

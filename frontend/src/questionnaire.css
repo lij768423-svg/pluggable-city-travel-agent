@@ -1,4 +1,4 @@
-.questionnaire-view {
+.questionnaire-view, .landing-view {
   /* 2026-10-23 灰白科技风，与选城页统一：墨色主色、暖灰线条，红色只做细小强调 */
   --accent: #151613;
   --accent-soft: #f3f4f1;
@@ -16,7 +16,9 @@
 .questionnaire-view .journey-fullscreen.app { position: relative; z-index: 1; display: grid; overflow: hidden; background: transparent; }
 .questionnaire-view .journey-fullscreen .panel { min-height: 0; overflow: hidden; }
 .questionnaire-view .panel-scroll { display: flex; min-height: 0; overflow: hidden; padding: clamp(14px, 2.5vh, 28px) 28px; }
-.questionnaire-view .form-wrap { width: 100%; min-height: 0; display: flex; }
+.questionnaire-view .form-wrap { position: relative; width: 100%; min-height: 0; display: flex; }
+/* 读取城市信息的提示浮在上面，不占位：它退场时不能把票挤开 */
+.questionnaire-view .form-wrap > .notice { position: absolute; z-index: 4; top: 4px; left: 50%; width: max-content; max-width: 100%; margin: 0; transform: translateX(-50%); border-radius: 10px; }
 .qform-card { width: 100%; max-height: 100%; min-height: 0; display: flex; flex-direction: column; background: #ffffff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 18px 42px -30px #15161359; overflow: hidden; }
 .qform-head { flex-shrink: 0; padding: 22px 30px 0; }
 .qform-head h2 { font-size: clamp(27px, 2.7vw, 34px); line-height: 1.3; font-weight: 650; letter-spacing: -.03em; outline: none; }
@@ -105,10 +107,10 @@
 
 /* 2026-10-23 灰白科技风补充（与选城页统一）：40px 淡网格底，等宽字体的小标签与数字，红色只用在进度 */
 /* 生成页（.progress-view）接着用同一张底，切过去不变色 */
-.questionnaire-view, .progress-view { background-color: #fff; background-image: linear-gradient(to right, #1516130a 1px, transparent 1px), linear-gradient(to bottom, #1516130a 1px, transparent 1px); background-size: 40px 40px; }
+.questionnaire-view, .progress-view, .landing-view { background-color: #fff; background-image: linear-gradient(to right, #1516130a 1px, transparent 1px), linear-gradient(to bottom, #1516130a 1px, transparent 1px); background-size: 40px 40px; }
 .questionnaire-view .journey-bar { background: var(--paper); }
 .questionnaire-view .journey-bar .bar-link:hover:not(:disabled), .questionnaire-view .journey-bar .bar-link.on { background: var(--accent-soft); color: var(--accent); }
-:is(.questionnaire-view, .progress-view) .journey-bar nav .account-signin { border-color: #dedfda; border-radius: 3px; }
+:is(.questionnaire-view, .progress-view, .landing-view) .journey-bar nav .account-signin { border-color: #dedfda; border-radius: 3px; }
 .progress-view .journey-bar { border-color: #dedfda; }
 /* 票纸的阴影不被里层裁掉；清单自己在票纸里滚 */
 @media (min-width: 641px) { .progress-view .journey-fullscreen .panel:has(.progress-scroll), .progress-view .journey-fullscreen .progress-scroll { overflow: visible; } }

@@ -4,6 +4,7 @@ import { PhNotePencil, PhArrowLeft, PhCheckCircle, PhClockCounterClockwise, PhCo
 import RollValue from './components/RollValue.vue'
 import DrawCheck from './components/DrawCheck.vue'
 import CostBar from './components/CostBar.vue'
+import { captureSwap, clearSwap, playSwap } from './departure'
 import { reducedMotion, useInk, vExpand } from './motion'
 import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, previewPoi, commitPoi, previewPace, commitPace, type PoiOption, revertPlan, postLodgingReplan, type LodgingHotel, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
@@ -139,26 +140,46 @@ async function chooseDestination(key: string) {
   const ready = meta.value?.city === key && !cityError.value ? true : await changeCity(key)
   if (revision !== identityRevision) { departureCity.value = null; return }
   if (!ready) { departureCity.value = null; return }
-  // 减少动态效果时直接进入；普通模式让卡片响应与城市转场自然衔接。
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  departureReady.value = !reducedMotion
-  departureTimer = setTimeout(async () => {
-    await Promise.race([artwork, new Promise(resolve => setTimeout(resolve, 1200))])
-    coveredSwitch.value = true
-    editing.value = true
-    destinationOpen.value = false
-    departureCity.value = null
-    await nextTick()
-    // 等新页面在遮罩下画完两帧，再淡出遮罩揭开，全程只有一次过渡
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    departureReady.value = false
-    document.querySelector<HTMLElement>('.tform-head h2')?.focus({ preventScroll: true })
-    clearTimeout(coveredTimer)
-    coveredTimer = setTimeout(() => { coveredSwitch.value = false }, 450)
-  }, reducedMotion ? 0 : 620)
+  // 票原地不动、只换左边（departure.ts 的 swap）；要先登录的，下一屏是登录页，仍走城市转场那一屏
+  const gate = !!meta.value?.access?.login_to_plan && authReady.value && !user.value
+  await Promise.race([artwork, new Promise(resolve => setTimeout(resolve, 1200))])
+  if (revision !== identityRevision) { departureCity.value = null; return }
+  if (gate && !reducedMotion()) {
+    departureReady.value = true
+    departureTimer = setTimeout(async () => {
+      enterCity()
+      await nextTick()
+      // 等新页面在遮罩下画完两帧，再淡出遮罩揭开，全程只有一次过渡
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      departureReady.value = false
+    }, 620)
+    return
+  }
+  const swap = captureSwap()
+  enterCity()
+  await nextTick()
+  if (swap) void playSwap(swap, 1)
+  document.querySelector<HTMLElement>(planMode.value === 'agent' ? '#agent-title' : '.tform-head h2')?.focus({ preventScroll: true })
 }
+// 各页面自己的进出过渡这一刻全关掉，由遮罩或 swap 来演
+function coverSwitch() {
+  coveredSwitch.value = true
+  clearTimeout(coveredTimer)
+  coveredTimer = setTimeout(() => { coveredSwitch.value = false }, 450)
+}
+function enterCity() {
+  coverSwitch()
+  editing.value = true
+  destinationOpen.value = false
+  departureCity.value = null
+}
+// 从某座城市的问卷回来换城：票停在那座城市；其他情况回到中性的空票
+const landingCity = ref<string | null>(null)
 function chooseAgain() {
   if (loading.value || swapBusy.value || departureCity.value) return
+  const swap = destinationOpen.value || accountOpen.value ? null : captureSwap()
+  landingCity.value = swap ? selectedCity.value : null
+  if (swap) { coverSwitch(); void nextTick(() => playSwap(swap, -1)) }
   destinationOpen.value = true
   accountOpen.value = false
   drawerOpen.value = false
@@ -808,7 +829,7 @@ async function startEdit() {
 
 function clearPrivateView() {
   identityRevision++
-  clearTimeout(departureTimer); departureCity.value = null; departureReady.value = false; destinationOpen.value = true
+  clearTimeout(departureTimer); departureCity.value = null; departureReady.value = false; landingCity.value = null; destinationOpen.value = true
   planController?.abort(); extrasController?.abort(); mediaController?.abort(); alternativeController?.abort()
   plan.value = null; lastRequest.value = null; historyOpen.value = false; progressVisible.value = false
   drawerOpen.value = false; swapOpen.value = false; toast.value = null; navigation.value = null
@@ -902,6 +923,7 @@ useInk(modeSwitch, () => planMode.value)
 // 行程票在屏幕上：两侧城市插画收起，插画印在票上；只有问卷模式的确认表不带票
 const ticketShown = computed(() => planMode.value === 'agent' || !confirming.value)
 useInk(mobileSwitch, () => mobileView.value)
+watch(progressVisible, visible => { if (visible) clearSwap() })
 const planScope = computed(() => `${plan.value?.plan_id ?? ''}|${plan.value?.history_id ?? ''}`)
 onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(departureTimer); clearTimeout(coveredTimer); cityController?.abort(); planController?.abort(); clearInterval(timer); clearTimeout(toastTimer); extrasController?.abort(); alternativeController?.abort(); mediaController?.abort() })
 </script>
@@ -918,7 +940,7 @@ onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(departureTimer); c
         <button v-else class="account-signin" :class="{ on: accountOpen }" :disabled="!authReady || loading" @click="historyAfterLogin = false; openAuth()"><PhUserCircle :size="18" />登录 / 注册</button>
       </nav>
     </header>
-  <Transition name="destination-page" :css="!coveredSwitch"><CityLanding v-if="destinationOpen && !historyOpen && !booting" :cities="meta?.cities || []" :pending="departureCity" :loading="cityLoading" :error="cityError || error" @choose="chooseDestination" /></Transition>
+  <Transition name="destination-page" :css="!coveredSwitch"><CityLanding v-if="destinationOpen && !historyOpen && !booting" :initial="landingCity" :mode="planMode" :cities="meta?.cities || []" :pending="departureCity" :loading="cityLoading" :error="cityError || error" @choose="chooseDestination" /></Transition>
   <Transition name="boot"><div v-if="booting" class="destination-transit destination-boot" role="status"><JourneyMark /><small>行记 · 正在展开下一程</small></div></Transition>
   <Transition name="destination-transit"><div v-if="departureReady" class="destination-transit" role="status"><JourneyMark /><p>{{ draftCity.name }}</p><i class="transit-line" aria-hidden="true"><span /></i><small><span class="transit-code">{{ draftCity.key.toUpperCase() }}</span> · 这一程，从这里开始</small></div></Transition>
   <Transition name="city-scenery" :css="!coveredSwitch"><QuestionnaireBackdrop :city="draftCity.key" v-if="!destinationOpen && showForm && !ticketShown && !progressVisible && !historyOpen && !accountOpen && !gated && !booting" /></Transition>

@@ -9,14 +9,18 @@ import type { CityInfo } from '../api'
 import { cityArtwork } from '../cityArt'
 import { captureDeparture, playDeparture, type Departure } from '../departure'
 import { reducedMotion } from '../motion'
+import JourneyMark from './JourneyMark.vue'
 import RollValue from './RollValue.vue'
 
 export interface TicketPart { key: string; label: string; value: string; changed?: boolean }
 export interface TicketCell { key?: string; label: string; value?: string; words?: string[]; parts?: TicketPart[]; span?: 1 | 2 | 3; guess?: boolean; changed?: boolean; title?: string; muted?: boolean }
 const props = defineProps<{ city: CityInfo; cells: TicketCell[]; rows: TicketCell[]; date?: string; summary: string; note: string; error?: string; tearing: boolean; departing: boolean;
-  editable?: boolean; active?: string; blank?: boolean; busy?: boolean }>()
+  editable?: boolean; active?: string; blank?: boolean; busy?: boolean;
+  image?: string; code?: string }>()  // 选城页用：没有插画的城市给照片，中性空票给小字
 const emit = defineEmits<{ edit: [key: string] }>()
-const art = computed(() => cityArtwork(props.city.key)?.right)
+// 图已经在缓存里就直接是满的，不再从透明淡进来；没取到的才等下载完淡入（data-fade）
+const vReady = { beforeMount: (el: HTMLImageElement) => { if (el.complete) el.classList.add('is-loaded') } }
+const art = computed(() => cityArtwork(props.city.key)?.right ?? props.image)
 const wrap = ref<HTMLElement>()
 const opened = ref(false)
 // 手机上票是展开盖住的，点了一项就收起来，好看到下面打开的选项
@@ -65,8 +69,9 @@ watch(() => props.departing, departing => {
         <button type="button" class="ticket-peek" :aria-expanded="opened" @click="opened = !opened"><span>{{ summary }}</span><PhCaretUp :size="16" aria-hidden="true" /></button>
         <div class="ticket-fold"><div>
           <div class="ticket-art">
-            <img v-if="art" :key="art" :src="art" alt="" decoding="async" data-fade />
-            <p class="ticket-city"><b>{{ city.name }}</b><span>{{ city.key.toUpperCase() }}<template v-if="date"> · {{ date }}</template></span></p>
+            <!-- 换城当帧换图，不做交叉淡化和滑动：两幅叠着会重影，滑动时 Chrome 会露出一道裁切接缝 -->
+            <img v-if="art" :key="art" v-ready :class="{ photo: art === image }" :src="art" alt="" decoding="sync" data-fade /><JourneyMark v-else class="ticket-mark" />
+            <p class="ticket-city"><b>{{ city.name }}</b><span>{{ code ?? city.key.toUpperCase() }}<template v-if="date"> · {{ date }}</template></span></p>
           </div>
           <dl class="ticket-grid">
             <div v-for="cell in [...cells, ...rows]" :key="cell.label" :class="cell.span && `span-${cell.span}`"><dt>{{ cell.label }}</dt>
