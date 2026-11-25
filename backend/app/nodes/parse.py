@@ -32,6 +32,7 @@ class _Parsed(BaseModel):
     day_end: int | None = None
     max_walking_m: int | None = None
     allow_taxi_fallback: bool | None = None
+    include_evening: bool | None = None
     food_preference: str | None = None
     meal_budget_min: float | None = None
     meal_budget_max: float | None = None

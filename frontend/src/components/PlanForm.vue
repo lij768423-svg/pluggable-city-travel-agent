@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import '@fontsource-variable/geist-mono'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { PhArrowRight, PhMountains, PhBuildings, PhCamera, PhLeaf, PhCoffee, PhScroll, PhSparkle, PhMoon, PhForkKnife, PhBank, PhPersonSimpleWalk, PhCompass, PhLightning, PhFlame } from '@phosphor-icons/vue'
+import { PhArrowRight, PhMountains, PhBuildings, PhCamera, PhLeaf, PhScroll, PhSparkle, PhMoon, PhForkKnife, PhBank, PhCompass, PhFlame, PhPlus, PhSubway, PhTaxi } from '@phosphor-icons/vue'
 import type { Meta, PlanRequest, Hotel, CityInfo } from '../api'
 import OriginPicker from './OriginPicker.vue'
-import QuestionOptions from './QuestionOptions.vue'
-import QuestionnaireArt from './QuestionnaireArt.vue'
+import { expandHooks, reducedMotion } from '../motion'
+import DetentSlider from './DetentSlider.vue'
 import DrawCheck from './DrawCheck.vue'
+import QuestionOptions from './QuestionOptions.vue'
+import SegControl from './SegControl.vue'
+import TripTicket from './TripTicket.vue'
 
-const props = defineProps<{ city: CityInfo; meta: Meta | null; loading: boolean; initialQuery?: string; initialRequest?: PlanRequest | null; quota?: { limit: number; remaining: number } | null; needsLogin?: boolean }>()
+const props = defineProps<{ city: CityInfo; meta: Meta | null; loading: boolean; initialQuery?: string; initialRequest?: PlanRequest | null; quota?: { limit: number; remaining: number } | null; needsLogin?: boolean; departing?: boolean }>()
 const outOfQuota = computed(() => !!props.quota && props.quota.remaining <= 0)
 const emit = defineEmits<{ submit: [req: PlanRequest]; hotelChange: [hotel: Hotel | null] }>()
 
@@ -64,27 +67,47 @@ const questionBody = ref<HTMLElement>()
 const stepDirection = ref('forward')
 // 三步：先选兴趣（最直观），再定餐饮预算，最后一页集中填天数、同行、日期、起点与补充
 const steps = [
-  { label: '游玩偏好', hint: '兴趣、节奏、出行与夜间' },
-  { label: '餐饮与预算', hint: '预算、口味' },
-  { label: '出行与补充', hint: '天数、同行、起点、必去' },
+  { label: '游玩偏好' },
+  { label: '餐饮与预算' },
+  { label: '出行与补充' },
 ]
 const LAST = steps.length - 1
 const paceLabels: Record<string, string> = { relaxed: '慢慢逛', normal: '刚刚好', intense: '多看一点' }
 const paceLabel = computed(() => paceLabels[form.pace] || '自由节奏')
 const headings = ['这趟旅行，想怎么过？', '吃得合口味，花得有数。', '最后，把出发的事定下来。']
-const dayOptions = [...[1, 2, 3, 4, 5].map(day => ({ value: String(day), label: `${day} 天`, short: `${day} 天` })), { value: '', label: '按描述安排', short: '按描述' }]
-const companionOptions = computed(() => [{ value: '', label: '不限同行人', short: '不限' }, ...Object.entries(props.meta?.companions || {}).map(([value, label]) => ({ value, label, short: label }))])
+const dayOptions: { value: '' | number; label: string }[] = [...[1, 2, 3, 4, 5].map(day => ({ value: day, label: `${day} 天` })), { value: '', label: '按描述' }]
+const companionOptions = computed(() => [{ value: '', label: '不限' }, ...Object.entries(props.meta?.companions || {}).map(([value, label]) => ({ value, label }))])
+const transportOptions = [{ value: 'transit', label: '公交地铁', icon: PhSubway }, { value: 'taxi', label: '打车', icon: PhTaxi }] as const
+const eveningOptions = [{ value: '', label: '顺路就好' }, { value: 'yes', label: '安排夜景' }, { value: 'no', label: '早点休息' }] as const
+const budgetOptions: { value: '' | number; label: string }[] = [{ value: '', label: '不限' }, ...[300, 500, 800, 1200, 1800, 2500].map(value => ({ value, label: `¥${value}` }))]
 const foodOptions = [{ value: '', label: '顺路就好' }, { value: 'local', label: '当地特色' }, { value: 'quick', label: '快捷简餐' }, { value: 'quality', label: '品质正餐' }]
-const selectedSummary = computed(() => {
-  const companions = companionOptions.value.find(option => option.value === form.companions)?.label
-  const parts = [props.meta && props.meta.cities.length > 1 ? props.city.name : '', form.days ? `${form.days} 天` : '按描述安排', companions, paceLabel.value]
-  if (form.interests.length) parts.push(form.interests.join('、'))
-  if (form.budget !== '') parts.push(`预算 ¥${form.budget} / 人`)
-  if (form.spice !== 'any') parts.push(spiceOptions.find(option => option.value === form.spice)?.label)
-  if (form.familiarity !== 'first') parts.push(familiarityOptions.find(option => option.value === form.familiarity)?.label)
-  parts.push(origin.value ? `从${origin.value.name}出发` : '起点不定')
-  return parts.filter(Boolean).join(' · ')
-})
+// 预算滑杆按位置取值：千元以下取整十，以上取整五十；最左一小段算不限
+const BUDGET_STOPS = budgetOptions.map(option => Number(option.value))
+function budgetAt(index: number): '' | number {
+  const left = Math.min(Math.floor(index), BUDGET_STOPS.length - 2)
+  const raw = BUDGET_STOPS[left]! + (BUDGET_STOPS[left + 1]! - BUDGET_STOPS[left]!) * (index - left)
+  const step = raw < 1000 ? 10 : 50
+  return raw < 50 ? '' : Math.round(raw / step) * step
+}
+const labelOf = (options: readonly { value: string | number; label: string }[], value: string | number) => options.find(option => option.value === value)?.label
+const daysLabel = computed(() => labelOf(dayOptions, form.days) ?? `${form.days} 天`)
+// 票面六格：始终是当前的实际选择
+const ticketCells = computed(() => [
+  { label: '天数', value: daysLabel.value },
+  { label: '同行', value: labelOf(companionOptions.value, form.companions) ?? '不限' },
+  { label: '节奏', value: paceLabel.value },
+  { label: '出行', value: labelOf(transportOptions, form.transport) ?? '不限' },
+  { label: '预算', value: form.budget === '' || budgetError.value ? '不限' : `¥${form.budget}` },
+  { label: '口味', value: labelOf(spiceOptions, form.spice) ?? '' },
+])
+const ticketRows = computed(() => [
+  form.interests.length ? { label: '想看', words: form.interests, span: 2 as const, title: form.interests.join('、') } : { label: '想看', value: '还没选', span: 2 as const, muted: true },
+  { label: '起点', value: origin.value?.name ?? '不定' },
+])
+const ticketDate = computed(() => form.start_date ? form.start_date.slice(5).replace('-', '.') : '')
+// 手机上收起时的一行摘要
+const selectedSummary = computed(() => [props.city.name, daysLabel.value, form.companions ? labelOf(companionOptions.value, form.companions) : '', paceLabel.value,
+  form.interests.length ? `想看 ${form.interests.length} 类` : '', form.budget !== '' ? `¥${form.budget}` : ''].filter(Boolean).join(' · '))
 const interestTiles = [
   { value: '自然风光', icon: PhMountains },
   { value: '人文历史', icon: PhBuildings },
@@ -99,11 +122,14 @@ const interestTiles = [
 const visibleInterests = computed(() => interestTiles.filter(item => props.meta?.interests.includes(item.value)))
 const moreInterests = computed(() => (props.meta?.interests || []).filter(value => !interestTiles.some(item => item.value === value)))
 const moreSelected = computed(() => form.interests.filter(value => moreInterests.value.includes(value)))
+const moreOpen = ref(false)
+const mealOpen = ref(false)
 const paceOptions = [
-  { value: 'relaxed', label: '慢慢逛', hint: '轻松，留白多', icon: PhCoffee },
-  { value: 'normal', label: '刚刚好', hint: '游玩与休息兼顾', icon: PhPersonSimpleWalk },
-  { value: 'intense', label: '多看一点', hint: '充实紧凑', icon: PhLightning },
+  { value: 'relaxed', label: '慢慢逛', hint: '轻松，留白多' },
+  { value: 'normal', label: '刚刚好', hint: '游玩与休息兼顾' },
+  { value: 'intense', label: '多看一点', hint: '充实紧凑' },
 ]
+const paceHint = computed(() => paceOptions.find(option => option.value === form.pace)?.hint)
 // 口味（辣度）单选：不吃辣会排除辣味菜系，爱吃辣只是优先推荐；2026-10-26 起替代原来的饮食忌口
 const spiceOptions = [{ value: 'no', label: '不吃辣', icon: PhLeaf }, { value: 'any', label: '微辣都行', icon: PhForkKnife }, { value: 'love', label: '爱吃辣', icon: PhFlame }] as const
 // 对城市的熟悉程度：第一次来更看重地标，本地人少推热门；默认第一次来
@@ -111,14 +137,15 @@ const familiarityOptions = [{ value: 'first', label: '第一次来' }, { value: 
 const formError = ref('')
 function goStep(target: number) {
   formError.value = ''
-  if (target > step.value && step.value === 1 && budgetError.value) { formError.value = '请填写 1–100000 元的总预算，或留空。'; return }
-  if (target > step.value && step.value === 1 && mealBudgetError.value) { formError.value = mealBudgetError.value; return }
+  if (target > 1) {
+    const problem = budgetError.value ? '请填写 1–100000 元的总预算，或留空。' : mealBudgetError.value
+    if (problem) { if (step.value !== 1) goStep(1); formError.value = problem; return }
+  }
   stepDirection.value = target >= step.value ? 'forward' : 'backward'
   step.value = target
   nextTick(() => {
     questionBody.value?.scrollTo({ top: 0, behavior: 'instant' })
     stepHeading.value?.focus({ preventScroll: true })
-    if (stepHeading.value && stepHeading.value.getBoundingClientRect().top < 0) stepHeading.value.scrollIntoView({ block: 'start', behavior: 'instant' })
   })
 }
 const timeText = (value: unknown) => typeof value === 'number' ? `${Math.floor(value / 60).toString().padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}` : ''
@@ -147,6 +174,8 @@ watch(() => props.initialRequest, request => {
   selectMode.value = request.select_mode
   enableRepair.value = request.enable_repair
   useGuides.value = request.guide_mode === 'pilot'
+  moreOpen.value = moreSelected.value.length > 0
+  mealOpen.value = form.meal_budget_min !== '' || form.meal_budget_max !== ''
   step.value = 0
 }, { immediate: true })
 
@@ -157,13 +186,27 @@ function toggle(list: string[], v: string) {
   else list.push(v)
 }
 
+// 窄屏上底部的票会挡住候选：点开搜索时把起点这一块滚到最上面
+function showOrigin(event: FocusEvent) {
+  if (!(event.target instanceof HTMLInputElement) || !matchMedia('(max-width: 900px)').matches) return
+  (event.currentTarget as HTMLElement).scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'instant' : 'smooth' })
+}
+// 提交后、等核对结果这段时间票根掀开；没登录时是去登录，不掀
+const submitted = ref(false)
+watch(() => props.loading, loading => { if (!loading) submitted.value = false })
+const ticketNote = computed(() => {
+  if (step.value < LAST) return `${step.value + 1} / ${steps.length} · 下一步：${steps[step.value + 1]!.label}`
+  if (!props.quota) return `${LAST + 1} / ${steps.length}`
+  return outOfQuota.value ? '今天的生成次数已用完' : `今天还可生成 ${props.quota.remaining}/${props.quota.limit} 次`
+})
+
 function submit() {
   if (step.value < LAST) { goStep(step.value + 1); return }
   formError.value = ''
   if (form.day_start && form.day_end && minutes(form.day_start) >= minutes(form.day_end)) { formError.value = '返回时间需要晚于出发时间。'; return }
   if (dailyWindows.some(window => window.enabled && window.day <= Number(form.days) && minutes(window.start) >= minutes(window.end))) { formError.value = '每天的返回时间需要晚于出发时间。'; return }
   if (mealBudgetError.value) { formError.value = mealBudgetError.value; return }
-  if (budgetError.value) return
+  if (budgetError.value) { goStep(2); return }
   const f: Record<string, unknown> = { city: props.city.key }
   if (form.days !== '') f.days = Number(form.days)
   if (form.budget !== '') f.budget = Number(form.budget)
@@ -186,6 +229,7 @@ function submit() {
   if (form.familiarity !== 'first') f.familiarity = form.familiarity
   if (form.must_visit.trim()) f.must_visit = form.must_visit.split(/[,，、\n]/).map(name => name.trim()).filter(Boolean)
   if (form.avoid.trim()) f.avoid = form.avoid.split(/[,，、\n]/).map(name => name.trim()).filter(Boolean)
+  submitted.value = !props.needsLogin
   const h = origin.value
   if (h) f.hotel = { name: h.name, lat: h.lat, lon: h.lon }
   emit('submit', { query: query.value, form: f, select_mode: selectMode.value, enable_repair: enableRepair.value, guide_mode: useGuides.value && selectMode.value === 'llm' ? 'pilot' : 'off' })
@@ -193,45 +237,52 @@ function submit() {
 </script>
 
 <template>
-  <form class="plan-form questionnaire qform" @submit.prevent="submit">
-    <div class="qform-card" :data-direction="stepDirection">
-      <ol class="qform-steps" aria-label="规划步骤">
-        <li v-for="(item, index) in steps" :key="item.label" :class="{ active: step === index, complete: step > index }"><button type="button" :disabled="index > step || loading" :aria-current="step === index ? 'step' : undefined" @click="goStep(index)"><span class="qform-num"><DrawCheck v-if="step > index" :size="12" :weight="2" /><template v-else>{{ index + 1 }}</template></span><em>{{ item.label }}</em></button></li>
-      </ol>
-      <header class="qform-head"><QuestionnaireArt :step="[1, 2, 0][step] ?? 0" /><h2 ref="stepHeading" tabindex="-1">{{ headings[step] }}</h2><div class="qform-track" aria-hidden="true"><span :style="{ transform: `scaleX(${(step + 1) / steps.length})` }" /></div></header>
-      <div ref="questionBody" class="qform-body" :data-step="step">
-        <fieldset v-show="step === 0" :disabled="loading" class="qstep" :class="{ entering: step === 0 }"><legend class="sr-only">游玩偏好</legend>
-          <div class="qfield">
-            <div class="interest-heading"><span class="field-label">想做些什么 <span class="optional">可多选</span></span><QuestionOptions title="更多兴趣" :trigger="moreSelected.length ? `更多兴趣 · 已选 ${moreSelected.length}` : '更多兴趣'">
-              <div class="more-interest-grid"><button v-for="interest in moreInterests" :key="interest" type="button" class="interest-tile" :class="{ on: form.interests.includes(interest) }" :aria-pressed="form.interests.includes(interest)" :disabled="loading" @click="toggle(form.interests, interest)"><PhCompass :size="22" aria-hidden="true" /><span>{{ interest }}</span><DrawCheck v-if="form.interests.includes(interest)" class="tile-check" :size="12" :weight="2" /></button></div>
-            </QuestionOptions></div>
-            <div class="interest-tile-grid"><button v-for="interest in visibleInterests" :key="interest.value" type="button" class="interest-tile" :class="{ on: form.interests.includes(interest.value) }" :aria-pressed="form.interests.includes(interest.value)" :disabled="loading" @click="toggle(form.interests, interest.value)"><component :is="interest.icon" :size="24" aria-hidden="true" /><span>{{ interest.value }}</span><DrawCheck v-if="form.interests.includes(interest.value)" class="tile-check" :size="12" :weight="2" /></button></div>
-          </div>
-          <div class="qfield"><span class="field-label">游玩节奏</span><div class="pace-tile-grid"><button v-for="pace in paceOptions" :key="pace.value" type="button" class="pace-tile" :class="{ on: form.pace === pace.value }" :aria-pressed="form.pace === pace.value" :disabled="loading" @click="form.pace = pace.value"><component :is="pace.icon" :size="22" aria-hidden="true" /><span><strong>{{ pace.label }}</strong><small>{{ pace.hint }}</small></span></button></div></div>
-          <div class="qfield qfield-half"><div><span class="field-label">市内出行</span><div class="pick-row"><button type="button" class="pick" :aria-pressed="form.transport === 'transit'" :class="{ on: form.transport === 'transit' }" :disabled="loading" @click="form.transport = 'transit'">公交地铁</button><button type="button" class="pick" :aria-pressed="form.transport === 'taxi'" :class="{ on: form.transport === 'taxi' }" :disabled="loading" @click="form.transport = 'taxi'">打车</button></div></div><div><span class="field-label">夜间安排</span><div class="pick-row"><button type="button" class="pick" :aria-pressed="form.include_evening === ''" :class="{ on: form.include_evening === '' }" :disabled="loading" @click="form.include_evening = ''">顺路就好</button><button type="button" class="pick" :aria-pressed="form.include_evening === 'yes'" :class="{ on: form.include_evening === 'yes' }" :disabled="loading" @click="form.include_evening = 'yes'">安排夜景</button><button type="button" class="pick" :aria-pressed="form.include_evening === 'no'" :class="{ on: form.include_evening === 'no' }" :disabled="loading" @click="form.include_evening = 'no'">早点休息</button></div></div></div>
-        </fieldset>
-        <fieldset v-show="step === 1" :disabled="loading" class="qstep" :class="{ entering: step === 1 }"><legend class="sr-only">餐饮与预算</legend>
-          <div class="qfield"><span class="field-label">人均总预算 <span class="optional">选填</span></span><div class="pick-row"><button v-for="v in [300, 500, 800, 1200, 1800, 2500]" :key="v" type="button" class="pick" :aria-pressed="form.budget === v" :class="{ on: form.budget === v }" :disabled="loading" @click="form.budget = v">¥{{ v }}</button><input class="pick-input" aria-label="人均总预算" type="number" v-model.number="form.budget" min="1" max="100000" placeholder="自定义" :disabled="loading" /></div><p class="field-help" :class="{ 'budget-error': budgetError }">{{ budgetError ? '总预算需在 1–100000 元之间，不确定时请留空。' : `含门票、餐饮、市内交通；不含住宿与往返${city.name}交通。` }}</p></div>
-          <div class="qfield"><span class="field-label">怎么吃</span><div class="pick-row"><button v-for="opt in foodOptions" :key="opt.value" type="button" class="pick" :aria-pressed="form.food_preference === opt.value" :class="{ on: form.food_preference === opt.value }" :disabled="loading" @click="form.food_preference = opt.value">{{ opt.label }}</button></div></div>
-          <div class="qfield"><span class="field-label">口味</span><div class="dietary-tile-grid spice-grid" role="radiogroup" aria-label="口味"><button v-for="opt in spiceOptions" :key="opt.value" type="button" role="radio" class="dietary-tile" :class="{ on: form.spice === opt.value }" :aria-checked="form.spice === opt.value" :disabled="loading" @click="form.spice = opt.value"><component :is="opt.icon" :size="25" aria-hidden="true" /><span>{{ opt.label }}</span><span class="dietary-check" aria-hidden="true"><DrawCheck v-if="form.spice === opt.value" :size="11" :weight="2" /></span></button></div></div>
-          <div class="qfield"><QuestionOptions title="每餐预算" trigger="单独设置每餐预算" description="给午餐、晚餐留出合适的花费" art="meal"><div class="qfield"><span class="field-label">每餐预算下限</span><input type="number" v-model.number="form.meal_budget_min" aria-label="每餐预算下限" min="0" max="2000" placeholder="¥" /></div><div class="qfield"><span class="field-label">每餐预算上限</span><input type="number" v-model.number="form.meal_budget_max" aria-label="每餐预算上限" min="1" max="2000" placeholder="¥" /></div><p v-if="mealBudgetError" role="alert" class="notice bad">{{ mealBudgetError }}</p></QuestionOptions></div>
-        </fieldset>
-        <fieldset v-show="step === 2" :disabled="loading" class="qstep" :class="{ entering: step === 2 }"><legend class="sr-only">出行与补充</legend>
-          <div class="qfield-half travel-picks">
-            <div><span id="days-label" class="field-label">玩几天</span><div class="pick-row compact-picks" role="group" aria-labelledby="days-label"><button v-for="opt in dayOptions" :key="opt.value" type="button" class="pick" :class="{ on: String(form.days) === opt.value }" :aria-pressed="String(form.days) === opt.value" :disabled="loading" @click="form.days = opt.value ? Number(opt.value) : ''">{{ opt.short }}</button></div></div>
-            <div><span id="companions-label" class="field-label">和谁同行</span><div class="pick-row compact-picks" role="group" aria-labelledby="companions-label"><button v-for="opt in companionOptions" :key="opt.value" type="button" class="pick" :class="{ on: form.companions === opt.value }" :aria-pressed="form.companions === opt.value" :disabled="loading" @click="form.companions = opt.value">{{ opt.short }}</button></div></div>
-            <div><span id="familiarity-label" class="field-label">对这座城市</span><div class="pick-row compact-picks" role="radiogroup" aria-labelledby="familiarity-label"><button v-for="opt in familiarityOptions" :key="opt.value" type="button" role="radio" class="pick" :class="{ on: form.familiarity === opt.value }" :aria-checked="form.familiarity === opt.value" :disabled="loading" @click="form.familiarity = opt.value">{{ opt.label }}</button></div></div>
-          </div>
-          <div class="qfield-pair">
-            <div class="qfield"><span class="field-label">出游日期 <span class="optional">选填</span></span><input v-model="form.start_date" aria-label="出游日期" type="date" class="qinput-date" /></div>
-            <div class="qfield qfield-origin"><OriginPicker :key="city.key" :city="city.key" v-model="origin" :presets="originPresets" :disabled="loading" /></div>
-          </div>
-          <div class="qfield"><label for="trip-query" class="field-label">补充说明 <span class="optional">选填 · 必去、不想去的地方也写在这里</span></label><textarea id="trip-query" v-model="query" rows="2" :placeholder="queryPlaceholder" /></div>
-          <div class="qfield qfield-half"><QuestionOptions title="活动时段与步行" trigger="活动时段与步行" description="出发、返回时间与体力安排" art="time"><div class="question-advanced-fields"><div class="pref-grid"><label><span class="field-label">每天出发</span><input v-model="form.day_start" type="time" /></label><label><span class="field-label">最晚返回</span><input v-model="form.day_end" type="time" /></label></div><label><span class="field-label">每日步行上限</span><select v-model="form.max_walking_m"><option value="">按同行人建议</option><option :value="3000">3 公里</option><option :value="5000">5 公里</option><option :value="8000">8 公里</option><option :value="12000">12 公里</option></select></label><label class="check-row"><input v-model="form.allow_taxi_fallback" type="checkbox" />公交太慢或没有时，允许改打车</label><details v-if="form.days" class="daily-windows"><summary>分别设置每天时段</summary><div v-for="window in dailyWindows.slice(0, Number(form.days))" :key="window.day" class="day-window-row"><label class="check-row"><input v-model="window.enabled" type="checkbox" />第 {{ window.day }} 天</label><input v-model="window.start" type="time" :aria-label="`第 ${window.day} 天出发`" :disabled="!window.enabled" /><input v-model="window.end" type="time" :aria-label="`第 ${window.day} 天返回`" :disabled="!window.enabled" /></div></details></div></QuestionOptions><QuestionOptions title="实验选项（论文对比用）" trigger="规划设置" description="选点方式与实验选项" art="settings"><div class="question-advanced-fields"><label class="check-row"><input v-model="selectMode" type="radio" value="llm" />大模型选点（附推荐理由）</label><label class="check-row"><input v-model="selectMode" type="radio" value="jev" />Jev 快速选点（试验）</label><label class="check-row"><input v-model="selectMode" type="radio" value="rule" />纯规则打分选点</label><label class="check-row"><input v-model="enableRepair" type="checkbox" />校验未通过时自动修复</label><label class="check-row"><input v-model="useGuides" :disabled="selectMode !== 'llm'" type="checkbox" />参考公开攻略选点（试验）</label><p class="field-help">Jev 批量评估候选，推荐说明来自地点数据与规则；失败回退原模型。试验功能尚未完成用户盲评。</p></div></QuestionOptions></div>
-        </fieldset>
-      </div>
-      <p v-if="formError" class="notice bad" role="alert">{{ formError }}</p>
-      <footer class="qform-foot"><div class="qform-recap"><span>已选</span><p :title="selectedSummary">{{ selectedSummary }}</p></div><div class="qform-actions"><span v-if="step === LAST && quota" class="qform-quota" :class="{ empty: outOfQuota }">{{ outOfQuota ? '今天的生成次数已用完' : `今天还可生成 ${quota.remaining}/${quota.limit} 次` }}</span><button v-if="step > 0" type="button" class="journey-secondary" :disabled="loading" @click="goStep(step - 1)">上一步</button><button type="submit" class="journey-primary" :disabled="loading || !meta || (step === LAST && (budgetError || outOfQuota))">{{ step !== LAST ? '继续' : needsLogin ? '登录并生成' : '生成行程' }}<PhArrowRight :size="18" /></button></div></footer>
+  <form class="tform" :data-direction="stepDirection" @submit.prevent="submit">
+    <div ref="questionBody" class="tform-left">
+      <header class="tform-head">
+        <ol class="tform-steps" aria-label="规划步骤"><li v-for="(item, index) in steps" :key="item.label" :class="{ active: step === index, complete: step > index }"><button type="button" :disabled="loading" :aria-current="step === index ? 'step' : undefined" @click="goStep(index)">{{ item.label }}</button></li></ol>
+        <h2 ref="stepHeading" tabindex="-1">{{ headings[step] }}</h2>
+      </header>
+      <fieldset v-show="step === 0" :disabled="loading" class="tstep" :class="{ entering: step === 0 }"><legend class="sr-only">游玩偏好</legend>
+        <div class="tfield">
+          <p class="tlabel">想做些什么<small>可多选</small></p>
+          <div class="pill-row"><button v-for="interest in visibleInterests" :key="interest.value" type="button" class="pill" :class="{ on: form.interests.includes(interest.value) }" :aria-pressed="form.interests.includes(interest.value)" :disabled="loading" @click="toggle(form.interests, interest.value)"><span class="pill-icon" aria-hidden="true"><component :is="interest.icon" :size="20" class="pill-glyph" /><DrawCheck v-if="form.interests.includes(interest.value)" :size="17" :weight="1.8" /></span>{{ interest.value }}</button><button v-if="moreInterests.length" type="button" class="pill plain" :aria-expanded="moreOpen" :disabled="loading" @click="moreOpen = !moreOpen"><PhPlus :size="17" aria-hidden="true" />{{ moreOpen ? '收起' : moreSelected.length ? `更多 · 已选 ${moreSelected.length}` : '更多' }}</button></div>
+          <Transition :css="false" v-bind="expandHooks"><div v-if="moreOpen" class="tfold"><div class="pill-row"><button v-for="interest in moreInterests" :key="interest" type="button" class="pill" :class="{ on: form.interests.includes(interest) }" :aria-pressed="form.interests.includes(interest)" :disabled="loading" @click="toggle(form.interests, interest)"><span class="pill-icon" aria-hidden="true"><PhCompass :size="20" class="pill-glyph" /><DrawCheck v-if="form.interests.includes(interest)" :size="17" :weight="1.8" /></span>{{ interest }}</button></div></div></Transition>
+        </div>
+        <div class="tfield"><p class="tlabel">游玩节奏<small>{{ paceHint }}</small></p><DetentSlider v-model="form.pace" :options="paceOptions" label="游玩节奏" :value-text="paceHint ? `${paceLabel}，${paceHint}` : paceLabel" :disabled="loading" dense /></div>
+        <div class="tpair short-long">
+          <div class="tfield"><p class="tlabel">市内出行</p><SegControl v-model="form.transport" :options="transportOptions" label="市内出行" :disabled="loading" /></div>
+          <div class="tfield"><p class="tlabel">夜间安排</p><SegControl v-model="form.include_evening" :options="eveningOptions" label="夜间安排" :disabled="loading" /></div>
+        </div>
+      </fieldset>
+      <fieldset v-show="step === 1" :disabled="loading" class="tstep" :class="{ entering: step === 1 }"><legend class="sr-only">餐饮与预算</legend>
+        <div class="tfield">
+          <p class="tlabel">人均总预算<small>选填</small><input v-model.number="form.budget" class="tinput tinput-mini" aria-label="人均总预算" type="number" min="1" max="100000" placeholder="自己填 ¥" :disabled="loading" /></p>
+          <DetentSlider v-model="form.budget" :options="budgetOptions" label="人均总预算" :value-at="budgetAt" :format="value => `¥${value}`" :value-text="form.budget === '' ? '不限' : `${form.budget} 元`" :disabled="loading" mono />
+          <p class="thelp" :class="{ bad: budgetError }">{{ budgetError ? '总预算需在 1–100000 元之间，不确定时请留空。' : `含门票、餐饮、市内交通；不含住宿与往返${city.name}交通。` }}</p>
+        </div>
+        <div class="tfield"><p class="tlabel">怎么吃</p><SegControl v-model="form.food_preference" :options="foodOptions" label="怎么吃" :disabled="loading" /></div>
+        <div class="tfield"><p class="tlabel">口味</p><SegControl v-model="form.spice" :options="spiceOptions" label="口味" :disabled="loading" /></div>
+        <div class="tfield">
+          <button type="button" class="pill plain flush" :aria-expanded="mealOpen" :disabled="loading" @click="mealOpen = !mealOpen"><PhPlus :size="17" aria-hidden="true" />单独设置每餐预算</button>
+          <Transition :css="false" v-bind="expandHooks"><div v-if="mealOpen" class="tfold"><div class="tpair"><label class="tfield"><span class="tlabel">每餐最少</span><input v-model.number="form.meal_budget_min" class="tinput" type="number" aria-label="每餐预算下限" min="0" max="2000" placeholder="¥" /></label><label class="tfield"><span class="tlabel">每餐最多</span><input v-model.number="form.meal_budget_max" class="tinput" type="number" aria-label="每餐预算上限" min="1" max="2000" placeholder="¥" /></label></div><p v-if="mealBudgetError" class="thelp bad" role="alert">{{ mealBudgetError }}</p></div></Transition>
+        </div>
+      </fieldset>
+      <fieldset v-show="step === 2" :disabled="loading" class="tstep dense" :class="{ entering: step === 2 }"><legend class="sr-only">出行与补充</legend>
+        <div class="tfield"><p class="tlabel">玩几天</p><SegControl v-model="form.days" :options="dayOptions" label="玩几天" :disabled="loading" /></div>
+        <div class="tfield"><p class="tlabel">和谁同行</p><SegControl v-model="form.companions" :options="companionOptions" label="和谁同行" :disabled="loading" /></div>
+        <div class="tpair">
+          <div class="tfield"><p class="tlabel">对这座城市</p><SegControl v-model="form.familiarity" :options="familiarityOptions" label="对这座城市" :disabled="loading" /></div>
+          <div class="tfield"><p class="tlabel">出游日期<small>选填</small></p><input v-model="form.start_date" class="tinput" :class="{ blank: !form.start_date }" aria-label="出游日期" type="date" /></div>
+        </div>
+        <div class="tfield tfield-origin" @focusin="showOrigin"><p id="origin-label" class="tlabel">每天的起点与终点</p><OriginPicker :key="city.key" v-model="origin" :city="city.key" :presets="originPresets" :disabled="loading" compact /></div>
+        <div class="tfield"><label for="trip-query" class="tlabel">补充说明<small>选填，必去、不想去的地方也写在这里</small></label><textarea id="trip-query" v-model="query" class="tinput" rows="2" :placeholder="queryPlaceholder" /></div>
+        <div class="tlinks"><QuestionOptions title="活动时段与步行" trigger="活动时段与步行"><div class="question-advanced-fields"><div class="pref-grid"><label><span class="field-label">每天出发</span><input v-model="form.day_start" type="time" /></label><label><span class="field-label">最晚返回</span><input v-model="form.day_end" type="time" /></label></div><label><span class="field-label">每日步行上限</span><select v-model="form.max_walking_m"><option value="">按同行人建议</option><option :value="3000">3 公里</option><option :value="5000">5 公里</option><option :value="8000">8 公里</option><option :value="12000">12 公里</option></select></label><label class="check-row"><input v-model="form.allow_taxi_fallback" type="checkbox" />公交太慢或没有时，允许改打车</label><details v-if="form.days" class="daily-windows"><summary>分别设置每天时段</summary><div v-for="window in dailyWindows.slice(0, Number(form.days))" :key="window.day" class="day-window-row"><label class="check-row"><input v-model="window.enabled" type="checkbox" />第 {{ window.day }} 天</label><input v-model="window.start" type="time" :aria-label="`第 ${window.day} 天出发`" :disabled="!window.enabled" /><input v-model="window.end" type="time" :aria-label="`第 ${window.day} 天返回`" :disabled="!window.enabled" /></div></details></div></QuestionOptions><QuestionOptions title="实验选项（论文对比用）" trigger="规划设置"><div class="question-advanced-fields"><label class="check-row"><input v-model="selectMode" type="radio" value="llm" />大模型选点（附推荐理由）</label><label class="check-row"><input v-model="selectMode" type="radio" value="jev" />Jev 快速选点（试验）</label><label class="check-row"><input v-model="selectMode" type="radio" value="rule" />纯规则打分选点</label><label class="check-row"><input v-model="enableRepair" type="checkbox" />校验未通过时自动修复</label><label class="check-row"><input v-model="useGuides" :disabled="selectMode !== 'llm'" type="checkbox" />参考公开攻略选点（试验）</label><p class="field-help">Jev 批量评估候选，推荐说明来自地点数据与规则；失败回退原模型。试验功能尚未完成用户盲评。</p></div></QuestionOptions></div>
+      </fieldset>
     </div>
+    <TripTicket :city="city" :cells="ticketCells" :rows="ticketRows" :date="ticketDate" :summary="selectedSummary" :note="ticketNote" :error="formError" :tearing="submitted && loading" :departing="!!departing">
+      <button v-if="step > 0" type="button" class="ticket-back" :disabled="loading" @click="goStep(step - 1)">上一步</button>
+      <button type="submit" class="ticket-go" :disabled="loading || !meta || (step === LAST && (budgetError || outOfQuota))">{{ submitted && loading ? '正在核对…' : step !== LAST ? '继续' : needsLogin ? '登录并生成' : '生成行程' }}<PhArrowRight :size="18" aria-hidden="true" /></button>
+    </TripTicket>
   </form>
 </template>

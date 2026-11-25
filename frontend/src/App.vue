@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { PhArrowLeft, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
+import { PhNotePencil, PhArrowLeft, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
 import RollValue from './components/RollValue.vue'
 import DrawCheck from './components/DrawCheck.vue'
 import CostBar from './components/CostBar.vue'
-import { useInk, vExpand } from './motion'
+import { reducedMotion, useInk, vExpand } from './motion'
 import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, previewPoi, commitPoi, previewPace, commitPace, type PoiOption, revertPlan, postLodgingReplan, type LodgingHotel, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
 import PlanConfirm from './components/PlanConfirm.vue'
@@ -26,6 +26,7 @@ import { getAccount, logoutAccount, getHistoryDetail, saveHistory, getLinkedTrip
 import { legacyCity, cityTagline } from './city'
 import './journey.css'
 import './questionnaire.css'
+import './ticket.css'
 import './destination.css'
 
 const user = ref<AccountUser | null>(null)
@@ -47,6 +48,18 @@ const confirmBusy = ref(false)
 const confirmError = ref('')
 // 两种规划方式（2026-10-28 用户决定）：跟 AI 说（默认）/ 自己选问卷；记住上次选的，读写失败（无痕模式等）就按默认
 const planMode = ref<'agent' | 'form'>((() => { try { return localStorage.getItem('tta-plan-mode') === 'form' ? 'form' : 'agent' } catch { return 'agent' } })())
+// 切换规划方式：左边顺着方向滑走滑入，票翻个面（ticket.css）；只有点开关才播，其他显隐（确认表、生成页）照旧直接换
+const modeSwitching = ref(false)
+const modeDir = ref<1 | -1>(1)
+let modeTimer: ReturnType<typeof setTimeout> | undefined
+function setPlanMode(mode: 'agent' | 'form') {
+  if (mode === planMode.value) return
+  clearTimeout(modeTimer)
+  modeDir.value = mode === 'form' ? 1 : -1
+  modeSwitching.value = !reducedMotion()
+  planMode.value = mode
+  modeTimer = setTimeout(() => { modeSwitching.value = false }, 800)
+}
 watch(planMode, mode => { try { localStorage.setItem('tta-plan-mode', mode) } catch { /* 只是不记住 */ } })
 const agentMessages = ref<string[]>([])
 const agentUnderstanding = ref<Understanding | null>(null)
@@ -139,7 +152,7 @@ async function chooseDestination(key: string) {
     // 等新页面在遮罩下画完两帧，再淡出遮罩揭开，全程只有一次过渡
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
     departureReady.value = false
-    document.querySelector<HTMLElement>('.qform-head h2')?.focus({ preventScroll: true })
+    document.querySelector<HTMLElement>('.tform-head h2')?.focus({ preventScroll: true })
     clearTimeout(coveredTimer)
     coveredTimer = setTimeout(() => { coveredSwitch.value = false }, 450)
   }, reducedMotion ? 0 : 620)
@@ -886,13 +899,15 @@ const modeSwitch = ref<HTMLElement>()
 const mobileSwitch = ref<HTMLElement>()
 useInk(dayTabs, () => [activeDay.value, plan.value?.plan_id, plan.value?.days.length], 12)
 useInk(modeSwitch, () => planMode.value)
+// 行程票在屏幕上：两侧城市插画收起，插画印在票上；只有问卷模式的确认表不带票
+const ticketShown = computed(() => planMode.value === 'agent' || !confirming.value)
 useInk(mobileSwitch, () => mobileView.value)
 const planScope = computed(() => `${plan.value?.plan_id ?? ''}|${plan.value?.history_id ?? ''}`)
-onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer); cityController?.abort(); planController?.abort(); clearInterval(timer); clearTimeout(toastTimer); extrasController?.abort(); alternativeController?.abort(); mediaController?.abort() })
+onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(departureTimer); clearTimeout(coveredTimer); cityController?.abort(); planController?.abort(); clearInterval(timer); clearTimeout(toastTimer); extrasController?.abort(); alternativeController?.abort(); mediaController?.abort() })
 </script>
 
 <template>
-  <div class="journey-shell" :class="{ 'questionnaire-view': showForm && !progressVisible && !historyOpen, 'landing-view': (destinationOpen && !historyOpen) || booting }">
+  <div class="journey-shell" :class="{ 'questionnaire-view': showForm && !progressVisible && !historyOpen, 'progress-view': progressVisible && !historyOpen, 'landing-view': (destinationOpen && !historyOpen) || booting }">
     <header class="journey-bar"><a href="/" class="brand" aria-label="行记首页" @click.prevent="chooseAgain"><component :is="neutralBrand ? JourneyMark : BrandMark" :city="displayCity.key" /><span class="brand-copy-stack"><Transition name="brand-copy"><b :key="neutralBrand ? 'neutral' : displayCity.key" class="brand-name">{{ neutralBrand ? '行记' : displayCity.brand }}</b></Transition></span><span v-if="!neutralBrand">{{ cityTagline(displayCity) }}</span></a>
       <nav v-if="!gated && !booting" aria-label="账号与行程">
         <button class="bar-link" :class="{ on: historyOpen }" aria-label="历史行程" :disabled="loading || swapBusy || accountBusy" @click="openHistory"><PhClockCounterClockwise :size="18" /><span>历史行程</span></button>
@@ -906,7 +921,7 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
   <Transition name="destination-page" :css="!coveredSwitch"><CityLanding v-if="destinationOpen && !historyOpen && !booting" :cities="meta?.cities || []" :pending="departureCity" :loading="cityLoading" :error="cityError || error" @choose="chooseDestination" /></Transition>
   <Transition name="boot"><div v-if="booting" class="destination-transit destination-boot" role="status"><JourneyMark /><small>行记 · 正在展开下一程</small></div></Transition>
   <Transition name="destination-transit"><div v-if="departureReady" class="destination-transit" role="status"><JourneyMark /><p>{{ draftCity.name }}</p><i class="transit-line" aria-hidden="true"><span /></i><small><span class="transit-code">{{ draftCity.key.toUpperCase() }}</span> · 这一程，从这里开始</small></div></Transition>
-  <Transition name="city-scenery" :css="!coveredSwitch"><QuestionnaireBackdrop :city="draftCity.key" v-if="!destinationOpen && showForm && !progressVisible && !historyOpen && !accountOpen && !gated && !booting" /></Transition>
+  <Transition name="city-scenery" :css="!coveredSwitch"><QuestionnaireBackdrop :city="draftCity.key" v-if="!destinationOpen && showForm && !ticketShown && !progressVisible && !historyOpen && !accountOpen && !gated && !booting" /></Transition>
   <Transition name="journey-reveal" :css="!coveredSwitch">
   <div v-if="!gated && !booting" v-show="!destinationOpen || historyOpen" class="app" :class="[`view-${mobileView}`, { 'has-plan': plan && !showForm && !progressVisible && !historyOpen, 'journey-fullscreen': showForm || progressVisible || historyOpen }]">
     <HistoryView v-if="historyOpen && user" :key="user.id" :username="user.username" @back="historyOpen = false" @create="newJourney" @open="id => openSaved(id)" @replan="id => openSaved(id, true)" @expired="expired" />
@@ -915,6 +930,8 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       <header class="panel-bar">
         <button v-if="showForm && !progressVisible" type="button" class="destination-switch" :disabled="loading || cityLoading" @click="chooseAgain"><PhArrowLeft :size="14" />更换目的地</button>
         <span v-else class="panel-caption">{{ progressVisible ? '行程工作台' : '我的行程' }}</span>
+        <button v-if="showForm && !progressVisible && planMode === 'agent' && agentMessages.length" type="button" class="chat-new" :disabled="confirmBusy" @click="resetAgent"><PhNotePencil :size="15" />新对话</button>
+        <div v-if="showForm && !progressVisible" ref="modeSwitch" class="mode-switch" role="tablist" aria-label="规划方式"><span class="ink" aria-hidden="true" /><button type="button" role="tab" :aria-selected="planMode === 'agent'" :class="{ on: planMode === 'agent' }" @click="setPlanMode('agent')">跟 AI 说</button><button type="button" role="tab" :aria-selected="planMode === 'form'" :class="{ on: planMode === 'form' }" @click="setPlanMode('form')">自己选</button></div>
         <template v-if="plan && !showForm">
           <div class="bar-actions">
             <button class="ghost-btn" @click="startEdit"><PhPencilSimple :size="16" />修改</button>
@@ -950,17 +967,16 @@ onBeforeUnmount(() => { clearTimeout(departureTimer); clearTimeout(coveredTimer)
       </div>
 
       <div ref="scroller" class="panel-scroll" :class="{ 'progress-scroll': progressVisible }">
-        <PlanProgress :city="draftCity" v-if="progressVisible" :progress="planProgress" :elapsed="elapsed" :error="error" :busy="loading" :output="outputText" :output-static="outputStatic" :think="thinkText" :thinking="modelThinking" :queue="planQueue" @back="leaveProgress" @retry="lastRequest && run(lastRequest)" />
+        <PlanProgress :city="draftCity" v-if="progressVisible" :days="Number(lastRequest?.form.days) || undefined" :progress="planProgress" :elapsed="elapsed" :error="error" :busy="loading" :output="outputText" :output-static="outputStatic" :think="thinkText" :thinking="modelThinking" :queue="planQueue" @back="leaveProgress" @retry="lastRequest && run(lastRequest)" />
         <p v-if="error && !progressVisible" class="notice bad" role="alert"><PhWarningCircle :size="16" />{{ error }}</p>
 
         <section v-show="showForm && !progressVisible" class="form-wrap">
           <Transition name="loading-note"><p v-if="cityLoading" class="notice" role="status">正在读取{{ draftCity.name }}的起点与偏好…</p></Transition>
           <p v-if="cityError" class="notice bad" role="alert">{{ cityError }} <button type="button" @click="changeCity(selectedCity)">重新读取城市信息</button></p>
-          <div class="plan-entry">
-            <div ref="modeSwitch" class="mode-switch" role="tablist" aria-label="规划方式"><span class="ink" aria-hidden="true" /><button type="button" role="tab" :aria-selected="planMode === 'agent'" :class="{ on: planMode === 'agent' }" @click="planMode = 'agent'">跟 AI 说</button><button type="button" role="tab" :aria-selected="planMode === 'form'" :class="{ on: planMode === 'form' }" @click="planMode = 'form'">自己选</button></div>
-            <AgentChat v-if="planMode === 'agent'" :meta="meta" :messages="agentMessages" :replies="agentReplies" :understanding="agentUnderstanding" :busy="confirmBusy" :error="confirmError" :disabled="loading || cityLoading || !!cityError || !meta" :needs-login="!!meta?.access?.login_to_plan && !user" :quota="quota" @send="sendAgent" @retry="understandAgent" @confirm="startAgentPlan" @reset="resetAgent" />
+          <div class="plan-entry" :class="{ 'with-ticket': ticketShown }" :style="{ '--mode-dir': modeDir }">
+            <Transition name="mode" :css="modeSwitching" :duration="{ enter: 760, leave: 260 }"><AgentChat v-show="planMode === 'agent'" :active="planMode === 'agent'" :city="draftCity" :departing="progressVisible" :meta="meta" :messages="agentMessages" :replies="agentReplies" :understanding="agentUnderstanding" :busy="confirmBusy" :error="confirmError" :disabled="loading || cityLoading || !!cityError || !meta" :needs-login="!!meta?.access?.login_to_plan && !user" :quota="quota" @send="sendAgent" @retry="understandAgent" @confirm="startAgentPlan" /></Transition>
             <PlanConfirm v-if="planMode === 'form' && confirming" :understanding="confirming.understanding" :meta="meta" :busy="confirmBusy" :error="confirmError" :quota="quota" @patch="patchUnderstanding" @back="confirming = null" @confirm="confirmPlan" />
-            <PlanForm v-show="planMode === 'form' && !confirming" :city="draftCity" :meta="meta" :loading="loading || confirmBusy || cityLoading || !!cityError" :quota="quota" :needs-login="!!meta?.access?.login_to_plan && !user" :initial-query="initialQuery" :initial-request="initialRequest" @submit="understandFirst" @hotel-change="previewHotel = $event" />
+            <Transition name="mode" :css="modeSwitching" :duration="{ enter: 760, leave: 260 }"><PlanForm v-show="planMode === 'form' && !confirming" :city="draftCity" :meta="meta" :loading="loading || confirmBusy || cityLoading || !!cityError" :quota="quota" :needs-login="!!meta?.access?.login_to_plan && !user" :initial-query="initialQuery" :initial-request="initialRequest" :departing="progressVisible" @submit="understandFirst" @hotel-change="previewHotel = $event" /></Transition>
           </div>
         </section>
 

@@ -172,3 +172,9 @@ def test_a_searched_origin_keeps_its_coordinates_in_the_chat(places):
                         today=WEDNESDAY, places=picked)
     assert result.profile.origin_known and result.profile.hotel.lat == 30.2612
     assert sources(result)["hotel"] == "said"
+
+
+def test_no_night_visit_said_in_the_chat_reaches_the_profile(places):
+    # 提示词让模型输出 include_evening，解析结构里曾漏了这个字段，说“不想夜游”不起作用
+    assert understand("晚上不想夜游，早点休息", {"city": "hangzhou"}, llm=parsed(include_evening=False), today=WEDNESDAY).profile.include_evening is False
+    assert understand("带爸妈玩三天", {"city": "hangzhou"}, llm=parsed(days=3), today=WEDNESDAY).profile.include_evening is True

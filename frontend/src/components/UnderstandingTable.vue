@@ -1,96 +1,32 @@
 <script setup lang="ts">
-// “我是这么理解的”：上面是规划前就能看出的问题和一键修改，下面逐项列出理解与依据；除城市外每项都能就地改（2026-10-28 用户：能改的太少）。
-// 改动先攒着，用户改完点“提交修改”才一次交出去（2026-10-28 用户：不要改一个就调整）。
-// 怎么处理由外层决定：问卷模式直接改字段，跟 AI 说模式把这几处修改合成一句话（列表类整份说“改成”，免得被理解成追加）。
-import { computed, ref, watch } from 'vue'
-import { PhInfo, PhMinus, PhPlus, PhWarningCircle, PhX } from '@phosphor-icons/vue'
-import type { Hotel, Meta, Understanding, UnderstandingField, UnderstandingIssue } from '../api'
+// “我是这么理解的”（问卷模式的确认表）：上面是规划前就能看出的问题和一键修改，下面逐项列出理解与依据；除城市外每项都能就地改（2026-10-28 用户：能改的太少）。
+// 改动先攒着，用户改完点“提交修改”才一次交出去；「跟 AI 说」用行程票，不用这张表（2026-11-25），修改逻辑共用 understandingDraft.ts。
+import { ref, watch } from 'vue'
+import { PhMinus, PhPlus, PhX } from '@phosphor-icons/vue'
+import type { Meta, Understanding } from '../api'
+import { SOURCE, TRANSPORT, useUnderstandingDraft, type ListKey } from '../understandingDraft'
+import IssueList from './IssueList.vue'
 import OriginPicker from './OriginPicker.vue'
 import RollValue from './RollValue.vue'
 
-const props = withDefaults(defineProps<{ understanding: Understanding; meta: Meta | null; busy: boolean; mode?: 'agent' | 'form' }>(), { mode: 'form' })
-const emit = defineEmits<{ apply: [patch: Record<string, unknown>, phrases: string[]]; pending: [phrases: string[], patch: Record<string, unknown>] }>()
-
-const SOURCE = { said: '你说的', form: '你填的', inferred: '推断', default: '默认' } as const
-const TRANSPORT: Record<string, string> = { taxi: '打车', transit: '公交地铁' }
-const LISTS = { must_visit: '必去', avoid: '不去' } as const
-const LABELS: Record<string, string> = { transport: '出行', companions: '同行', familiarity: '对这座城市', pace: '节奏', spice: '口味' }
-type ListKey = keyof typeof LISTS
-
-// 没说必去、不去时服务端不列这两行；这里补成“没有”，好让用户能加（顺序固定：必去在前）
-const rows = computed<(UnderstandingField | { key: ListKey; label: string; display: string; source: null; note: string })[]>(() => [
-  ...props.understanding.fields.filter(field => !(field.key in LISTS)),
-  ...(Object.keys(LISTS) as ListKey[]).map(key => props.understanding.fields.find(field => field.key === key)
-    ?? { key, label: LISTS[key], display: '没有', source: null, note: '' }),
-])
-
-// 还没提交的修改；表里显示的都是“改过的值，没改就用理解出来的值”
-const draft = ref<Record<string, unknown>>({})
-const changed = (key: string) => key in draft.value
-const current = (key: string) => (changed(key) ? draft.value[key] : props.understanding.profile[key])
-const value = (key: string) => current(key) as string | number | null | undefined
-const list = (key: string) => (current(key) as string[] | undefined) ?? []
-const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
-
-function set(key: string, next: unknown) {
-  const rest = { ...draft.value }
-  delete rest[key]
-  // 改回原样就不算改
-  draft.value = same(next, props.understanding.profile[key]) ? rest : { ...rest, [key]: next }
-}
-
-function phrase(key: string, next: unknown): string {
-  if (key === 'days') return `玩 ${next} 天`
-  if (key === 'budget') return `预算改成人均共 ${next} 元`
-  if (key === 'start_date') return next ? `日期改成 ${next}` : '日期还没定'
-  if (key === 'hotel') return next ? `从${(next as Hotel).name}出发` : '起点不定，不用回起点'
-  const names = next as string[]
-  if (key === 'interests') return names.length ? `想玩的改成：${names.join('、')}` : '想玩的不限，综合推荐'
-  if (key === 'must_visit') return names.length ? `一定要去的改成：${names.join('、')}` : '没有一定要去的地方了'
-  if (key === 'avoid') return names.length ? `不想去的改成：${names.join('、')}` : '没有不想去的地方了'
-  const labels: Record<string, Record<string, string> | undefined> = { transport: TRANSPORT, companions: props.meta?.companions,
-    familiarity: props.meta?.familiarity_levels, pace: props.meta?.paces, spice: props.meta?.spice_levels }
-  return `${LABELS[key] ?? key}改成${labels[key]?.[next as string] ?? next}`
-}
-// 按表格顺序出句子，同一份修改每次说法一样
-const phrases = computed(() => rows.value.filter(row => changed(row.key)).map(row => phrase(row.key, draft.value[row.key])))
-watch(phrases, value => emit('pending', value, { ...draft.value }))
+const props = defineProps<{ understanding: Understanding; meta: Meta | null; busy: boolean }>()
+const emit = defineEmits<{ apply: [patch: Record<string, unknown>]; pending: [phrases: string[]] }>()
+const edits = useUnderstandingDraft(() => props.understanding, () => props.meta)
+const { rows, draft, changed, value, list, set, change, phrases, budgetShown, perDay, hotelPicked, hotelPresets, pickOrigin } = edits
+watch(phrases, value => emit('pending', value))
 
 const editing = ref<string | null>(null)
 const picked = ref<string[]>([])
 const adding = ref('')
-// 重新理解后旧的草稿作废
-watch(() => props.understanding, () => { draft.value = {}; editing.value = null })
+watch(() => props.understanding, () => { editing.value = null })
 
 function submit() {
   if (!phrases.value.length || props.busy) return
-  emit('apply', { ...draft.value }, phrases.value)
+  emit('apply', { ...draft.value })
 }
 function discard() {
-  draft.value = {}
+  edits.discard()
   editing.value = null
-}
-
-// 预算是整趟的人均总额。没说预算时它随天数估（每天同样多），所以只改了天数时先按新天数算给用户看
-const budgetShown = computed(() => {
-  const profile = props.understanding.profile as { budget: number; days: number }
-  const guessed = props.understanding.fields.find(field => field.key === 'budget')?.source === 'default'
-  if (changed('budget') || !guessed || !changed('days')) return Number(value('budget'))
-  return Math.round(profile.budget / profile.days * Number(value('days')))
-})
-const perDay = computed(() => Math.round(budgetShown.value / Number(value('days') || 1)))
-
-const originKnown = computed(() => props.understanding.profile.origin_known !== false)
-// 当前选中的起点；null 表示“不定”（没定起点时默认点不算起点）
-const hotelPicked = computed<Hotel | null>(() => {
-  if (changed('hotel')) return draft.value.hotel && (originKnown.value || !same(draft.value.hotel, props.understanding.profile.hotel)) ? draft.value.hotel as Hotel : null
-  return originKnown.value ? props.understanding.profile.hotel as Hotel : null
-})
-const hotelPresets = computed(() => (props.meta?.city === props.understanding.profile.city ? props.meta?.hotels : []) ?? [])
-// 起点组件里选了地点（常用起点或高德搜到的）或选回“不定”
-function pickOrigin(place: Hotel | null) {
-  if (!place) set('hotel', originKnown.value ? null : props.understanding.profile.hotel)
-  else set('hotel', { name: place.name, lat: place.lat, lon: place.lon })
 }
 
 // 天数用步进：数字逐位翻；到 1 天或 5 天再按，按钮朝按的方向轻推一下，不改值
@@ -103,24 +39,6 @@ function stepDays(delta: number, event: MouseEvent) {
   button.classList.remove('kick')
   void button.offsetWidth
   button.classList.add('kick')
-}
-
-function change(key: string, raw: string) {
-  if (key === 'days' || key === 'budget') {
-    const number = Number(raw)
-    if (!raw || !Number.isFinite(number) || number <= 0 || (key === 'budget' && number > 100000)) return
-    set(key, number)
-  } else if (key === 'start_date') {
-    set(key, raw || null)
-  } else {
-    set(key, raw)
-  }
-}
-
-// 一键修改也只是先放进草稿，和别的修改一起提交
-const fixed = (fix: UnderstandingIssue['fixes'][number]) => Object.entries(fix.patch).every(([key, next]) => changed(key) && same(draft.value[key], next))
-function applyFix(fix: UnderstandingIssue['fixes'][number]) {
-  for (const [key, next] of Object.entries(fix.patch)) set(key, next)
 }
 
 function open(key: string) {
@@ -144,14 +62,7 @@ function addPlace(key: ListKey) {
 
 <template>
   <div class="understanding" :aria-busy="busy">
-    <ul v-if="understanding.issues.length" class="confirm-issues">
-      <li v-for="issue in understanding.issues" :key="`${issue.code}-${issue.message}`" class="notice" :class="{ bad: issue.level === 'blocker', warn: issue.level === 'warning' }" :role="issue.level === 'blocker' ? 'alert' : undefined">
-        <PhWarningCircle v-if="issue.level !== 'info'" :size="16" /><PhInfo v-else :size="16" />
-        <div><p>{{ issue.message }}</p>
-          <div v-if="issue.fixes.length" class="confirm-fixes"><button v-for="fix in issue.fixes" :key="fix.label" type="button" :class="{ on: fixed(fix) }" :aria-pressed="fixed(fix)" :disabled="busy" @click="applyFix(fix)">{{ fix.label }}</button></div>
-        </div>
-      </li>
-    </ul>
+    <IssueList :issues="understanding.issues" :edits="edits" :busy="busy" />
     <table class="confirm-table">
       <thead><tr><th scope="col">项目</th><th scope="col">我的理解</th><th scope="col">依据</th></tr></thead>
       <tbody>
@@ -197,19 +108,13 @@ function addPlace(key: ListKey) {
       </tbody>
     </table>
     <div v-if="phrases.length" class="confirm-pending" role="status">
-      <span>改了 {{ phrases.length }} 处，提交后{{ mode === 'agent' ? '我重新理解一遍' : '重新核对一遍' }}</span>
+      <span>改了 {{ phrases.length }} 处，提交后重新核对一遍</span>
       <span class="confirm-pending-actions"><button type="button" class="confirm-link" :disabled="busy" @click="discard">撤销</button><button type="button" class="confirm-save" :disabled="busy" @click="submit">提交修改</button></span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.confirm-issues { list-style: none; margin: 0 0 14px; padding: 0; }
-.confirm-issues p { margin: 0; }
-.confirm-fixes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.confirm-fixes button { font: inherit; font-size: 12px; padding: 4px 11px; border: 1px solid currentColor; border-radius: 3px; background: #ffffff; color: inherit; cursor: pointer; }
-.confirm-fixes button.on { background: #151613; border-color: #151613; color: #ffffff; }
-.confirm-fixes button:disabled { opacity: .5; cursor: default; }
 .confirm-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .confirm-table th, .confirm-table td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .confirm-table thead th { font-size: 12px; font-weight: 500; color: var(--muted); }

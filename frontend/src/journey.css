@@ -7,9 +7,9 @@
 .journey-bar .brand span { display: none; }
 .journey-bar nav { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .journey-bar nav button { min-height: 38px; color: var(--muted); }
-.journey-bar .bar-link { display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border-radius: 3px; transition: background .2s, color .2s; }
+.journey-bar .bar-link { display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border-radius: 3px; transition: background .2s, color .2s, opacity .4s; }
 .journey-bar .bar-link:hover:not(:disabled), .journey-bar .bar-link.on { background: #f4f5f2; color: var(--accent); }
-.journey-bar nav .account-signin { display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid #e3e4e1; border-radius: 999px; color: var(--accent); transition: background .2s, border-color .2s; }
+.journey-bar nav .account-signin { display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid #e3e4e1; border-radius: 999px; color: var(--accent); transition: background .2s, border-color .2s, opacity .4s, border-radius .5s; }
 .journey-bar nav .account-signin:hover:not(:disabled), .journey-bar nav .account-signin.on { background: var(--accent-soft); border-color: #c8c9c6; }
 .account-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; margin: 0 4px; padding: 3px 12px 3px 3px; border-radius: 999px; background: #f5f6f3; }
 .account-avatar { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(145deg, #383a35, #151613); color: #fff; font-size: 12px; font-weight: 700; }

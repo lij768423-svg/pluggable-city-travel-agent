@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { CityInfo } from '../api'
 import RevealText from './RevealText.vue'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PhArrowLeft, PhArrowClockwise, PhWarningCircle } from '@phosphor-icons/vue'
 import DrawCheck from './DrawCheck.vue'
 import StreamText from './StreamText.vue'
+import { cityArtwork } from '../cityArt'
 import { expandHooks } from '../motion'
 import { planStages as baseStages, type PlanProgressState } from '../planProgress'
 
-const props = defineProps<{ city: CityInfo; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; outputStatic?: number; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null; queue?: { position: number; limit: number } | null }>()
+const props = defineProps<{ city: CityInfo; days?: number; progress: PlanProgressState; elapsed: number; error: string; busy: boolean; output: string; outputStatic?: number; think?: string; thinking?: { tag: string; attempt: number; started: number; chars: number; waiting: boolean } | null; queue?: { position: number; limit: number } | null }>()
 const planStages = computed(() => baseStages.map(stage => ({ ...stage,
   title: stage.id === 'finalize' ? `整理你的${props.city.brand}` : stage.title,
   description: stage.id === 'retrieve' ? `从${props.city.name}地点库召回符合条件的候选` : stage.description,
@@ -52,116 +53,34 @@ const stageLine = (id: string) => thinkingLine.value ? thinkingLine.value
   : props.progress.active === 'refine' ? `正在检查空档、绕路和节奏，逐处试改并重新校验 · ${stageSeconds.value} 秒`
   : `${planStages.value.find(stage => stage.id === id)?.description ?? '正在处理'} · ${stageSeconds.value} 秒`
 const clock = computed(() => `${Math.floor(props.elapsed / 60).toString().padStart(2, '0')}:${(props.elapsed % 60).toString().padStart(2, '0')}`)
-// 插画里的路线：7 个站点对应 7 个真实步骤，已完成的点亮，标记停在当前步骤
-const routePath = ref<SVGPathElement | null>(null)
-const points = ref<{ x: number; y: number }[]>([])
-const marker = ref({ x: 116, y: 400 })
-const completedCount = computed(() => planStages.value.filter(stage => props.progress.completed.includes(stage.id)).length)
-const fraction = computed(() => Math.min(1, completedCount.value / (planStages.value.length - 1)))
-function placeRoute() {
-  const path = routePath.value
-  if (!path) return
-  const total = path.getTotalLength()
-  points.value = planStages.value.map((_, index) => { const point = path.getPointAtLength(total * index / (planStages.value.length - 1)); return { x: point.x, y: point.y } })
-  const point = path.getPointAtLength(total * fraction.value)
-  marker.value = { x: point.x, y: point.y }
-}
-watch(fraction, placeRoute)
-onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
+// 左边的圆就是那张票撑开的样子：这座城市的插画和行程天数；下面的条码按 7 个真实步骤一段段点亮
+const art = computed(() => cityArtwork(props.city.key))
+const BARS_PER_STAGE = 8
+const bars = computed(() => {
+  let hash = 2166136261
+  for (const ch of `${props.city.key}|${props.days ?? ''}`) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0
+  return planStages.value.map(stage => ({ stage, widths: Array.from({ length: BARS_PER_STAGE }, () => { hash = Math.imul(hash ^ (hash >>> 13), 1274126177) >>> 0; return 1 + (hash >>> 11) % 4 }) }))
+})
+// 进场：右边逐条进来；播完就撤掉，之后新出现的内容（出错、实时输出）不跟着延迟
+const arriving = ref(true)
+let arrivalTimer: ReturnType<typeof setTimeout> | undefined
+onMounted(() => { heading.value?.focus({ preventScroll: true }); arrivalTimer = setTimeout(() => { arriving.value = false }, 1700) })
+onBeforeUnmount(() => clearTimeout(arrivalTimer))
 </script>
 
 <template>
-  <section class="plan-progress" aria-label="行程生成进度">
+  <section class="plan-progress" :class="{ arriving }" aria-label="行程生成进度">
+    <!-- 远景：这座城市的另一幅插画从左边探出来，底下薄雾缓缓飘（2026-11-25 用户选“城市远景加票纸”） -->
+    <div class="generation-backdrop" aria-hidden="true"><img v-if="art" :src="art.left" alt="" decoding="async" /><i class="mist far" /><i class="mist near" /></div>
     <div class="generation-art" :class="{ paused: !busy }" aria-hidden="true">
-      <svg class="generation-landscape" :data-city="city.key" viewBox="0 0 480 500">
-        <defs>
-          <clipPath id="pg-frame"><circle cx="240" cy="246" r="214" /></clipPath>
-          <linearGradient id="pg-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ebece9" /><stop offset=".55" stop-color="#f7f1e6" /><stop offset="1" stop-color="#f3f4f1" /></linearGradient>
-          <linearGradient id="pg-lake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3e4e1" /><stop offset="1" stop-color="#cccdca" /></linearGradient>
-          <radialGradient id="pg-glow"><stop offset="0" stop-color="#ffe2a6" /><stop offset="1" stop-color="#ffe2a6" stop-opacity="0" /></radialGradient>
-        </defs>
-        <g class="pg-orbit"><circle cx="240" cy="246" r="234" fill="none" stroke="#dedfdc" stroke-dasharray="2 9" /></g>
-        <circle cx="240" cy="246" r="222" fill="none" stroke="#e7e8e5" />
-        <g clip-path="url(#pg-frame)">
-          <rect x="0" y="0" width="480" height="500" fill="url(#pg-sky)" />
-          <circle class="pg-glow" cx="326" cy="176" r="74" fill="url(#pg-glow)" />
-          <circle cx="326" cy="176" r="30" fill="#ffd690" />
-          <g class="pg-cloud" fill="#fff"><path d="M86 150c0-12 10-21 22-21 8 0 15 4 18 11 3-2 7-3 11-3 10 0 18 8 18 18H86Z" /><path d="M296 104c0-8 7-14 15-14 5 0 9 2 12 6 2-1 4-2 7-2 7 0 12 5 12 12h-46Z" opacity=".85" /></g>
-          <g class="pg-birds" fill="none" stroke="#929390" stroke-width="1.8" stroke-linecap="round"><path d="M368 128q5-5 10 0q5-5 10 0" /><path d="M392 146q4-4 8 0q4-4 8 0" /><path d="M350 150q3.5-3.5 7 0q3.5-3.5 7 0" /></g>
-          <g v-if="city.key === 'hangzhou'" data-landscape="hangzhou">
-          <path d="M20 312C64 270 110 252 160 266s90-28 140-32 116 24 160 46v40H20Z" fill="#e0e1de" />
-          <path d="M20 318c48-40 104-52 160-34s82 22 110 34H20Z" fill="#c7c8c5" />
-          <g fill="#b8b9b6"><circle cx="78" cy="296" r="15" /><circle cx="98" cy="290" r="13" /><circle cx="204" cy="294" r="14" /><circle cx="224" cy="300" r="11" /></g>
-          <g id="pg-pagoda">
-            <rect x="122" y="280" width="56" height="8" rx="2" fill="#a5a6a3" />
-            <rect x="131" y="262" width="38" height="18" fill="#f9faf7" /><rect x="150" y="262" width="19" height="18" fill="#e8e9e6" />
-            <path d="M122 263h56l-7-7h-42z" fill="#151613" />
-            <rect x="135" y="242" width="30" height="14" fill="#f9faf7" /><rect x="150" y="242" width="15" height="14" fill="#e8e9e6" />
-            <path d="M127 243h46l-6-6h-34z" fill="#151613" />
-            <rect x="139" y="225" width="22" height="12" fill="#f9faf7" /><rect x="150" y="225" width="11" height="12" fill="#e8e9e6" />
-            <path d="M132 226h36l-5-6h-26z" fill="#151613" />
-            <rect x="142" y="211" width="16" height="9" fill="#f9faf7" /><rect x="150" y="211" width="8" height="9" fill="#e8e9e6" />
-            <path d="M136 212h28l-5-6h-18z" fill="#151613" />
-            <rect x="149" y="192" width="2.4" height="14" rx="1" fill="#151613" /><circle cx="150.2" cy="191" r="3" fill="#151613" />
-            <g class="pg-window" fill="#ffc96b"><rect x="146" y="266" width="8" height="10" rx="3" /><rect x="146.5" y="245" width="7" height="8" rx="2.5" /><rect x="147" y="228" width="6" height="7" rx="2" /></g>
-          </g>
-          <path d="M296 318c44-16 104-20 168-8v26H296Z" fill="#d4d5d2" />
-          <path d="M346 306c20-16 74-16 94 0v7h-94Z" fill="#f6f7f4" /><path d="M366 313c9-11 45-11 54 0Z" fill="#b1b2af" />
-          <rect x="0" y="318" width="480" height="182" fill="url(#pg-lake)" />
-          <use href="#pg-pagoda" transform="translate(0 636) scale(1 -1)" opacity=".16" />
-          <g class="pg-shimmer" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M110 352h26" /><path d="M250 340h18" /><path d="M300 400h30" style="animation-delay: -1.2s" /><path d="M150 430h22" style="animation-delay: -2s" /><path d="M370 360h20" style="animation-delay: -.6s" /></g>
-          <g class="pg-boat"><path d="M268 372h54l-8 9h-38Z" fill="#151613" /><path d="M280 362h26v10h-26Z" fill="#f9faf7" /><path d="M278 362h30l-4-5h-22Z" fill="#a5a6a3" /></g>
-          </g>
-          <g v-else-if="city.key === 'nanjing'" data-landscape="nanjing">
-            <!-- 风格化南京：紫金山轮廓、明城门、梧桐和秦淮沿岸，非实景测绘。 -->
-            <path d="M12 282q50-61 91-44 35-73 85-34 45-68 91-21 65-12 111 60l78 25v64H12Z" fill="#e0e1de" />
-            <path d="M20 299q82-68 154-20 76-64 152-26 52-10 134 41v44H20Z" fill="#cacbc8" />
-            <g class="pg-wall">
-              <path d="M24 289h180v-18h16v18h17v-18h16v18h17v-18h16v18h18v-18h16v18h132v51H24Z" fill="#b0b1ae" />
-              <path d="M32 306h412M46 321h384" fill="none" stroke="#d3d4d1" stroke-width="2" />
-              <path d="M82 306v15m26-15v15m26-15v15m145-15v15m26-15v15m26-15v15m26-15v15m26-15v15" stroke="#d3d4d1" stroke-width="2" />
-              <path d="M134 271h96v70h-96Z" fill="#969794" />
-              <path d="M163 341v-30a19 19 0 0 1 38 0v30Z" fill="#6e6f6c" />
-              <path d="M166 341v-27a16 16 0 0 1 32 0v27Z" fill="#e8e9e6" />
-              <path d="M142 250h80v26h-80Z" fill="#f7f5ee" /><path d="M183 250h39v26h-39Z" fill="#e6e7e4" />
-              <path d="M128 251q12-1 19-13h71q6 12 19 13l-6 5h-97Z" fill="#151613" />
-              <path d="M156 222h52v16h-52Z" fill="#f7f5ee" />
-              <path d="M145 224q10 0 17-14h40q7 14 17 14Z" fill="#676865" />
-              <path d="M182 203v8" stroke="#676865" stroke-width="3" stroke-linecap="round" />
-              <g class="pg-window" fill="#f5c879"><rect x="153" y="259" width="8" height="12" rx="2" /><rect x="170" y="259" width="8" height="12" rx="2" /><rect x="187" y="259" width="8" height="12" rx="2" /><rect x="204" y="259" width="8" height="12" rx="2" /><rect x="175" y="227" width="14" height="10" rx="2" /></g>
-            </g>
-            <path d="M0 341q127-26 242 5 110 25 238-10v164H0Z" fill="url(#pg-lake)" />
-            <path d="M244 335q108-26 222-8v28q-100-17-217 0Z" fill="#f2f3f0" />
-            <g data-landmark="qinhuai">
-              <path d="M282 304h50v31h-50Zm55-10h52v38h-52Zm56 12h46v27h-46Z" fill="#f7f5ee" />
-              <path d="m275 305 12-12h39l12 12Zm55-10 12-13h42l13 13Zm57 12 12-12h35l12 12Z" fill="#767774" />
-              <path d="M279 333h161" stroke="#a4a5a2" stroke-width="4" />
-              <g class="pg-lantern" fill="#f3ba67" stroke="#dca85c" stroke-width="1"><path d="M292 306v7m31-7v7m26-17v10m29-10v10m27 2v7m26-7v7" /><ellipse cx="292" cy="316" rx="4" ry="6" /><ellipse cx="323" cy="316" rx="4" ry="6" /><ellipse cx="349" cy="310" rx="4" ry="6" /><ellipse cx="378" cy="310" rx="4" ry="6" /><ellipse cx="405" cy="319" rx="4" ry="6" /><ellipse cx="431" cy="319" rx="4" ry="6" /></g>
-              <g stroke="#fce2a6" stroke-width="3" opacity=".5" stroke-linecap="round"><path class="pg-lantern" d="M295 363h16m32 9h19m31-15h15" /></g>
-            </g>
-            <g class="pg-tree" data-landmark="plane-tree">
-              <path d="m67 339 3-114m0 38-25-27m25 14 26-29m-26 20-9-32" fill="none" stroke="#9c9d9a" stroke-width="6" stroke-linecap="round" />
-              <g fill="#9b9c99"><path d="m38 207 12 2 4-17 10 12 13-13 3 19 17-4-8 17 12 9-18 4-3 15-15-11-14 8 1-15-17-5 13-9Z" /><path d="m22 226 12-3-2-15 13 8 8-12 6 17 13-3-6 13 9 9-15 2-1 15-12-10-11 7v-13l-14-4 9-7Z" /></g>
-              <path d="m86 196 10 3 5-13 8 12 12-5-2 14 13 4-12 9 2 13-13-5-9 10-3-14-14-1 9-11Z" fill="#d8b974" />
-            </g>
-            <g class="pg-tree pg-tree-far" opacity=".8"><path d="m416 292-2-77m0 28-17-13m17 2 15-15" fill="none" stroke="#a9aaa7" stroke-width="4" /><g fill="#a6a7a4"><circle cx="399" cy="219" r="16" /><circle cx="421" cy="209" r="19" /><circle cx="438" cy="225" r="13" /></g><path d="m416 190 5 9 11-2-4 10 7 7-11 1-5 10-4-10-11-1 7-7-3-9 10 2Z" fill="#e4c383" /></g>
-            <g class="pg-shimmer" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M75 375h26" /><path d="M208 355h18" /><path d="M292 420h30" /><path d="M151 438h22" /><path d="M374 381h20" /></g>
-            <g class="pg-qinhuai-boat"><path d="M235 389h65l-11 11h-42Z" fill="#151613" /><path d="M248 373h36v16h-36Z" fill="#f6f5ef" /><path d="m242 375 11-11h26l12 11Z" fill="#999a97" /><g class="pg-window" fill="#f5cb79"><path d="M252 377h7v9h-7Zm10 0h7v9h-7Zm10 0h7v9h-7Z" /></g><path d="M239 405h48" stroke="#fff" stroke-width="2" opacity=".6" /></g>
-          </g>
-          <g v-else data-landscape="neutral">
-            <path d="M0 318 105 220l74 57 88-92 117 95 96-48v268H0Z" fill="#d6d7d4" />
-            <path d="M0 345q120-27 240 5t240-2v152H0Z" fill="url(#pg-lake)" />
-            <g class="pg-shimmer" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M110 365h28" /><path d="M280 400h35" /><path d="M175 438h22" /></g>
-          </g>
-          <path ref="routePath" d="M116 400C134 382 122 362 156 350S226 336 246 368 318 420 352 390 410 320 404 270" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 9" opacity=".95" />
-          <path d="M116 400C134 382 122 362 156 350S226 336 246 368 318 420 352 390 410 320 404 270" pathLength="100" fill="none" stroke="#151613" stroke-width="4" stroke-linecap="round" class="pg-progress" :style="{ strokeDashoffset: 100 - fraction * 100 }" />
-          <g v-for="(point, index) in points" :key="index" class="pg-stop" :class="{ done: index < completedCount, current: busy && index === completedCount }">
-            <circle class="pg-stop-ring" :cx="point.x" :cy="point.y" r="12" />
-            <circle class="pg-stop-dot" :cx="point.x" :cy="point.y" r="6" />
-          </g>
-          <g class="pg-traveler" :style="{ transform: `translate(${marker.x}px, ${marker.y}px)` }"><circle r="11" fill="#151613" /><circle r="4" fill="#fff" /></g>
-        </g>
-      </svg>
+      <div class="generation-scene">
+        <svg class="generation-orbit" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49.4" /></svg>
+        <div class="generation-ticket">
+          <img v-if="art" :src="art.right" alt="" decoding="sync" />
+          <p><b>{{ city.name }}</b><span>{{ city.key.toUpperCase() }}<template v-if="days"> · {{ days }} 天</template></span></p>
+        </div>
+      </div>
+      <div class="generation-code"><span v-for="{ stage, widths } in bars" :key="stage.id" :class="{ done: progress.completed.includes(stage.id), active: busy && isActive(stage.id) && !progress.completed.includes(stage.id) }"><i v-for="(width, index) in widths" :key="index" :style="{ width: `${width}px`, '--at': index }" /></span></div>
     </div>
     <div class="generation-content" tabindex="0" role="region" aria-label="生成步骤与模型输出">
     <div class="progress-eyebrow"><span>{{ city.brand }} / 正在准备</span><button type="button" @click="emit('back')"><PhArrowLeft :size="14" />返回修改</button></div>
@@ -172,7 +91,6 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
       <span v-if="queued">同时最多生成 {{ queued.limit }} 份</span>
       <span v-else-if="!error">{{ progress.active === 'repair' ? `第 ${progress.round + (progress.details.repair ? 0 : 1)} 轮调整` : `已完成 ${progress.completed.length} / ${planStages.length} 项` }}</span>
     </div>
-    <div class="progress-segments" aria-hidden="true"><i v-for="stage in planStages" :key="stage.id" :class="{ done: progress.completed.includes(stage.id), active: busy && progress.active === stage.id }" /></div>
     <ol class="progress-steps">
       <li v-for="(stage, index) in planStages" :key="stage.id" :class="{ done: progress.completed.includes(stage.id), active: isActive(stage.id) }"
         :aria-current="progress.active === stage.id ? 'step' : undefined">
@@ -199,40 +117,45 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
 </template>
 
 <style scoped>
-.plan-progress { padding: 40px 20px; max-width: 1180px; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 480px); align-items: start; gap: 60px; animation: arrive .35s ease-out; }
-.generation-art { position: sticky; top: 30px; min-height: 500px; display: grid; align-content: center; }
-.generation-landscape { width: 100%; position: relative; z-index: 1; }
-.paused * { animation-play-state: paused !important; }
-.pg-orbit { transform-box: view-box; transform-origin: 240px 246px; animation: orbit 80s linear infinite; }
-.pg-glow { transform-box: fill-box; transform-origin: center; animation: pg-glow 5s ease-in-out infinite; }
-.pg-cloud { animation: pg-drift 18s ease-in-out infinite alternate; }
-.pg-birds { animation: pg-birds 14s ease-in-out infinite alternate; }
-.pg-window { animation: pg-window 2.8s ease-in-out infinite; }
-.pg-shimmer path { animation: pg-shimmer 3.2s ease-in-out infinite; }
-.pg-wall { animation: pg-build 1.2s cubic-bezier(.16, 1, .3, 1) both; }
-.pg-tree { transform-origin: 70px 339px; animation: pg-sway 7s ease-in-out infinite; }
-.pg-tree-far { transform-origin: 416px 292px; animation-delay: -2s; }
-.pg-lantern { animation: pg-window 3.2s ease-in-out infinite; }
-.pg-qinhuai-boat { animation: pg-sail 12s ease-in-out infinite alternate; }
-@keyframes pg-build { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pg-sway { 50% { transform: rotate(1.6deg); } }
-@keyframes pg-sail { from { transform: translate(-13px, 0); } to { transform: translate(12px, 2px); } }
-.pg-boat { animation: pg-boat 3.6s ease-in-out infinite; }
-.pg-progress { stroke-dasharray: 100; transition: stroke-dashoffset .9s cubic-bezier(.16, 1, .3, 1); }
-.pg-stop-dot { fill: #fff; stroke: #b1b2af; stroke-width: 2.5; transition: fill .4s, stroke .4s; }
-.pg-stop-ring { fill: none; stroke: #151613; stroke-width: 2; opacity: 0; }
-.pg-stop.done .pg-stop-dot { fill: #151613; stroke: #fff; }
-.pg-stop.current .pg-stop-dot { stroke: #151613; }
-.pg-stop.current .pg-stop-ring { transform-box: fill-box; transform-origin: center; animation: pg-ring 1.8s ease-out infinite; }
-.pg-traveler { transition: transform .9s cubic-bezier(.16, 1, .3, 1); filter: drop-shadow(0 3px 6px #15161355); }
-@keyframes pg-glow { 50% { opacity: .55; transform: scale(1.1); } }
-@keyframes pg-drift { from { transform: translateX(-10px); } to { transform: translateX(24px); } }
-@keyframes pg-birds { from { transform: translate(0, 0); } to { transform: translate(-40px, 10px); } }
-@keyframes pg-window { 50% { opacity: .55; } }
-@keyframes pg-shimmer { 0%, 100% { opacity: .15; transform: translateX(0); } 50% { opacity: .85; transform: translateX(8px); } }
-@keyframes pg-boat { 50% { transform: translateY(3px) rotate(-1.5deg); } }
-@keyframes pg-ring { from { opacity: .8; transform: scale(.6); } to { opacity: 0; transform: scale(1.5); } }
-.generation-content { min-width: 0; }
+.plan-progress { padding: 40px 20px; max-width: 1180px; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 500px); align-items: start; gap: 56px; }
+.arriving .generation-art { animation: scene-in .5s ease-out .1s both; }
+.arriving .generation-backdrop img { animation: backdrop-in 1s cubic-bezier(.16, 1, .3, 1) .3s both; }
+.arriving .mist { animation-play-state: paused; }
+.arriving .generation-content { animation: paper-in .6s cubic-bezier(.16, 1, .3, 1) .34s both; }
+@keyframes backdrop-in { from { opacity: 0; transform: translateX(-46px); } }
+@keyframes paper-in { from { opacity: 0; transform: translateY(18px); } }
+.arriving .generation-code { animation: arrive .5s cubic-bezier(.16, 1, .3, 1) .8s both; }
+.arriving .generation-content > :not(.progress-steps) { animation: arrive .5s cubic-bezier(.16, 1, .3, 1) .4s both; }
+.arriving .generation-content > :nth-child(n + 4):not(.progress-steps) { animation-delay: .5s; }
+.arriving .generation-content > .progress-steps ~ * { animation-delay: .9s; }
+.arriving .progress-steps li { animation: arrive .5s cubic-bezier(.16, 1, .3, 1) both; }
+.arriving .progress-steps li:nth-child(1) { animation-delay: .46s; } .arriving .progress-steps li:nth-child(2) { animation-delay: .51s; } .arriving .progress-steps li:nth-child(3) { animation-delay: .56s; } .arriving .progress-steps li:nth-child(4) { animation-delay: .61s; }
+.arriving .progress-steps li:nth-child(5) { animation-delay: .66s; } .arriving .progress-steps li:nth-child(6) { animation-delay: .71s; } .arriving .progress-steps li:nth-child(7) { animation-delay: .76s; }
+@keyframes scene-in { from { opacity: 0; } }
+.generation-art { position: sticky; top: 30px; min-height: 500px; display: grid; align-content: center; justify-items: center; gap: clamp(22px, 4vh, 40px); }
+.generation-scene { position: relative; width: min(100%, calc(100dvh - 250px)); aspect-ratio: 1; }
+.generation-orbit { position: absolute; inset: -4.5%; width: 109%; height: 109%; animation: orbit 80s linear infinite; }
+.generation-orbit circle { fill: none; stroke: #cfd0cb; stroke-width: .36; stroke-dasharray: .4 1.6; }
+.generation-ticket { position: relative; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: linear-gradient(#f4f5f4, #fff 78%); box-shadow: 0 30px 60px -34px #15161340, 0 1px 3px #1516130f; container-type: size; }
+.generation-ticket :is(img, canvas) { position: absolute; right: -9%; bottom: -10%; height: 120%; max-width: none; mix-blend-mode: multiply; -webkit-mask-image: linear-gradient(to right, transparent 6%, #000 38%); mask-image: linear-gradient(to right, transparent 6%, #000 38%); }
+.generation-ticket p { position: absolute; left: 11%; top: 39%; margin: 0; }
+.generation-ticket b { display: block; font-size: 13.5cqw; line-height: 1; font-weight: 650; letter-spacing: -.04em; color: #151613; }
+.generation-ticket span { display: block; margin-top: 2.6cqw; font-family: 'Geist Mono Variable', 'SFMono-Regular', Consolas, monospace; font-size: max(11px, 2.5cqw); letter-spacing: .08em; color: #696b64; }
+.generation-code { display: flex; justify-content: space-between; width: min(84%, 420px); height: 30px; }
+.generation-code > span { display: flex; justify-content: space-between; flex: 1; padding-right: 3px; }
+.generation-code i { height: 100%; background: #d6d7d1; transform-origin: bottom; transition: background-color .5s ease calc(var(--at) * 45ms); }
+.generation-code .done i { background: #151613; }
+.generation-code .active i { background: #8f918a; animation: code-run 1.1s ease-in-out infinite; animation-delay: calc(var(--at) * 70ms); }
+@keyframes code-run { 50% { transform: scaleY(.45); background: #151613; } }
+.paused .generation-orbit, .paused i { animation-play-state: paused !important; }
+.generation-backdrop { position: fixed; inset: var(--journey-bar-height, 64px) 0 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.generation-backdrop img { position: absolute; left: clamp(-60px, calc((100vw - 1440px) / 2), 0px); bottom: 0; height: 100%; max-width: none; mix-blend-mode: multiply; -webkit-mask-image: linear-gradient(to right, #000 34%, transparent 56%); mask-image: linear-gradient(to right, #000 34%, transparent 56%); }
+.mist { position: absolute; left: -30%; width: 160%; animation: mist 26s ease-in-out infinite alternate; }
+.mist.near { bottom: -6%; height: 46%; opacity: .92; background: radial-gradient(38% 50% at 30% 60%, #fff 20%, #fff0 72%), radial-gradient(34% 44% at 68% 70%, #fff 10%, #fff0 70%); }
+.mist.far { bottom: 16%; height: 34%; opacity: .6; background: radial-gradient(38% 50% at 30% 60%, #fff 20%, #fff0 72%); animation-duration: 38s; animation-direction: alternate-reverse; }
+@keyframes mist { from { transform: translateX(-7%); } to { transform: translateX(9%); } }
+.generation-art, .generation-content { z-index: 1; }
+.generation-content { position: relative; min-width: 0; padding: 24px 30px 14px; border-radius: 16px; background: #fff; box-shadow: 0 30px 60px -34px #15161345, 0 1px 3px #15161314; }
 .output-toggle { width: 100%; display: flex; justify-content: space-between; gap: 10px; align-items: center; text-align: left; padding: 18px 0; color: var(--accent); font-size: 12px; }
 .output-toggle span { color: var(--muted); font-size: 11px; }
 .generation-output { border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 16px; }
@@ -260,14 +183,9 @@ onMounted(() => { placeRoute(); heading.value?.focus({ preventScroll: true }) })
 .progress-eyebrow button:hover { background: var(--bg); }
 h1 { font-size: clamp(23px, 2.2vw, 29px); letter-spacing: -.04em; font-weight: 650; margin: 18px 0 8px; outline: none; }
 .progress-intro { color: var(--muted); font-size: 13px; }
-.progress-caption { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 26px; font-size: 13px; }
+.progress-caption { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 20px 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .progress-caption strong { font-weight: 600; }
 .progress-caption > span { color: var(--muted); font-size: 11px; white-space: nowrap; }
-.progress-segments { display: flex; gap: 5px; margin: 12px 0 20px; }
-.progress-segments i { position: relative; overflow: hidden; flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background .3s; }
-.progress-segments i::after { content: ''; position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform var(--spring-soft-ms) var(--spring-soft); }
-.progress-segments i.done::after { transform: none; }
-.progress-segments i.active { background: #acadaa; }
 .progress-steps { display: grid; gap: 0; }
 .progress-steps li { position: relative; display: flex; gap: 13px; min-height: 54px; padding-bottom: 9px; color: var(--faint); }
 .progress-steps li:not(:last-child)::before { content: ''; position: absolute; left: 12px; top: 30px; bottom: 4px; width: 1px; background: var(--line); }
@@ -280,7 +198,7 @@ h1 { font-size: clamp(23px, 2.2vw, 29px); letter-spacing: -.04em; font-weight: 6
 .active h2 { font-weight: 650; }
 .active .step-symbol { border-color: var(--accent); color: var(--accent); }
 .step-pulse { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: breathe 1.8s ease-in-out infinite; }
-.progress-note { color: var(--muted); font-size: 11px; line-height: 1.8; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+.progress-note { color: var(--muted); font-size: 11px; line-height: 1.8; padding-top: 10px; border-top: 2px dashed #e4e5e0; }
 .progress-note span { display: block; }
 .progress-note time { display: block; color: var(--text); font-variant-numeric: tabular-nums; margin-bottom: 3px; }
 .progress-error { display: flex; align-items: flex-start; gap: 8px; padding: 12px; background: #fff3f1; border-radius: 3px; color: var(--bad); font-size: 12px; }
@@ -293,10 +211,21 @@ h1 { font-size: clamp(23px, 2.2vw, 29px); letter-spacing: -.04em; font-weight: 6
 @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 900px) { .plan-progress { gap: 24px; grid-template-columns: minmax(0, .7fr) minmax(0, 1fr); } .generation-art { min-height: 360px; } }
 @media (min-width: 641px) {
-  .plan-progress { height: 100%; min-height: 0; width: 100%; padding: 12px 20px; grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; }
-  .generation-art { position: relative; top: auto; min-height: 0; max-width: min(100%, calc(100dvh - 150px)); width: 100%; aspect-ratio: 480 / 500; align-self: center; justify-self: center; }
-  .generation-content { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #d4d5d2 transparent; padding: 0 12px 24px 4px; }
+  .plan-progress { height: 100%; min-height: 0; width: 100%; padding: 12px 20px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .generation-art { position: relative; top: auto; min-height: 0; width: 100%; align-self: center; justify-self: center; }
+  .generation-content { min-height: 0; max-height: 100%; align-self: center; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-color: #d4d5d2 transparent; }
 }
-@media (max-width: 640px) { .plan-progress { display: flex; flex-direction: column; padding: 4px 0 30px; gap: 10px; } .generation-art { position: relative; top: auto; min-height: 0; width: 220px; margin: auto; } .generation-content { width: 100%; } h1 { margin-top: 12px; } }
+/* 矮屏：清单压紧，票纸里尽量不滚 */
+@media (min-width: 641px) and (max-height: 820px) {
+  .plan-progress { padding-block: 0; }
+  .generation-content { padding: 18px 28px 8px; }
+  h1 { margin: 8px 0 4px; font-size: 25px; }
+  .progress-caption { margin: 14px 0 10px; padding-bottom: 8px; }
+  .progress-steps li { min-height: 48px; padding-bottom: 4px; }
+  .output-toggle { padding: 12px 0; }
+}
+@media (max-width: 900px) { .generation-backdrop img { opacity: .5; } }
+@media (max-width: 640px) { .generation-backdrop img { display: none; } .generation-content { padding: 18px 20px 8px; } }
+@media (max-width: 640px) { .plan-progress { display: flex; flex-direction: column; padding: 4px 0 30px; gap: 10px; } .generation-art { position: relative; top: auto; min-height: 0; width: 100%; gap: 22px; padding-top: 14px; } .generation-scene { width: 210px; } .generation-code { width: 250px; height: 24px; } .generation-content { width: 100%; } h1 { margin-top: 12px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after, .generation-landscape * { animation: none !important; transition: none !important; } }
 </style>

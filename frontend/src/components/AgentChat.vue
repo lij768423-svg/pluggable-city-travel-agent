@@ -1,22 +1,29 @@
 <script setup lang="ts">
-// 跟 AI 说（2026-10-28 用户决定）：用户说一句，AI 回“我是这么理解的”；想改就接着说，表里改完点“提交修改”也当成用户说的一句话，
+// 跟 AI 说（2026-10-28 用户决定）：用户说一句，AI 回“我是这么理解的”；想改就接着说，点选改完提交也当成用户说的一句话，
 // 所有话合在一起重新理解，后说的为准。确认后才开始规划。
-// 界面按常见的网页聊天来做（用户：改成 Claude / GPT 网页版那样）：没说话时输入框居中，说了之后是消息流、输入框贴底；
-// 每轮回复都留着，旧的只写改了什么，最新一轮带完整的表和“开始规划”。
+// 2026-11-25 用户选定“对话加行程票”：左边是对话，理解结果写在右边的票上，取代聊天里的十二行表；
+// 猜的带虚线，点票上一项或输入框上面的一项，就在输入框上面展开选项。每轮回复都留着，写改了什么。
 import { computed, nextTick, ref, watch } from 'vue'
-import { PhArrowRight, PhArrowUp, PhNotePencil, PhSparkle, PhWarningCircle } from '@phosphor-icons/vue'
-import type { Hotel, Meta, Understanding } from '../api'
-import UnderstandingTable from './UnderstandingTable.vue'
+import { PhArrowRight, PhArrowUp } from '@phosphor-icons/vue'
+import type { CityInfo, Hotel, Meta, Understanding } from '../api'
+import { EXTRAS, extraTextFrom, useUnderstandingDraft } from '../understandingDraft'
+import IssueList from './IssueList.vue'
+import OptionTray from './OptionTray.vue'
+import TripTicket, { type TicketCell } from './TripTicket.vue'
 
-const props = defineProps<{ meta: Meta | null; messages: string[]; replies: (Understanding | null)[]; understanding: Understanding | null; busy: boolean; error: string;
-  disabled?: boolean; needsLogin?: boolean; quota?: { limit: number; remaining: number } | null }>()
-const emit = defineEmits<{ send: [text: string, places: Hotel[]]; retry: []; confirm: []; reset: [] }>()
+const props = defineProps<{ city: CityInfo; meta: Meta | null; messages: string[]; replies: (Understanding | null)[]; understanding: Understanding | null; busy: boolean; error: string;
+  active?: boolean; disabled?: boolean; departing?: boolean; needsLogin?: boolean; quota?: { limit: number; remaining: number } | null }>()
+const emit = defineEmits<{ send: [text: string, places: Hotel[]]; retry: []; confirm: [] }>()
 
 const SUGGESTIONS = ['周末和女朋友一日游，不想太累', '带爸妈玩三天，人均 1500，别太赶', '第一次来，想去最有名的几个地方', '一个人随便逛逛，坐公交地铁']
 
 const draft = ref('')
-const pending = ref<string[]>([])  // 表里改了还没提交的几处，发送时和输入框里的话一起发
-const pendingPatch = ref<Record<string, unknown>>({})  // 同一批修改的值；起点要带上坐标
+const edits = useUnderstandingDraft(() => props.understanding, () => props.meta)
+// 点选改了还没提交的几处，发送时和输入框里的话一起发；发出去等回复时票面先保持改后的样子
+const pending = computed(() => props.busy ? [] : edits.phrases.value)
+const tray = ref('')  // 展开的是哪一项
+// 只打了项目名（“出发点”“想去”）：不用问模型，直接打开这一项的选项。只在界面上，不算用户说的话
+const asides = ref<{ at: number; text: string; key: string }[]>([])
 const input = ref<HTMLTextAreaElement>()
 const scroller = ref<HTMLElement>()
 const blocked = computed(() => !!props.understanding?.issues.some(issue => issue.level === 'blocker'))
@@ -55,6 +62,10 @@ function changes(index: number): string[] {
     else if (was.display !== field.display) lines.push(`${field.label}：${short(was.display)} → ${short(field.display)}`)
   }
   for (const field of old.values()) lines.push(`${field.label}：去掉了${short(field.display)}`)
+  for (const { key, label } of EXTRAS) {
+    const [was, is] = [before, now].map(reply => extraTextFrom(field => reply.profile[field], key))
+    if (was !== is) lines.push(`${label}：${was} → ${is}`)
+  }
   return lines
 }
 
@@ -64,11 +75,25 @@ function grow() {
   el.style.height = 'auto'
   el.style.height = `${Math.min(el.scrollHeight, 200)}px`
 }
+const NAMED: [string, RegExp][] = [['hotel', /^(从哪(里)?出发|出发点|出发地|起点|住哪(里)?)$/], ['interests', /^(想玩|想看|兴趣|玩什么|看什么|想玩什么)$/], ['must_visit', /^(想去|必去|一定要去|去哪(里)?|景点)$/],
+  ['avoid', /^(不去|不想去)$/], ['start_date', /^(日期|哪天|什么时候|时间)$/], ['days', /^(天数|几天|玩几天)$/], ['budget', /^(预算|多少钱|花多少)$/], ['transport', /^(出行|交通|怎么走|出行方式)$/],
+  ['pace', /^(节奏|快慢)$/], ['spice', /^(口味|辣|吃辣)$/], ['companions', /^(同行|和谁|跟谁|同行人)$/], ['familiarity', /^(熟悉|熟悉程度|来过)$/], ['evening', /^(夜间|晚上|夜景|夜游)$/],
+  ['food', /^(怎么吃|吃什么|餐饮|吃)$/], ['meal', /^(每餐|每餐预算|餐费)$/], ['window', /^(活动时段|时段|几点|几点出发)$/], ['walk', /^(步行|走路|步行上限)$/], ['fallback', /^(公交不便|改打车)$/]]
 function send() {
-  const message = [...pending.value, draft.value.trim()].filter(Boolean).join('；')
-  const place = pendingPatch.value.hotel as Hotel | null | undefined
+  const said = draft.value.trim()
+  const named = !pending.value.length && props.understanding && NAMED.find(([, pattern]) => pattern.test(said))?.[0]
+  if (named && !props.busy && !props.disabled) {
+    asides.value.push({ at: props.messages.length, text: said, key: named })
+    draft.value = ''
+    tray.value = named
+    nextTick(grow)
+    return
+  }
+  const message = [...pending.value, said].filter(Boolean).join('；')
+  const place = edits.draft.value.hotel as Hotel | null | undefined
   if (message && !props.busy && !props.disabled) emit('send', message, place ? [place] : [])
 }
+const labelOf = (key: string) => EXTRAS.find(item => item.key === key)?.label ?? edits.row(key)?.label ?? ''
 function onEnter(event: KeyboardEvent) {
   if (event.isComposing) return  // 中文输入法选字时的回车不是发送
   event.preventDefault()
@@ -82,139 +107,101 @@ function suggest(text: string) {
 // 外层收下这句话（加进对话）才清空输入；没登录等情况下保留，登录后还能接着发
 watch(() => props.messages.length, (now, before) => {
   if (now > before) { draft.value = ''; nextTick(grow) }
-  pending.value = []
-  pendingPatch.value = {}
+  if (!now) asides.value = []
+  tray.value = ''
 })
+// 没理解成：这句话已经记下，重试时会一起带上，草稿作废
+watch(() => props.error, error => { if (error) edits.discard() })
 // 新消息、正在理解、回复到了：把最后一句用户的话滚到顶上，下面接着就是回复
-watch(() => [props.messages.length, props.busy, latest.value, props.error], () => nextTick(() => {
+function showLast(behavior: ScrollBehavior) {
   const box = scroller.value
   const last = [...(box?.querySelectorAll<HTMLElement>('.chat-user') ?? [])].pop()
-  if (box && last) box.scrollTo({ top: Math.max(0, last.offsetTop - 16), behavior: 'smooth' })
-}))
+  if (box && last) box.scrollTo({ top: Math.max(0, last.offsetTop - 16), behavior })
+}
+watch(() => [props.messages.length, props.busy, latest.value, props.error, asides.value.length], () => nextTick(() => showLast('smooth')))
+// 切走再回来：隐藏时滚动位置会丢，回到最后一句
+watch(() => props.active, active => { if (active) nextTick(() => showLast('instant')) })
+
+// —— 行程票 ——
+const CELLS = [['days', '天数'], ['companions', '同行'], ['pace', '节奏'], ['transport', '出行'], ['budget', '预算'], ['spice', '口味'], ['familiarity', '熟悉'], ['start_date', '日期'], ['hotel', '起点']] as const
+const ROWS = [['interests', '想玩', 3], ['must_visit', '必去', 2], ['avoid', '不去', 1]] as const
+function cell(key: string, label: string): TicketCell {
+  if (!props.understanding) return { key, label, value: '–', muted: true }
+  const row = edits.row(key)
+  return { key, label, value: edits.text(key), guess: edits.guessed(key) && !edits.changed(key), changed: edits.changed(key), title: [edits.text(key), row?.note].filter(Boolean).join('\n') }
+}
+const ticketCells = computed(() => CELLS.map(([key, label]) => cell(key, label)))
+const ticketRows = computed<TicketCell[]>(() => {
+  const rows: TicketCell[] = ROWS.map(([key, label, span]) => ({ ...cell(key, label), span }))
+  const parts = props.understanding ? EXTRAS.filter(item => edits.extraSet(item.key) || edits.extraChanged(item.key))
+    .map(item => ({ key: item.key, label: item.label, value: edits.extraText(item.key), changed: edits.extraChanged(item.key) })) : []
+  return parts.length ? [...rows, { label: '还有', parts, span: 3 }] : rows
+})
+const ticketSummary = computed(() => [props.city.name, ...['days', 'companions', 'pace', 'budget'].map(key => edits.text(key))].join(' · '))
+const ticketNote = computed(() => {
+  if (props.busy) return '正在理解…'
+  if (!props.understanding) return props.error ? '还是空的' : '还是空的，说一句就会填上'
+  if (pending.value.length) return `改了 ${pending.value.length} 处，还没提交`
+  if (blocked.value) return '先处理标红的问题'
+  if (outOfQuota.value) return '今天的生成次数已用完'
+  const keys = [...CELLS, ...ROWS].map(([key]) => edits.row(key)?.source)
+  const said = keys.filter(source => source === 'said' || source === 'form').length + EXTRAS.filter(item => edits.extraSet(item.key)).length
+  const guessed = keys.filter(source => source === 'inferred' || source === 'default').length
+  return [`${said} 项你说的`, `${guessed} 项我猜的`, props.quota && `今天还可生成 ${props.quota.remaining}/${props.quota.limit} 次`].filter(Boolean).join(' · ')
+})
+const starting = ref(false)
+async function start() {
+  starting.value = true
+  await nextTick()  // 先让票记下这一屏的样子，再切页面
+  emit('confirm')
+  await nextTick()
+  if (!props.departing) starting.value = false
+}
+watch(() => props.departing, departing => { if (!departing) starting.value = false })
+function edit(key: string) { tray.value = tray.value === key ? '' : key }
 </script>
 
 <template>
-  <section class="qform-card agent-chat" :class="{ empty: !messages.length }" aria-labelledby="agent-title" :aria-busy="busy">
-    <header class="chat-head">
-      <span class="chat-title">跟 AI 说</span>
-      <button v-if="messages.length" type="button" class="chat-new" :disabled="busy" @click="emit('reset')"><PhNotePencil :size="16" />新对话</button>
-    </header>
-
-    <div ref="scroller" class="chat-scroll">
-      <div v-if="!messages.length" class="chat-welcome">
+  <section class="tform tchat" :class="{ empty: !messages.length }" aria-labelledby="agent-title" :aria-busy="busy">
+    <div class="tchat-main">
+      <div v-if="!messages.length" class="tchat-hello">
         <h2 id="agent-title" tabindex="-1">想怎么玩，直接说</h2>
-        <p>说得随意一点也行。没说的我先按常见情况猜，猜了什么都会标出来，不对再说一句就行。</p>
+        <p>说得随意一点也行。没说的我先按常见情况猜，猜了什么都会在票上标出来。</p>
       </div>
-      <ol v-else class="chat-thread" role="log" aria-label="对话">
-        <template v-for="(text, index) in messages" :key="index">
-          <li class="chat-user">{{ text }}</li>
-          <li v-if="replies[index]" class="chat-ai">
-            <span class="chat-avatar" aria-hidden="true"><PhSparkle :size="15" weight="fill" /></span>
-            <div class="chat-ai-body">
-              <template v-if="index === latest && !changes(index).length && previous(index) >= 0">
-                <p>这句我没看出要改哪一项，下面还是原来的理解。可以换个说法，或者直接在表里改。</p>
-              </template>
+      <div v-else ref="scroller" class="tchat-scroll">
+        <h2 id="agent-title" class="sr-only">跟 AI 说</h2>
+        <ol class="tchat-thread" role="log" aria-label="对话">
+          <template v-for="(text, index) in messages" :key="index">
+            <li class="chat-user">{{ text }}</li>
+            <li v-if="replies[index]" class="chat-ai">
+              <p v-if="index === latest && !changes(index).length && previous(index) >= 0">这句我没看出要改哪一项，还是原来的理解。可以换个说法，或者点票上那一项改。</p>
               <template v-else-if="changes(index).length">
                 <p>好的，改了这几处：</p>
-                <ul class="chat-changes"><li v-for="line in changes(index)" :key="line">{{ line }}</li></ul>
+                <ul><li v-for="line in changes(index)" :key="line">{{ line }}</li></ul>
               </template>
-              <p v-else-if="index === latest">我是这么理解的。标黄的是我猜的，不对就直接告诉我，或者在表里改完点“提交修改”。</p>
+              <p v-else-if="index === latest">我是这么理解的，都写在票上。<span class="chat-guess">带虚线的</span>是我猜的，不对就直接告诉我，或者点那一项改。</p>
               <p v-else>我是这么理解的：{{ summary(index) }}</p>
-              <template v-if="index === latest && understanding">
-                <p v-if="changes(index).length" class="chat-now">现在是这样：</p>
-                <UnderstandingTable :understanding="understanding" :meta="meta" :busy="busy" mode="agent" @apply="send" @pending="(phrases, patch) => { pending = phrases; pendingPatch = patch }" />
-                <div class="chat-actions">
-                  <button type="button" class="journey-primary" :disabled="busy || disabled || blocked || outOfQuota || !!pending.length" @click="emit('confirm')">就这样，开始规划<PhArrowRight :size="18" /></button>
-                  <span v-if="pending.length" class="chat-action-note">先提交表里的修改</span>
-                  <span v-else-if="blocked" class="chat-action-note">先处理上面标红的问题</span>
-                  <span v-else-if="quota" class="chat-action-note" :class="{ bad: outOfQuota }">{{ outOfQuota ? '今天的生成次数已用完' : `今天还可生成 ${quota.remaining}/${quota.limit} 次` }}</span>
-                </div>
-              </template>
-            </div>
-          </li>
-        </template>
-        <li v-if="busy" class="chat-ai" role="status">
-          <span class="chat-avatar" aria-hidden="true"><PhSparkle :size="15" weight="fill" /></span>
-          <div class="chat-ai-body chat-typing"><span class="chat-dots" aria-hidden="true"><i /><i /><i /></span>正在理解…</div>
-        </li>
-        <li v-else-if="error" class="chat-ai" role="alert">
-          <span class="chat-avatar bad" aria-hidden="true"><PhWarningCircle :size="15" /></span>
-          <div class="chat-ai-body"><p class="chat-error">{{ error }}</p><button type="button" class="chat-retry" @click="emit('retry')">重试</button></div>
-        </li>
-      </ol>
-    </div>
-
-    <div class="chat-dock">
-      <form class="chat-composer" @submit.prevent="send">
-        <textarea ref="input" v-model="draft" rows="1" aria-label="说说你想怎么玩" :disabled="busy || disabled"
-          :placeholder="messages.length ? '还想改什么，直接说' : '说说你想怎么玩'"
-          @input="grow" @keydown.enter.exact="onEnter" />
-        <button type="submit" class="chat-send" :disabled="!canSend" :aria-label="needsLogin ? '登录后发送' : '发送'" :title="needsLogin ? '登录后发送' : '发送'"><PhArrowUp :size="18" weight="bold" /></button>
-      </form>
-      <div v-if="!messages.length" class="chat-suggestions">
-        <button v-for="text in SUGGESTIONS" :key="text" type="button" :disabled="disabled" @click="suggest(text)">{{ text }}</button>
+              <IssueList v-if="index === latest && understanding" :issues="understanding.issues" :edits="edits" :busy="busy" />
+            </li>
+            <template v-for="aside in asides.filter(item => item.at === index + 1)" :key="`${aside.at}-${aside.key}`"><li class="chat-user">{{ aside.text }}</li><li class="chat-ai"><p>好，{{ labelOf(aside.key) }}在下面选。</p></li></template>
+          </template>
+          <li v-if="busy" class="chat-ai chat-typing" role="status"><i aria-hidden="true" />正在理解…</li>
+          <li v-else-if="error" class="chat-ai" role="alert"><p class="chat-error">{{ error }}</p><button type="button" class="pill" @click="emit('retry')">重试</button></li>
+        </ol>
       </div>
-      <p class="chat-hint">{{ pending.length ? `表里改了 ${pending.length} 处，会和这句话一起发` : needsLogin ? '登录后就能发送，写好的话会保留' : 'Enter 发送，Shift + Enter 换行' }}</p>
+      <div class="tchat-dock">
+        <OptionTray v-if="understanding && !busy && messages.length" v-model="tray" :edits="edits" :understanding="understanding" :meta="meta" :disabled="disabled" />
+        <form class="composer" @submit.prevent="send">
+          <textarea ref="input" v-model="draft" rows="1" aria-label="说说你想怎么玩" :disabled="busy || disabled" :placeholder="messages.length ? '还想改什么，直接说' : '说说你想怎么玩'" @input="grow" @keydown.enter.exact="onEnter" />
+          <div class="composer-row"><span>{{ pending.length ? `改了 ${pending.length} 处，会和这句话一起发` : needsLogin ? '登录后就能发送，写好的话会保留' : 'Enter 发送，Shift + Enter 换行' }}</span><button type="submit" class="composer-send" :disabled="!canSend" :title="needsLogin ? '登录后发送' : undefined">发送<PhArrowUp :size="17" aria-hidden="true" /></button></div>
+        </form>
+        <div v-if="!messages.length" class="pill-row tchat-suggestions"><button v-for="text in SUGGESTIONS" :key="text" type="button" class="pill" :disabled="disabled" @click="suggest(text)">{{ text }}</button></div>
+      </div>
     </div>
+    <TripTicket :city="city" :cells="ticketCells" :rows="ticketRows" :summary="ticketSummary" :note="ticketNote" :tearing="starting" :departing="!!departing" editable :active="tray" :blank="!understanding" :busy="busy" @edit="edit">
+      <button v-if="pending.length" type="button" class="ticket-back" @click="edits.discard()">撤销</button>
+      <button v-if="pending.length" type="button" class="ticket-go" :disabled="disabled" @click="send">提交修改</button>
+      <button v-else type="button" class="ticket-go" :disabled="!understanding || busy || disabled || blocked || outOfQuota" @click="start">就这样，开始规划<PhArrowRight :size="18" aria-hidden="true" /></button>
+    </TripTicket>
   </section>
 </template>
-
-<style scoped>
-.agent-chat { flex: 1 1 auto; height: 100%; }
-.chat-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 8px 14px 8px 20px; border-bottom: 1px solid var(--line); }
-.chat-title { font-size: 14px; font-weight: 600; }
-.chat-new { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
-.chat-new:hover:not(:disabled) { background: var(--accent-soft); color: var(--text); }
-
-.chat-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
-.agent-chat.empty .chat-scroll { flex: 0 0 auto; margin-top: auto; overflow: visible; }
-.agent-chat.empty .chat-dock { margin-bottom: auto; padding-bottom: 28px; }
-.chat-welcome { max-width: 720px; margin: 0 auto; padding: 24px 20px 20px; text-align: center; }
-.chat-welcome h2 { margin: 0 0 10px; font-size: clamp(26px, 2.6vw, 32px); line-height: 1.3; font-weight: 650; letter-spacing: -.02em; outline: none; }
-.chat-welcome p { margin: 0; font-size: 14px; line-height: 1.7; color: var(--muted); }
-
-.chat-thread { list-style: none; max-width: 760px; margin: 0 auto; padding: 24px 20px 12px; display: flex; flex-direction: column; gap: 22px; }
-.chat-user { align-self: flex-end; max-width: 75%; padding: 10px 16px; border-radius: 18px; background: var(--accent-soft); font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-.chat-ai { display: flex; align-items: flex-start; gap: 12px; }
-.chat-avatar { flex: 0 0 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: #ffffff; color: var(--text); }
-.chat-avatar.bad { color: var(--signal); }
-.chat-ai-body { flex: 1; min-width: 0; padding-top: 3px; font-size: 15px; line-height: 1.7; }
-.chat-ai-body > p { margin: 0 0 10px; }
-.chat-changes { margin: 0 0 12px; padding-left: 1.2em; }
-.chat-changes li { margin: 2px 0; }
-.chat-now { color: var(--muted); font-size: 14px; }
-.chat-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
-.chat-action-note { font-size: 13px; color: var(--muted); }
-.chat-action-note.bad { color: var(--signal); }
-.chat-typing { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
-.chat-dots { display: inline-flex; gap: 4px; }
-.chat-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: chat-dot 1.2s infinite ease-in-out; }
-.chat-dots i:nth-child(2) { animation-delay: .15s; }
-.chat-dots i:nth-child(3) { animation-delay: .3s; }
-@keyframes chat-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
-@media (prefers-reduced-motion: reduce) { .chat-dots i { animation: none; opacity: .6; } }
-.chat-error { color: var(--signal); }
-.chat-retry { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: #ffffff; cursor: pointer; }
-
-.chat-dock { flex-shrink: 0; padding: 8px 20px 12px; }
-.chat-composer { max-width: 760px; margin: 0 auto; display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 18px; border: 1px solid var(--line-strong); border-radius: 24px; background: #ffffff; box-shadow: 0 8px 28px -20px #15161380; transition: border-color .15s; }
-.chat-composer:focus-within { border-color: var(--text); }
-.chat-composer textarea { flex: 1; min-width: 0; min-height: 0; height: 37px; max-height: 200px; padding: 7px 0; border: 0; outline: none; resize: none; background: transparent; font: inherit; font-size: 15px; line-height: 1.5; color: var(--text); }
-.chat-composer textarea::placeholder { color: var(--faint); }
-.chat-send { flex: 0 0 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--text); color: #ffffff; cursor: pointer; }
-.chat-send:disabled { background: var(--line); color: #ffffff; cursor: default; }
-.chat-suggestions { max-width: 760px; margin: 14px auto 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-.chat-suggestions button { font: inherit; font-size: 13px; padding: 7px 14px; border: 1px solid var(--line); border-radius: 18px; background: #ffffff; color: var(--muted); cursor: pointer; }
-.chat-suggestions button:hover:not(:disabled) { border-color: var(--line-strong); color: var(--text); }
-.chat-hint { max-width: 760px; margin: 6px auto 0; text-align: center; font-size: 12px; color: var(--faint); }
-
-@media (max-width: 560px) {
-  .chat-head { padding: 6px 8px 6px 16px; }
-  .chat-thread { padding: 18px 16px 8px; gap: 18px; }
-  .chat-user { max-width: 85%; }
-  .chat-ai { gap: 8px; }
-  .chat-avatar { flex-basis: 24px; height: 24px; }
-  .chat-dock { padding: 6px 12px 10px; }
-  .chat-welcome { padding-inline: 16px; }
-}
-</style>

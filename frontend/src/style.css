@@ -176,7 +176,6 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 /* ── 表单 ─────────────────────────────────────────── */
 .form-intro h1 { font-size: 20px; font-weight: 700; }
 .form-intro p { color: var(--muted); font-size: 13px; margin-top: 4px; }
-.plan-form { margin-top: 16px; }
 .field-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
 textarea, input, select {
   width: 100%; border: 1px solid var(--line); border-radius: 3px; background: #fff;
