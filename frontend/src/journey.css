@@ -102,19 +102,6 @@
 .journey-secondary { border: 1px solid #e2e3e0; background: #fff; color: var(--muted); }
 .journey-secondary:hover { color: var(--accent); border-color: #b3b4b1; }
 .history-page { width: min(1120px, 100%); padding: 32px 40px 60px; overflow-y: auto; margin: 0 auto; }
-.history-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 40px 0; }
-.history-heading h1 { font-size: 32px; font-weight: 600; letter-spacing: -.05em; margin: 12px 0; }
-.history-heading p { font-size: 12px; color: var(--muted); }
-.history-list { border-top: 1px solid var(--line); }
-.history-list > li { display: flex; gap: 24px; align-items: center; padding: 28px 0; border-bottom: 1px solid var(--line); }
-.history-number { color: #b2b3b0; font-size: 25px; font-weight: 400; align-self: flex-start; }
-.history-list time { font-size: 11px; color: var(--muted); }
-.history-list h2 { font-size: 18px; margin: 8px 0; font-weight: 550; }
-.history-list h2 button { text-align: left; }
-.history-list p { font-size: 10px; color: var(--faint); }
-.history-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
-.history-delete { width: 38px; height: 38px; display: grid; place-items: center; color: var(--faint); }
-.history-delete:hover { color: var(--bad); background: #fff1ef; border-radius: 3px; }
 .history-empty { padding: 60px 20px; display: grid; justify-items: center; gap: 18px; color: var(--muted); background: #fff; border: 1px dashed #e1e2df; border-radius: 6px; }
 .history-empty h2 { font-size: 20px; font-weight: 500; }
 .history-empty p { font-size: 12px; }
@@ -138,7 +125,7 @@
 }
 @keyframes question-enter { from { opacity: 0; transform: translateX(var(--question-shift, 8px)); } to { opacity: 1; transform: translateX(0); } }
 @keyframes current-enter { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
-@media (max-width: 1000px) { .questionnaire-intro { grid-template-columns: 145px minmax(0, 1fr); gap: 16px; } .questionnaire-steps button { gap: 8px; padding: 0 8px; font-size: 12px; } .questionnaire-steps .step-current-arrow { display: none; } .history-actions { gap: 3px; } }
+@media (max-width: 1000px) { .questionnaire-intro { grid-template-columns: 145px minmax(0, 1fr); gap: 16px; } .questionnaire-steps button { gap: 8px; padding: 0 8px; font-size: 12px; } .questionnaire-steps .step-current-arrow { display: none; } }
 @media (max-width: 720px) {
   .journey-shell { --journey-bar-height: 58px; }
   .journey-bar { padding: 0 18px; gap: 15px; }
@@ -170,12 +157,6 @@
   .questionnaire .pref-grid { gap: 12px; }
   .questionnaire-footer .journey-primary { min-width: 115px; }
   .history-page { padding: 20px 20px 50px; }
-  .history-heading { display: block; padding: 28px 0; }
-  .history-heading h1 { font-size: 27px; }
-  .history-heading > button { margin-top: 20px; }
-  .history-list > li { position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; }
-  .history-actions { grid-column: 2; margin-left: 0; justify-content: flex-start; flex-wrap: wrap; }
-  .history-list h2 { font-size: 16px; }
   .history-empty { text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) { .journey-shell * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
@@ -185,21 +166,21 @@
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 .form-wrap, .history-page, .trip-head { animation: view-in .5s cubic-bezier(.16, 1, .3, 1) both; }
 .panel-scroll > .history-status, .panel-scroll > .notice, .panel-scroll > .aside-note, .panel-scroll > .report-block, .panel-scroll > .fine-print { animation: view-in .5s .18s cubic-bezier(.16, 1, .3, 1) both; }
-.route > li, .history-list > li { animation: view-in .45s cubic-bezier(.16, 1, .3, 1) both; }
-.route > li:nth-child(2), .history-list > li:nth-child(2) { animation-delay: 35ms; }
-.route > li:nth-child(3), .history-list > li:nth-child(3) { animation-delay: 70ms; }
-.route > li:nth-child(4), .history-list > li:nth-child(4) { animation-delay: 105ms; }
-.route > li:nth-child(5), .history-list > li:nth-child(5) { animation-delay: 140ms; }
-.route > li:nth-child(6), .history-list > li:nth-child(6) { animation-delay: 175ms; }
-.route > li:nth-child(7), .history-list > li:nth-child(7) { animation-delay: 210ms; }
-.route > li:nth-child(8), .history-list > li:nth-child(8) { animation-delay: 245ms; }
-.route > li:nth-child(9), .history-list > li:nth-child(9) { animation-delay: 280ms; }
-.route > li:nth-child(10), .history-list > li:nth-child(10) { animation-delay: 315ms; }
-.route > li:nth-child(11), .history-list > li:nth-child(11) { animation-delay: 350ms; }
-.route > li:nth-child(12), .history-list > li:nth-child(12) { animation-delay: 385ms; }
-.route > li:nth-child(13), .history-list > li:nth-child(13) { animation-delay: 420ms; }
-.route > li:nth-child(14), .history-list > li:nth-child(14) { animation-delay: 455ms; }
-.route > li:nth-child(n+15), .history-list > li:nth-child(n+15) { animation-delay: 490ms; }
+.route > li { animation: view-in .45s cubic-bezier(.16, 1, .3, 1) both; }
+.route > li:nth-child(2) { animation-delay: 35ms; }
+.route > li:nth-child(3) { animation-delay: 70ms; }
+.route > li:nth-child(4) { animation-delay: 105ms; }
+.route > li:nth-child(5) { animation-delay: 140ms; }
+.route > li:nth-child(6) { animation-delay: 175ms; }
+.route > li:nth-child(7) { animation-delay: 210ms; }
+.route > li:nth-child(8) { animation-delay: 245ms; }
+.route > li:nth-child(9) { animation-delay: 280ms; }
+.route > li:nth-child(10) { animation-delay: 315ms; }
+.route > li:nth-child(11) { animation-delay: 350ms; }
+.route > li:nth-child(12) { animation-delay: 385ms; }
+.route > li:nth-child(13) { animation-delay: 420ms; }
+.route > li:nth-child(14) { animation-delay: 455ms; }
+.route > li:nth-child(n+15) { animation-delay: 490ms; }
 .map-area { animation: fade-in .7s ease-out both; }
 .questionnaire-backdrop { animation: fade-in 1s ease-out both; }
 .history-opening { animation: fade-in .2s ease-out both; }

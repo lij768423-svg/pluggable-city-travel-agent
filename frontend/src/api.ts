@@ -157,13 +157,16 @@ export interface Understanding { profile: Record<string, unknown>; fields: Under
 
 export interface AccountUser { id: string; username: string }
 export interface PlanQuota { limit: number; used: number; remaining: number }
-export interface HistoryEntry { id: string; title: string; created: number; updated: number }
-export interface HistoryDetail extends HistoryEntry { request: PlanRequest; plan: PlanResponse }
+export interface HistoryRecord { id: string; title: string; created: number; updated: number }
+// 历史列表的一张票：城市、日期、前几站、预计花费和住处由后端从保存的行程里摘出来
+export interface HistoryEntry extends HistoryRecord { city: string; city_name: string; days: number | null; start_date: string | null; theme: string; pace: string | null; companions: string | null; route: string[]; stops: number; total: number | null; stay: string | null; draft: boolean }
+export interface HistoryTotals { trips: number; cities: number; days: number; stops: number }
+export interface HistoryDetail extends HistoryRecord { request: PlanRequest; plan: PlanResponse }
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message) } }
 export const getAccount = async () => j<{ user: AccountUser | null; quota?: PlanQuota | null }>(await fetch('/api/auth/me', { cache: 'no-store' }))
 export const authenticate = async (mode: 'login' | 'register', username: string, password: string, inviteCode?: string) => j<{ user: AccountUser }>(await fetch(`/api/auth/${mode}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, ...(inviteCode ? { invite_code: inviteCode } : {}) }) }))
 export const logoutAccount = async () => j<{ ok: boolean }>(await fetch('/api/auth/logout', { method: 'POST' }))
-export const getHistory = async (offset = 0) => j<{ items: HistoryEntry[]; has_more: boolean }>(await fetch(`/api/history?offset=${offset}`, { cache: 'no-store' }))
+export const getHistory = async (offset = 0) => j<{ items: HistoryEntry[]; has_more: boolean; totals?: HistoryTotals }>(await fetch(`/api/history?offset=${offset}`, { cache: 'no-store' }))
 export const getHistoryDetail = async (id: string) => j<HistoryDetail>(await fetch(`/api/history/${encodeURIComponent(id)}`, { cache: 'no-store' }))
 export const deleteHistory = async (id: string) => j<{ ok: boolean }>(await fetch(`/api/history/${encodeURIComponent(id)}`, { method: 'DELETE' }))
 export const saveHistory = async (id: string) => j<PlanResponse>(await fetch(`/api/plans/${encodeURIComponent(id)}/save`, { method: 'POST' }))

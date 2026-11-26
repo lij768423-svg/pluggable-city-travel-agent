@@ -164,8 +164,16 @@ class AccountStore:
 
     def list(self, user_id: str, offset: int = 0) -> dict:
         with self.connect() as database:
-            rows = database.execute("SELECT id,title,created,updated,json_extract(plan_json,'$.profile.days') AS days,json_extract(plan_json,'$.profile.start_date') AS start_date FROM trips WHERE user_id=? ORDER BY updated DESC,id DESC LIMIT 21 OFFSET ?", (user_id, offset)).fetchall()
-        return {"items": [dict(row) for row in rows[:20]], "has_more": len(rows) > 20}
+            rows = database.execute("SELECT id,title,created,updated,plan_json FROM trips WHERE user_id=? ORDER BY updated DESC,id DESC LIMIT 21 OFFSET ?", (user_id, offset)).fetchall()
+            result = {"items": [trip_card(row) for row in rows[:20]], "has_more": len(rows) > 20}
+            if offset == 0:
+                # 页头那行统计按全部记录算，不只当前这一页；翻页时不再重算
+                totals = database.execute("SELECT COUNT(*) AS trips, COUNT(DISTINCT COALESCE(json_extract(plan_json,'$.profile.city'),?)) AS cities, "
+                                          "COALESCE(SUM(json_extract(plan_json,'$.profile.days')),0) AS days FROM trips WHERE user_id=?", (DEFAULT_CITY, user_id)).fetchone()
+                stops = database.execute("SELECT COUNT(*) FROM trips, json_each(trips.plan_json,'$.days') AS day, json_each(day.value,'$.items') AS item "
+                                         "WHERE trips.user_id=? AND json_extract(item.value,'$.kind')='poi'", (user_id,)).fetchone()[0]
+                result["totals"] = {**dict(totals), "stops": stops}
+        return result
 
     def get(self, user_id: str, identifier: str) -> dict:
         with self.connect() as database:
@@ -183,6 +191,27 @@ class AccountStore:
             removed = database.execute("DELETE FROM trips WHERE id=? AND user_id=?", (identifier, user_id)).rowcount
         if not removed:
             raise HTTPException(404, "这份历史行程不存在。")
+
+
+ROUTE_NAMES = 6
+
+
+def trip_card(row: sqlite3.Row) -> dict:
+    """历史列表的一张票：标题之外，从保存的行程里摘出城市、日期、前几站、预计花费和住处。"""
+    plan = json.loads(row["plan_json"])
+    profile = plan.get("profile") or {}
+    key = profile.get("city") or DEFAULT_CITY
+    try:
+        city = city_config(key).name
+    except ValueError:  # 城市后来从配置里删掉了：标题里存着当时的城市名
+        city = row["title"].removeprefix("[测试草稿·待核实] ").split(" ")[0]
+    places = [item["name"] for day in plan.get("days", []) for item in day.get("items", []) if item.get("kind") == "poi" and item.get("name")]
+    lodging = plan.get("lodging") or {}
+    return {"id": row["id"], "title": row["title"], "created": row["created"], "updated": row["updated"],
+            "city": key, "city_name": city, "days": profile.get("days"), "start_date": profile.get("start_date"),
+            "theme": "、".join(profile.get("interests", [])[:2]) or "随心旅行", "pace": profile.get("pace"), "companions": profile.get("companions"),
+            "route": places[:ROUTE_NAMES], "stops": len(places), "total": ((plan.get("report") or {}).get("totals") or {}).get("total"),
+            "stay": (lodging.get("chosen") or {}).get("name") or lodging.get("area"), "draft": plan.get("delivery_status") == "draft"}
 
 
 def hash_token(token: str) -> str:

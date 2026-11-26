@@ -119,6 +119,32 @@ def test_history_is_persistent_and_strictly_owned(account_store):
     assert first.get(f"/api/history/{identifier}").status_code == 404
 
 
+def test_history_list_cards_and_totals(account_store):
+    client = TestClient(api.app)
+    register(client)
+    user = client.get("/api/auth/me").json()["user"]
+
+    def trip(identifier, updated, city, days, items, **extra):
+        plan = {"profile": {"city": city, "days": days, "start_date": None, "interests": [], "pace": "normal", "companions": "solo"},
+                "days": [{"day": index + 1, "items": day} for index, day in enumerate(items)],
+                "report": {"totals": {"total": 180.5}}, **extra}
+        with account_store.connect() as database:
+            database.execute("INSERT INTO trips VALUES (?,?,?,?,?,?,?,?)", (identifier, user["id"], identifier, f"杭州 {days} 日 · 随心旅行", 1.0, updated, "{}", json.dumps(plan, ensure_ascii=False)))
+
+    poi = lambda name: {"kind": "poi", "name": name}
+    trip("a", 2.0, "hangzhou", 2, [[poi("白堤"), {"kind": "meal", "name": "楼外楼"}, poi("断桥")], [poi(f"景点{n}") for n in range(6)]],
+         lodging={"area": "西湖", "chosen": {"name": "湖滨酒店", "external_id": "B1", "tier": "舒适"}})
+    trip("b", 3.0, "atlantis", 1, [[poi("海底城")]], delivery_status="draft")
+    page = client.get("/api/history").json()
+    first, second = page["items"]
+    assert first["id"] == "b" and first["city_name"] == "杭州" and first["draft"] and first["stay"] is None
+    assert second["city_name"] == "杭州" and second["theme"] == "随心旅行" and second["stay"] == "湖滨酒店"
+    assert second["route"] == ["白堤", "断桥", "景点0", "景点1", "景点2", "景点3"] and second["stops"] == 8 and second["total"] == 180.5
+    assert "plan_json" not in second
+    assert page["totals"] == {"trips": 2, "cities": 2, "days": 3, "stops": 9}
+    assert "totals" not in client.get("/api/history?offset=1").json()
+
+
 def test_guest_stream_can_only_be_claimed_by_same_browser(account_store):
     guest, stranger = TestClient(api.app), TestClient(api.app)
     response = guest.post("/api/plan/stream", json={"form": {"days": 1}, "select_mode": "rule"})
