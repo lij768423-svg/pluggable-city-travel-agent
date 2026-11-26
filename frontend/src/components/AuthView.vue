@@ -1,29 +1,61 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { PhArrowLeft, PhArrowRight, PhEye, PhEyeSlash, PhLockSimple, PhTicket, PhUser } from '@phosphor-icons/vue'
-import BrandMark from './BrandMark.vue'
+// 登录页（2026-11-25 用户选“检票口”，取代布幡和居中白卡）：一张横票，左边插画、中间表单、右边竖条码，条码随填写逐根变黑。
+// 从有行程票的页面进来，竖票直接展开成这张横票；返回或登录成功，横票收回竖票（gate.ts）。
+// 票上是哪座城跟着进来时的竖票走（face）；没有竖票就按当前城市，中性入口是空票。
+// going：选了城市、登录完就进城；gate：公网未登录时作为整站入口，不提供返回
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { PhArrowLeft, PhArrowRight, PhEye, PhEyeSlash } from '@phosphor-icons/vue'
 import JourneyMark from './JourneyMark.vue'
 import { cityArtwork } from '../cityArt'
 import { authenticate, type AccountUser, type CityInfo } from '../api'
+import type { GateFace } from '../gate'
 
-// 登录页：全屏动态插画（左断桥北望、右雷峰夕照），左上垂挂竖排布幡，中间一张白色船票表单
-// gate：公网未登录时作为整站入口，不提供返回
-const props = defineProps<{ city: CityInfo; neutral?: boolean; reason?: string; inviteRequired?: boolean; gate?: boolean }>()
-const scene = computed(() => props.neutral ? undefined : cityArtwork(props.city.key))
-const invite = ref('')
+const props = defineProps<{ city: CityInfo; neutral?: boolean; face?: GateFace | null; going?: string; reason?: string; inviteRequired?: boolean; gate?: boolean }>()
 const emit = defineEmits<{ close: []; signedIn: [user: AccountUser] }>()
 const mode = ref<'login' | 'register'>('login')
 const username = ref('')
 const password = ref('')
 const confirm = ref('')
+const invite = ref('')
 const reveal = ref(false)
 const busy = ref(false)
 const error = ref('')
 const heading = ref<HTMLElement | null>(null)
+const form = ref<HTMLFormElement | null>(null)
+const stub = ref<HTMLElement | null>(null)
+
+const face = computed<Omit<GateFace, 'bars'>>(() => props.face ?? (props.neutral ? { name: '行记', code: 'NEXT STOP', art: null, photo: false } : { name: props.city.name, code: props.city.key.toUpperCase(), art: cityArtwork(props.city.key)?.right ?? null, photo: false }))
+// 图已经在缓存里就直接是满的（和 TripTicket 一样）
+const vReady = { beforeMount: (el: HTMLImageElement) => { if (el.complete) el.classList.add('is-loaded') } }
+const verb = computed(() => mode.value === 'login' ? '登录' : '创建账号')
+const why = computed(() => props.reason || `${verb.value}后${props.going ? `去${props.going}` : ''}，行程会保存到你的账号。`)
+const action = computed(() => busy.value ? '正在检票…' : `${verb.value}${props.going ? `，去${props.going}` : ''}`)
 const today = new Date()
-const ticketNo = computed(() => `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`)
+const ticketNo = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+
+// 条码：从竖票进来就用那张票的条码，填了多少黑多少
+const BARS = 46
+const bars = computed(() => {
+  if (props.face?.bars.length === BARS) return props.face.bars
+  let hash = 2166136261
+  for (const ch of face.value.code) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0
+  return Array.from({ length: BARS }, () => { hash = Math.imul(hash ^ (hash >>> 13), 1274126177) >>> 0; return `${1 + (hash >>> 11) % 4}px` })
+})
+const filled = computed(() => {
+  const parts = [username.value.length / 3, password.value.length / 10]
+  if (mode.value === 'register') parts.push(confirm.value.length / 10, ...(props.inviteRequired ? [invite.value.length / 4] : []))
+  return Math.round(parts.reduce((sum, part) => sum + Math.min(1, part), 0) / parts.length * BARS)
+})
+
 watch(mode, () => { error.value = ''; password.value = ''; confirm.value = ''; reveal.value = false })
-onMounted(() => heading.value?.focus({ preventScroll: true }))
+watch([username, password, confirm, invite], () => { if (!busy.value) error.value = '' })
+// 有鼠标键盘的设备直接停在第一个没填的格子；触屏不弹键盘
+function focusFirst() {
+  const field = matchMedia('(hover: hover) and (pointer: fine)').matches ? [...form.value?.querySelectorAll('input') ?? []].find(input => !input.value) : undefined
+  ;(field ?? heading.value)?.focus({ preventScroll: true })
+}
+onMounted(focusFirst)
+function pick(next: 'login' | 'register') { if (mode.value === next) return; mode.value = next; void nextTick(focusFirst) }
 
 function close() { if (!busy.value && !props.gate) emit('close') }
 async function submit() {
@@ -31,141 +63,158 @@ async function submit() {
   error.value = ''
   if (mode.value === 'register' && password.value !== confirm.value) { error.value = '两次输入的密码不一致。'; return }
   busy.value = true
+  let failed = ''
   try {
     const response = await authenticate(mode.value, username.value.trim(), password.value, mode.value === 'register' && props.inviteRequired ? invite.value.trim() : undefined)
     emit('signedIn', response.user)
-  } catch (failure) { error.value = (failure as Error).message || '暂时无法登录，请重试。' }
-  finally { password.value = ''; confirm.value = ''; busy.value = false }
+    return
+  } catch (failure) { failed = (failure as Error).message || '暂时无法登录，请重试。' }
+  password.value = ''; confirm.value = ''
+  await nextTick()
+  busy.value = false
+  error.value = failed
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) stub.value?.animate({ transform: ['none', 'translateX(-5px)', 'translateX(5px)', 'translateX(-5px)', 'none'] }, { duration: 340 })
+  await nextTick()
+  form.value?.querySelector<HTMLInputElement>('input[type=password], input[autocomplete$=password]')?.focus({ preventScroll: true })
 }
 </script>
 
 <template>
   <section class="auth-page" aria-labelledby="auth-title" @keydown.esc="close">
-    <div class="auth-scene questionnaire-backdrop" :class="{ 'neutral-backdrop': !scene }" aria-hidden="true">
-      <div v-if="scene" class="auth-art auth-west" :data-scene="scene.leftLabel"><img :src="scene.left" alt="" decoding="async" data-fade /></div>
-      <div v-if="scene" class="auth-art auth-south" :data-scene="scene.rightLabel"><img :src="scene.right" alt="" decoding="async" data-fade /></div>
-    </div>
-    <div class="auth-banner" aria-hidden="true">
-      <div class="banner-text"><strong>{{ neutral ? '行记' : city.brand }}</strong><span>一程山水 · 一份行记</span></div>
-      <i class="auth-seal">行记</i>
-    </div>
-    <button v-if="!gate" type="button" class="auth-back" :disabled="busy" @click="close"><PhArrowLeft :size="16" />返回</button>
-
+    <button v-if="!gate" type="button" class="auth-back" data-rise :disabled="busy" @click="close"><PhArrowLeft :size="14" />返回</button>
     <div class="auth-main">
-      <div class="auth-ticket" :data-mode="mode">
-        <p class="ticket-head"><component :is="neutral ? JourneyMark : BrandMark" :city="city.key" /><span>{{ neutral ? '旅行手记' : city.key === 'hangzhou' ? '西湖游船票' : `${city.name}旅行票` }}</span><time>No.{{ ticketNo }}</time></p>
-        <h1 id="auth-title" ref="heading" tabindex="-1">{{ mode === 'login' ? '欢迎回来' : '领一张船票' }}</h1>
-        <p v-if="reason" class="auth-reason">{{ reason }}</p>
-        <div class="auth-tabs" role="tablist" aria-label="登录方式">
-          <button type="button" role="tab" :aria-selected="mode === 'login'" :disabled="busy" @click="mode = 'login'">登录</button>
-          <button type="button" role="tab" :aria-selected="mode === 'register'" :disabled="busy" @click="mode = 'register'">创建账号</button>
-          <span class="auth-tab-indicator" aria-hidden="true" />
+      <div class="gate-ticket" :data-mode="mode">
+        <div class="gate-sheet" aria-hidden="true" />
+        <div class="gate-art" aria-hidden="true">
+          <img v-if="face.art" v-ready :class="{ photo: face.photo }" :src="face.art" alt="" decoding="sync" data-fade /><JourneyMark v-else class="gate-mark" />
+          <p class="gate-city"><b>{{ face.name }}</b><span>{{ face.code }}</span></p>
         </div>
-        <form @submit.prevent="submit">
-          <fieldset :disabled="busy">
-            <label class="auth-field"><span>用户名</span>
-              <span class="auth-input"><PhUser :size="18" /><input v-model="username" autocomplete="username" required pattern="[A-Za-z0-9_]{3,32}" minlength="3" maxlength="32" placeholder="字母、数字或下划线" /></span>
-            </label>
-            <label class="auth-field"><span>密码</span>
-              <span class="auth-input"><PhLockSimple :size="18" /><input v-model="password" :type="reveal ? 'text' : 'password'" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" required minlength="10" maxlength="128" placeholder="至少 10 位" />
-                <button type="button" class="auth-reveal" :aria-pressed="reveal" :aria-label="reveal ? '隐藏密码' : '显示密码'" @click="reveal = !reveal"><component :is="reveal ? PhEyeSlash : PhEye" :size="18" /></button></span>
-            </label>
-            <label v-if="mode === 'register'" class="auth-field"><span>确认密码</span>
-              <span class="auth-input"><PhLockSimple :size="18" /><input v-model="confirm" :type="reveal ? 'text' : 'password'" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="再输入一次" /></span>
-            </label>
-            <label v-if="mode === 'register' && inviteRequired" class="auth-field"><span>邀请码</span>
-              <span class="auth-input"><PhTicket :size="18" /><input v-model="invite" autocomplete="off" required maxlength="64" placeholder="向网站管理员索取" /></span>
-            </label>
+        <div ref="stub" class="gate-stub" aria-hidden="true">
+          <i class="gate-dash" />
+          <p class="gate-caption"><span>检票口</span><span>No.{{ ticketNo }}</span></p>
+          <div class="gate-code" :class="{ busy }"><i v-for="(width, index) in bars" :key="index" :class="{ lit: index < filled }" :style="{ width }" /></div>
+        </div>
+        <form ref="form" class="gate-form" @submit.prevent="submit">
+          <div class="gate-tabs" data-rise role="tablist" aria-label="登录方式">
+            <button type="button" role="tab" :class="{ on: mode === 'login' }" :aria-selected="mode === 'login'" :disabled="busy" @click="pick('login')">登录</button>
+            <button type="button" role="tab" :class="{ on: mode === 'register' }" :aria-selected="mode === 'register'" :disabled="busy" @click="pick('register')">创建账号</button>
+          </div>
+          <div class="gate-head" data-rise><h1 id="auth-title" ref="heading" tabindex="-1">{{ mode === 'login' ? '欢迎回来' : '先领一张票' }}</h1><p>{{ why }}</p></div>
+          <fieldset data-rise :disabled="busy">
+            <label class="gate-field" :class="{ wide: mode === 'register' && !inviteRequired }"><span>用户名</span><span class="gate-input"><input v-model="username" autocomplete="username" autocapitalize="off" spellcheck="false" required pattern="[A-Za-z0-9_]{3,32}" minlength="3" maxlength="32" placeholder="字母、数字或下划线" /></span></label>
+            <label v-if="mode === 'register' && inviteRequired" class="gate-field"><span>邀请码</span><span class="gate-input"><input v-model="invite" autocomplete="off" required maxlength="64" placeholder="向网站管理员索取" /></span></label>
+            <label class="gate-field"><span>密码</span><span class="gate-input"><input v-model="password" :type="reveal ? 'text' : 'password'" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" required minlength="10" maxlength="128" placeholder="至少 10 位" /><button type="button" class="gate-reveal" :aria-pressed="reveal" :aria-label="reveal ? '隐藏密码' : '显示密码'" @click="reveal = !reveal"><component :is="reveal ? PhEyeSlash : PhEye" :size="17" /></button></span></label>
+            <label v-if="mode === 'register'" class="gate-field"><span>确认密码</span><span class="gate-input"><input v-model="confirm" :type="reveal ? 'text' : 'password'" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="再输入一次" /></span></label>
           </fieldset>
-          <p v-if="error" class="auth-error" role="alert">{{ error }}</p>
-          <button class="auth-submit" type="submit" :disabled="busy">{{ busy ? '正在连接…' : mode === 'login' ? '登船' : '领票并登船' }}<PhArrowRight :size="18" /></button>
+          <p v-if="error" class="gate-note bad" data-rise role="alert">{{ error }}</p>
+          <p v-else class="gate-note" data-rise>{{ mode === 'login' ? '还没有账号，先点上面的“创建账号”' : '用户名 3 到 32 位，密码至少 10 位' }}</p>
+          <button class="gate-go" type="submit" :disabled="busy"><span class="gate-label">{{ action }}<PhArrowRight v-if="!busy" :size="18" aria-hidden="true" /></span></button>
         </form>
       </div>
     </div>
-
   </section>
 </template>
 
-<style scoped>
-.auth-page { --seal: #c8463a; position: fixed; inset: var(--journey-bar-height, 64px) 0 0; z-index: 1400; overflow: hidden; background: #f2f3f0; animation: auth-fade .4s ease-out both; }
+<!-- 不加 scoped：gate.ts 会往票里补竖票的几样内容 -->
+<style>
+/* 齿孔大小要能做动画，得登记成长度 */
+@property --notch-v { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --notch-h { syntax: '<length>'; inherits: false; initial-value: 11px; }
+/* 底子和选城页、问卷页是同一张网格，盖上去接得住 */
+.auth-page { --ticket-w: clamp(340px, 29vw, 388px); --stub-w: 148px; --signal: #b93b28; position: fixed; inset: var(--journey-bar-height, 64px) 0 0; z-index: 1400; overflow: hidden; background: #fff linear-gradient(to right, #1516130a 1px, transparent 1px) 0 calc(-1 * var(--journey-bar-height, 64px)) / 40px 40px; }
+.auth-page::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, #1516130a 1px, transparent 1px) 0 calc(-1 * var(--journey-bar-height, 64px)) / 40px 40px; pointer-events: none; }
+.auth-back { position: absolute; z-index: 3; left: max(32px, calc((100vw - 1180px) / 2 + 32px)); top: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; font-size: 13px; color: var(--muted); }
+.auth-back:hover:not(:disabled) { color: var(--text); }
+.auth-main { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; padding: 44px 32px 64px; overflow: hidden auto; }
+.auth-page.morphing .auth-main { overflow: hidden; }
+/* 收回竖票时底下的页面已经换好：底子当帧撤掉，只剩这张票在演 */
+.auth-page.leaving { background: none; pointer-events: none; }
+.auth-page.leaving::before, .auth-page.leaving .gate-code::after { display: none; }
+.journey-shell[data-gate] :is(.tform, .landing-form) .ticket { visibility: hidden; }
 
-/* 全屏插画：两幅 4:5 立轴贴底分居左右，内侧渐隐到底色 */
-.auth-scene { position: absolute; inset: 0; overflow: hidden; }
-.auth-art { position: absolute; bottom: 0; height: 100%; aspect-ratio: 4 / 5; }
-.auth-art img { width: 100%; height: 100%; display: block; object-fit: cover; mix-blend-mode: multiply; }
-.auth-west { left: clamp(-160px, (100vw - 1500px) / 2, 0px); -webkit-mask-image: linear-gradient(to right, #000 62%, transparent 98%); mask-image: linear-gradient(to right, #000 62%, transparent 98%); }
-.auth-south { right: clamp(-160px, (100vw - 1500px) / 2, 0px); -webkit-mask-image: linear-gradient(to left, #000 62%, transparent 98%); mask-image: linear-gradient(to left, #000 62%, transparent 98%); }
+.gate-ticket { position: relative; width: min(1040px, 100%); height: 424px; color: #151613; filter: drop-shadow(0 24px 34px #15161321) drop-shadow(0 2px 4px #15161312); }
+/* 白底带四个齿孔：平时开的是横票那两个（上下），竖票那两个（左右）只在展开、收回时用 */
+.gate-sheet { --seam: 0px; --at: calc(100% - var(--stub-w)); position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 16px; background: #fff;
+  -webkit-mask: radial-gradient(circle var(--notch-h) at var(--at) 0, #0000 98%, #000), radial-gradient(circle var(--notch-h) at var(--at) 100%, #0000 98%, #000), radial-gradient(circle var(--notch-v) at 0 var(--seam), #0000 98%, #000), radial-gradient(circle var(--notch-v) at 100% var(--seam), #0000 98%, #000); -webkit-mask-composite: source-in;
+  mask: radial-gradient(circle var(--notch-h) at var(--at) 0, #0000 98%, #000), radial-gradient(circle var(--notch-h) at var(--at) 100%, #0000 98%, #000), radial-gradient(circle var(--notch-v) at 0 var(--seam), #0000 98%, #000), radial-gradient(circle var(--notch-v) at 100% var(--seam), #0000 98%, #000); mask-composite: intersect; }
+.gate-art { position: absolute; left: 0; top: 0; width: calc(100% - var(--stub-w) - var(--ticket-w) - 22px); height: 100%; overflow: hidden; border-radius: 16px 0 0 16px; background: linear-gradient(#f2f3f3, #f9f9f9); }
+.gate-art img { position: absolute; right: -40px; bottom: -10%; height: 116%; max-width: none; mix-blend-mode: multiply; -webkit-mask-image: linear-gradient(to right, transparent 6%, #000 38%); mask-image: linear-gradient(to right, transparent 6%, #000 38%); }
+.gate-art img.photo { right: -60px; bottom: 0; height: 104%; filter: grayscale(1) brightness(1.22); }
+.gate-mark { position: absolute; left: calc(100% - 240px); top: calc(50% - 130px); width: 190px; height: 190px; }
+.gate-mark rect { display: none; }
+.gate-mark circle:first-of-type { stroke-width: .5; }
+.gate-city { position: absolute; left: 30px; bottom: 30px; margin: 0; }
+.gate-city b { display: block; font-size: 76px; line-height: 1; font-weight: 650; letter-spacing: -.04em; transform-origin: 0 100%; white-space: nowrap; }
+.gate-city span { display: block; margin-top: 14px; font-family: 'Geist Mono Variable', 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: .08em; color: #696b64; }
 
-/* 左上：垂挂布幡 */
-.auth-banner { position: absolute; z-index: 2; left: clamp(28px, 5vw, 72px); top: 0; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 40px 18px 24px; background: #fffdf7; border-radius: 0 0 6px 6px; box-shadow: 0 0 0 1px #ece5d4, 0 24px 48px -28px #15161366; transform-origin: 50% 0; animation: banner-drop .9s cubic-bezier(.16, 1, .3, 1) both, banner-sway 7s 1s ease-in-out infinite; }
-.auth-banner::before { content: ''; position: absolute; top: 12px; left: -14px; right: -14px; height: 7px; border-radius: 4px; background: #2a2b28; }
-.banner-text { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 10px; }
-.banner-text strong { writing-mode: vertical-rl; font-family: 'Songti SC', 'STSong', 'Noto Serif CJK SC', 'Source Han Serif SC', serif; font-size: clamp(44px, 5.2vw, 78px); font-weight: 900; line-height: 1; letter-spacing: .12em; color: #2a2b28; }
-.banner-text span { writing-mode: vertical-rl; margin-top: 6px; font-family: 'Songti SC', 'STSong', 'Noto Serif CJK SC', serif; font-size: 14px; letter-spacing: .45em; color: #5a5b58; }
-.auth-seal { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 6px; background: var(--seal); color: #fff; font-style: normal; font-family: 'Songti SC', 'STSong', 'Noto Serif CJK SC', serif; font-size: 15px; font-weight: 900; writing-mode: vertical-rl; box-shadow: inset 0 0 0 2px #fff6, 0 4px 10px -6px #8a2a20; transform: rotate(-7deg); animation: seal-stamp .55s 1s cubic-bezier(.3, 1.6, .5, 1) both; }
+.gate-stub { position: absolute; right: 0; top: 0; width: var(--stub-w); height: 100%; }
+.gate-dash { position: absolute; left: -1px; top: 20px; bottom: 20px; border-left: 2px dashed #dedfda; }
+.gate-caption { position: absolute; left: 22px; top: 40px; bottom: 40px; margin: 0; display: flex; justify-content: space-between; writing-mode: vertical-rl; font-family: 'Geist Mono Variable', 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: .08em; color: #696b64; }
+/* 条码和竖票上那条一样长，整根转过来 */
+.gate-code { --w: calc(var(--ticket-w) - 44px); position: absolute; left: calc(84px - var(--w) / 2); top: calc(50% - 32px); width: var(--w); height: 64px; display: flex; justify-content: space-between; overflow: hidden; transform: rotate(-90deg); }
+.gate-code i { height: 100%; background: #d9dad5; transition: background-color .18s; }
+.gate-code i.lit { background: #151613; }
+.gate-code::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--signal); opacity: 0; }
+.gate-code.busy::after { animation: gate-scan .9s cubic-bezier(.5, 0, .5, 1) infinite alternate; }
+@keyframes gate-scan { 0% { opacity: 0; } 10%, 90% { opacity: 1; } 100% { left: calc(100% - 2px); opacity: 0; } }
 
-.auth-back { position: absolute; z-index: 3; top: 18px; right: 22px; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #e7e8e5; color: var(--muted); font-size: 13px; }
-.auth-back:hover:not(:disabled) { color: var(--accent); }
+.gate-form { position: absolute; right: var(--stub-w); top: 0; bottom: 0; width: calc(var(--ticket-w) + 22px); padding: 26px 34px 26px 32px; display: flex; flex-direction: column; }
+.gate-tabs { display: flex; gap: 26px; }
+.gate-tabs button { position: relative; padding: 4px 0 8px; font-size: 14px; color: #85877f; transition: color .2s; }
+.gate-tabs button:disabled { opacity: 1; }
+.gate-tabs button::after { content: ''; position: absolute; inset: auto 0 0; height: 2px; background: var(--signal); transform: scaleX(0); transform-origin: left; transition: transform var(--spring-settle-ms) var(--spring-settle); }
+.gate-tabs .on { color: #151613; font-weight: 600; }
+.gate-tabs .on::after { transform: scaleX(1); }
+.gate-head h1 { margin: 8px 0 4px; font-size: 32px; line-height: 1.2; font-weight: 650; letter-spacing: -.03em; outline: none; }
+.gate-head p { margin: 0; font-size: 14px; line-height: 20px; color: #696b64; text-wrap: pretty; }
+.gate-form fieldset { border: 0; padding: 8px 0 0; margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+[data-mode=register] fieldset { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.gate-field { position: relative; display: block; padding-top: 11px; border-bottom: 1.5px solid #dedfda; }
+.gate-field.wide { grid-column: 1 / -1; }
+.gate-field > span:first-child { display: block; font-size: 12px; line-height: 18px; color: #696b64; }
+.gate-field::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1.5px; height: 2px; background: var(--signal); transform: scaleX(0); transform-origin: left; transition: transform var(--spring-settle-ms) var(--spring-settle); }
+.gate-field:focus-within::after { transform: scaleX(1); }
+.gate-input { display: flex; align-items: center; }
+.gate-input input { flex: 1; width: 100%; min-width: 0; height: 34px; padding: 0; border: 0; border-radius: 0; outline: none; background: transparent; font-size: 17px; font-weight: 550; color: #151613; }
+.gate-input input:focus { box-shadow: none; }
+.gate-input input::placeholder { color: #8f918a; font-size: 14px; font-weight: 400; opacity: 1; }
+[data-mode=register] .gate-input input::placeholder { font-size: 13px; }
+.gate-input input:-webkit-autofill, .gate-input input:-webkit-autofill:hover, .gate-input input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40px #fff inset; -webkit-text-fill-color: #151613; caret-color: #151613; transition: background-color 9999s; }
+.gate-reveal { flex-shrink: 0; width: 34px; height: 34px; margin-right: -8px; display: grid; place-items: center; border-radius: 8px; color: #85877f; }
+.gate-reveal:hover { color: #151613; }
+.gate-note { margin: 12px 0; font-size: 12px; line-height: 18px; color: #696b64; }
+.gate-note.bad { color: #a33535; }
+.gate-go { position: relative; width: 100%; min-height: 48px; margin-top: auto; border-radius: 10px; background: #151613; color: #fff; font-size: 15px; font-weight: 500; white-space: nowrap; transition: background-color .2s; }
+.gate-go:disabled { opacity: 1; cursor: default; }
+.gate-label { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.gate-label svg { transition: transform var(--spring-settle-ms) var(--spring-settle); }
+@media (hover: hover) { .gate-go:hover:not(:disabled) .gate-label svg { transform: translateX(4px); } }
+/* 竖票的内容（gate.ts 临时补上） */
+.gate-vertical { --ticket-ink: #151613; --ticket-muted: #696b64; --ticket-line: #dedfda; position: absolute; inset: 0; pointer-events: none; }
+.gate-seam { border-top: 2px dashed #dedfda; }
+.gate-label.vertical { position: absolute; inset: 0; }
 
-/* 中：船票 */
-.auth-main { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; padding: 24px; overflow-y: auto; }
-.auth-ticket { width: min(420px, 100%); display: grid; padding: 26px 30px 30px; background: #fff; border-radius: 6px; box-shadow: 0 0 0 1px #e8e9e6, 0 40px 80px -40px #15161380; animation: ticket-arrive .7s .15s cubic-bezier(.16, 1, .3, 1) both; }
-.ticket-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); letter-spacing: .08em; }
-.ticket-head :deep(.brand-mark) { width: 24px; height: 24px; }
-.ticket-head time { margin-left: auto; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; letter-spacing: .04em; color: var(--faint); }
-.auth-ticket h1 { margin-top: 22px; font-size: 34px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2; outline: none; }
-.auth-reason { margin-top: 8px; color: var(--muted); font-size: 14px; }
-.auth-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; margin: 22px 0 20px; padding: 4px; border-radius: 6px; background: #f2f3f0; }
-.auth-tabs button { position: relative; z-index: 1; min-height: 40px; border-radius: 3px; font-size: 14px; color: var(--muted); transition: color .2s; }
-.auth-tabs button[aria-selected=true] { color: var(--text); font-weight: 600; }
-.auth-tab-indicator { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 3px; background: #fff; box-shadow: 0 1px 3px #24252214, 0 4px 12px -6px #24252226; transition: transform .4s cubic-bezier(.16, 1, .3, 1); }
-.auth-ticket[data-mode=register] .auth-tab-indicator { transform: translateX(100%); }
-fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; }
-.auth-field { display: grid; gap: 7px; font-size: 13px; font-weight: 500; color: #474845; }
-.auth-input { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 6px 0 14px; border: 1px solid #e2e3e0; border-radius: 6px; background: #fff; color: #969794; transition: border-color .2s, box-shadow .2s; }
-.auth-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px #1516131f; color: var(--accent); }
-.auth-input input { flex: 1; min-width: 0; height: 46px; padding: 0; border: 0; border-radius: 0; outline: none; background: transparent; font-size: 15px; color: var(--text); }
-/* 外框已负责聚焦高亮，屏蔽全站 input:focus 的光晕，避免框里再套一个小框 */
-.auth-input input:focus { box-shadow: none; }
-.auth-input input:-webkit-autofill, .auth-input input:-webkit-autofill:hover, .auth-input input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40px #fff inset; -webkit-text-fill-color: var(--text); caret-color: var(--text); transition: background-color 9999s; }
-.auth-input input::placeholder { color: #acadaa; font-size: 13px; }
-.auth-reveal { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 3px; color: #969794; }
-.auth-reveal:hover { background: #f4f5f2; color: var(--accent); }
-.auth-error { margin-top: 14px; padding: 10px 12px; border-radius: 3px; background: #fff3f1; color: var(--bad); font-size: 13px; }
-.auth-submit { width: 100%; margin-top: 22px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 600; letter-spacing: .08em; transition: background .2s, transform .2s; }
-.auth-submit:hover:not(:disabled) { background: #151613; transform: translateY(-1px); }
-.auth-submit svg { transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
-.auth-submit:hover:not(:disabled) svg { transform: translateX(4px); }
-
-@keyframes banner-drop { from { transform: translateY(-105%); } to { transform: translateY(0); } }
-@keyframes banner-sway { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(.8deg); } }
-@keyframes seal-stamp { from { opacity: 0; transform: rotate(-7deg) scale(1.8); } to { opacity: 1; transform: rotate(-7deg) scale(1); } }
-@keyframes ticket-arrive { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes auth-fade { from { opacity: 0; } to { opacity: 1; } }
-
-@media (min-width: 861px) and (max-height: 780px) {
-  .auth-ticket { padding: 18px 26px 22px; }
-  .auth-ticket h1 { margin-top: 12px; font-size: 28px; }
-  .auth-tabs { margin: 14px 0 12px; }
-  fieldset { gap: 9px; }
-  .auth-field { gap: 5px; }
-  .auth-input { min-height: 44px; }
-  .auth-input input { height: 42px; }
-  .auth-submit { margin-top: 14px; min-height: 46px; }
-  .banner-text strong { font-size: clamp(40px, 4.4vw, 64px); }
+@media (max-width: 900px) {
+  .auth-back { left: 18px; top: 8px; }
+  .auth-main { place-items: start center; padding: 52px 16px calc(28px + env(safe-area-inset-bottom)); }
+  .gate-ticket { height: auto; width: min(460px, 100%); }
+  .gate-sheet { --notch-h: 0px; }
+  .gate-art { position: relative; width: 100%; height: 132px; border-radius: 16px 16px 0 0; }
+  .gate-art img { right: -14px; bottom: -14%; height: 118%; }
+  .gate-mark { left: calc(100% - 140px); top: calc(50% - 55px); width: 110px; height: 110px; }
+  .gate-city { left: 20px; bottom: 16px; }
+  .gate-city b { font-size: 44px; }
+  .gate-city span { margin-top: 8px; }
+  .gate-form { position: relative; right: auto; width: 100%; padding: 16px 20px 18px; }
+  .gate-go { margin-top: 2px; }
+  .gate-input input { font-size: 16px; }
+  .gate-stub { position: relative; width: 100%; height: 78px; display: block; }
+  .gate-ticket { display: flex; flex-direction: column; }
+  .gate-stub { order: 3; }
+  .gate-dash { left: 18px; right: 18px; top: 0; bottom: auto; border-left: 0; border-top: 2px dashed #dedfda; }
+  .gate-caption { display: none; }
+  .gate-code { left: 20px; right: 20px; top: 18px; width: auto; height: 42px; transform: none; }
 }
-@media (max-width: 860px) {
-  .auth-west, .banner-text span, .auth-seal { display: none; }
-  .auth-south { right: auto; left: 50%; transform: translateX(-50%); -webkit-mask-image: none; mask-image: none; }
-  .auth-banner { left: 16px; padding: 28px 10px 14px; }
-  .auth-banner::before { top: 9px; left: -8px; right: -8px; height: 5px; }
-  .banner-text strong { font-size: 30px; }
-  .auth-back { top: 12px; right: 12px; }
-  .auth-main { place-items: end center; padding: 190px 16px 20px; }
-  .auth-ticket { padding: 22px 20px 24px; }
-  .auth-ticket h1 { font-size: 28px; margin-top: 16px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-banner, .auth-seal, .auth-ticket, .auth-tab-indicator, .auth-submit, .auth-submit svg, .auth-page { animation: none !important; transition: none !important; }
-}
+@media (max-height: 600px) and (min-width: 901px) { .auth-main { padding-block: 30px 24px; } }
+@media (prefers-reduced-motion: reduce) { .auth-page *, .auth-page *::after { animation: none !important; transition: none !important; } }
 </style>

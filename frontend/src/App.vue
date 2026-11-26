@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { PhNotePencil, PhArrowLeft, PhCheckCircle, PhClockCounterClockwise, PhCopy, PhPencilSimple, PhSignOut, PhUserCircle, PhWarningCircle } from '@phosphor-icons/vue'
 import RollValue from './components/RollValue.vue'
 import DrawCheck from './components/DrawCheck.vue'
 import CostBar from './components/CostBar.vue'
 import { captureSwap, clearSwap, playSwap } from './departure'
+import { captureGate, closeGate, openGate, type GateFace, type GateScene } from './gate'
 import { reducedMotion, useInk, vExpand } from './motion'
 import { getMeta, postPlan, understandPlan, type Understanding, getNavigation, getPlaceDetails, getPlaceMedia, previewMeal, commitMeal, previewPoi, commitPoi, previewPace, commitPace, type PoiOption, revertPlan, postLodgingReplan, type LodgingHotel, type MealEditPreview, type Hotel, type Meta, type CityInfo, type PlanRequest, type PlanResponse, type NavigationResponse, type NavigationLeg, type PlaceDetail, type PlaceMedia, type PlanChange, type PlanItem, type MealAlternative, type MapFocus, type AltMarker } from './api'
 import PlanForm from './components/PlanForm.vue'
@@ -21,6 +22,7 @@ import SwapConfirm from './components/SwapConfirm.vue'
 import BrandMark from './components/BrandMark.vue'
 import DayStrip from './components/DayStrip.vue'
 import LodgingCard from './components/LodgingCard.vue'
+import AuthView from './components/AuthView.vue'
 import HistoryView from './components/HistoryView.vue'
 import MCPConnect from './components/MCPConnect.vue'
 import { getAccount, logoutAccount, getHistoryDetail, saveHistory, getLinkedTrip, ApiError, type AccountUser, type PlanQuota } from './api'
@@ -36,9 +38,7 @@ const accountOpen = ref(false)
 const authReason = ref('')
 const destinationOpen = ref(true)
 const departureCity = ref<string | null>(null)
-const departureReady = ref(false)
-let departureTimer: ReturnType<typeof setTimeout> | undefined
-// 遮罩完全盖住时切换底下的页面：这一刻各页面的进出过渡全部关闭，避免旧页在遮罩撤走后再露一下
+// 由票来演的切换：这一刻各页面自己的进出过渡全部关闭，避免旧页再露一下
 const coveredSwitch = ref(false)
 let coveredTimer: ReturnType<typeof setTimeout> | undefined
 // 公网：生成行程需要登录，未登录时先保留条件，登录后自动开始；quota 为当天剩余次数
@@ -70,6 +70,13 @@ const quota = ref<PlanQuota | null>(null)
 // 公网开启“登录才能生成”时，未登录只显示登录页；启动时等账号与配置都读到再渲染，避免问卷先闪一下
 const gated = computed(() => !destinationOpen.value && !!meta.value?.access?.login_to_plan && authReady.value && !user.value)
 const booting = computed(() => !error.value && (!authReady.value || !meta.value))
+// 登录页：屏幕上有行程票就从那张票展开，走的时候再收回去（gate.ts）。侦听默认在页面更新之前跑，这时旧页面还在，量得到
+const authShown = computed(() => accountOpen.value || gated.value)
+const gateFace = shallowRef<GateFace | null>(null)
+let gateScene: GateScene | null = null
+watch(authShown, shown => { gateScene = shown ? captureGate() : null; if (shown) gateFace.value = gateScene?.face ?? null })
+const enterGate = (el: Element, done: () => void) => { void openGate(el as HTMLElement, gateScene).finally(done) }
+const leaveGate = (el: Element, done: () => void) => { void closeGate(el as HTMLElement, user.value ? 1 : -1).finally(done) }
 async function refreshAccount() { const me = await getAccount(); user.value = me.user; quota.value = me.quota ?? null }
 const historyOpen = ref(false)
 const accountBusy = ref(false)
@@ -100,7 +107,6 @@ const AmapView = defineAsyncComponent({
 const ReportPanel = defineAsyncComponent(() => import('./components/ReportPanel.vue'))
 const CityLanding = defineAsyncComponent(() => import('./components/CityLanding.vue'))
 const QuestionnaireBackdrop = defineAsyncComponent(() => import('./components/QuestionnaireBackdrop.vue'))
-const AuthView = defineAsyncComponent(() => import('./components/AuthView.vue'))
 
 const meta = ref<Meta | null>(null)
 const selectedCity = ref('hangzhou')
@@ -140,21 +146,11 @@ async function chooseDestination(key: string) {
   const ready = meta.value?.city === key && !cityError.value ? true : await changeCity(key)
   if (revision !== identityRevision) { departureCity.value = null; return }
   if (!ready) { departureCity.value = null; return }
-  // 票原地不动、只换左边（departure.ts 的 swap）；要先登录的，下一屏是登录页，仍走城市转场那一屏
+  // 票原地不动、只换左边（departure.ts 的 swap）；要先登录的，下一屏是登录页，由这张票展开
   const gate = !!meta.value?.access?.login_to_plan && authReady.value && !user.value
   await Promise.race([artwork, new Promise(resolve => setTimeout(resolve, 1200))])
   if (revision !== identityRevision) { departureCity.value = null; return }
-  if (gate && !reducedMotion()) {
-    departureReady.value = true
-    departureTimer = setTimeout(async () => {
-      enterCity()
-      await nextTick()
-      // 等新页面在遮罩下画完两帧，再淡出遮罩揭开，全程只有一次过渡
-      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-      departureReady.value = false
-    }, 620)
-    return
-  }
+  if (gate) { enterCity(); return }
   const swap = captureSwap()
   enterCity()
   await nextTick()
@@ -829,7 +825,7 @@ async function startEdit() {
 
 function clearPrivateView() {
   identityRevision++
-  clearTimeout(departureTimer); departureCity.value = null; departureReady.value = false; landingCity.value = null; destinationOpen.value = true
+  departureCity.value = null; landingCity.value = null; destinationOpen.value = true
   planController?.abort(); extrasController?.abort(); mediaController?.abort(); alternativeController?.abort()
   plan.value = null; lastRequest.value = null; historyOpen.value = false; progressVisible.value = false
   drawerOpen.value = false; swapOpen.value = false; toast.value = null; navigation.value = null
@@ -840,11 +836,12 @@ function clearPrivateView() {
 function openAuth(reason = '') { authReason.value = reason; accountOpen.value = true }
 function closeAuth() { accountOpen.value = false; historyAfterLogin.value = false; pendingRequest.value = null }
 function dismissAuth() {
-  if (gated.value && !mcpConnectionId && !mcpCompleted && !pendingTrip) { closeAuth(); chooseAgain(); return }
+  if (gated.value && !mcpConnectionId && !mcpCompleted && !pendingTrip) { closeAuth(); coverSwitch(); chooseAgain(); landingCity.value = selectedCity.value; return }
   closeAuth()
 }
 function expired() { user.value = null; clearPrivateView(); openAuth('登录已过期，请重新登录。') }
 function signedIn(account: AccountUser) {
+  if (gated.value) { coverSwitch(); void nextTick(() => document.querySelector<HTMLElement>(planMode.value === 'agent' ? '#agent-title' : '.tform-head h2')?.focus({ preventScroll: true })) }
   accountOpen.value = false
   if (user.value && user.value.id !== account.id) clearPrivateView()
   user.value = account; identityRevision++
@@ -925,7 +922,7 @@ const ticketShown = computed(() => planMode.value === 'agent' || !confirming.val
 useInk(mobileSwitch, () => mobileView.value)
 watch(progressVisible, visible => { if (visible) clearSwap() })
 const planScope = computed(() => `${plan.value?.plan_id ?? ''}|${plan.value?.history_id ?? ''}`)
-onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(departureTimer); clearTimeout(coveredTimer); cityController?.abort(); planController?.abort(); clearInterval(timer); clearTimeout(toastTimer); extrasController?.abort(); alternativeController?.abort(); mediaController?.abort() })
+onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(coveredTimer); cityController?.abort(); planController?.abort(); clearInterval(timer); clearTimeout(toastTimer); extrasController?.abort(); alternativeController?.abort(); mediaController?.abort() })
 </script>
 
 <template>
@@ -942,7 +939,6 @@ onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(departureTimer); c
     </header>
   <Transition name="destination-page" :css="!coveredSwitch"><CityLanding v-if="destinationOpen && !historyOpen && !booting" :initial="landingCity" :mode="planMode" :cities="meta?.cities || []" :pending="departureCity" :loading="cityLoading" :error="cityError || error" @choose="chooseDestination" /></Transition>
   <Transition name="boot"><div v-if="booting" class="destination-transit destination-boot" role="status"><JourneyMark /><small>行记 · 正在展开下一程</small></div></Transition>
-  <Transition name="destination-transit"><div v-if="departureReady" class="destination-transit" role="status"><JourneyMark /><p>{{ draftCity.name }}</p><i class="transit-line" aria-hidden="true"><span /></i><small><span class="transit-code">{{ draftCity.key.toUpperCase() }}</span> · 这一程，从这里开始</small></div></Transition>
   <Transition name="city-scenery" :css="!coveredSwitch"><QuestionnaireBackdrop :city="draftCity.key" v-if="!destinationOpen && showForm && !ticketShown && !progressVisible && !historyOpen && !accountOpen && !gated && !booting" /></Transition>
   <Transition name="journey-reveal" :css="!coveredSwitch">
   <div v-if="!gated && !booting" v-show="!destinationOpen || historyOpen" class="app" :class="[`view-${mobileView}`, { 'has-plan': plan && !showForm && !progressVisible && !historyOpen, 'journey-fullscreen': showForm || progressVisible || historyOpen }]">
@@ -1066,6 +1062,6 @@ onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(departureTimer); c
   </Transition>
   <MCPConnect :brand="displayCity.brand" v-if="mcpConnectionId && user" :connection-id="mcpConnectionId" :user="user" @connected="refreshAccount" @switch-account="openAuth('请选择要绑定 MCP 的账号。')" />
   <section v-else-if="mcpCompleted && user" class="mcp-complete-note">账号已连接，回到聊天即可使用。<a href="/">进入{{ displayCity.brand }}</a></section>
-  <AuthView :neutral="neutralBrand" :city="displayCity" v-if="accountOpen || gated" :gate="gated && !!(mcpConnectionId || mcpCompleted || pendingTrip)" :reason="authReason" :invite-required="!!meta?.access?.invite_required" @close="dismissAuth" @signed-in="signedIn" />
+  <Transition :css="false" @enter="enterGate" @leave="leaveGate"><AuthView v-if="authShown" :neutral="neutralBrand" :city="displayCity" :face="gateFace" :going="gated && !accountOpen ? displayCity.name : ''" :gate="gated && !!(mcpConnectionId || mcpCompleted || pendingTrip)" :reason="accountOpen ? authReason : ''" :invite-required="!!meta?.access?.invite_required" @close="dismissAuth" @signed-in="signedIn" /></Transition>
   </div>
 </template>

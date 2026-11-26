@@ -164,7 +164,7 @@ export async function playDeparture({ form, ticket, stub, main, left, boxes, bar
 interface Face { cells: Map<string, string>; note: string; ground: string; dim: string; bars: string[]; tilt: string }
 export interface Swap { sheet: HTMLElement; frame: HTMLElement; face: Face | null; scroll: number }
 const visible = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)].find(el => el.offsetParent)
-const visibleTicket = () => { const ticket = visible('.tform .ticket, .landing-form .ticket'); return ticket && ticket.offsetHeight > 240 ? ticket : null }
+export const visibleTicket = () => { const ticket = visible('.tform .ticket, .landing-form .ticket'); return ticket && ticket.offsetHeight > 240 ? ticket : null }
 const cellsOf = (ticket: HTMLElement) => [...ticket.querySelectorAll<HTMLElement>('.ticket-grid > div')].map(cell => ({ label: cell.querySelector('dt')?.textContent ?? '', value: cell.querySelector<HTMLElement>('dd') }))
 const barsOf = (ticket: HTMLElement) => [...ticket.querySelectorAll<HTMLElement>('.ticket-code i')]
 function faceOf(ticket: HTMLElement): Face {
@@ -211,22 +211,30 @@ function settleFace(ticket: HTMLElement, face: Face) {
   if (face.tilt !== 'none' && face.tilt !== getComputedStyle(ticket).transform) ticket.animate([{ transform: face.tilt }, { transform: 'none' }], { duration: 420, easing: spring })
 }
 
-// dir：1 进城，-1 回来换城。在页面已经切过去、还没画出来的时候调用
-export async function playSwap({ sheet, frame, face, scroll }: Swap, dir: 1 | -1) {
+// 新的左边滑进来（样式在 ticket.css 的 [data-swap]），各页面自己的进场不再播
+export function swapIn(dir: 1 | -1) {
   const shell = document.querySelector<HTMLElement>('.journey-shell')
   if (!shell) return
-  const left = frame.firstElementChild as HTMLElement
   shell.style.setProperty('--swap-dir', String(dir))
   shell.dataset.swap = 'run'
+  setTimeout(() => { if (shell.dataset.swap) shell.dataset.swap = 'rest' }, 1000)
+}
+// 旧的左边滑走
+export async function slideLeft({ sheet, frame, scroll }: Swap, dir: 1 | -1) {
+  const left = frame.firstElementChild as HTMLElement
   document.body.append(sheet)
   scrolled(left).scrollTop = scroll
-  const ticket = visibleTicket()
-  if (ticket && face) settleFace(ticket, face)
   setTimeout(() => sheet.remove(), 2000)
-  setTimeout(() => { if (shell.dataset.swap) shell.dataset.swap = 'rest' }, 1000)
   await new Promise<void>(resolve => { requestAnimationFrame(() => requestAnimationFrame(() => resolve())); setTimeout(resolve, 250) })
   await Promise.allSettled([frame.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${dir * -32}px)`, opacity: 0 }], { duration: 170, easing: 'ease-out', fill: 'forwards' }).finished])
   sheet.remove()
+}
+// dir：1 进城，-1 回来换城。在页面已经切过去、还没画出来的时候调用
+export async function playSwap(swap: Swap, dir: 1 | -1) {
+  swapIn(dir)
+  const ticket = visibleTicket()
+  if (ticket && swap.face) settleFace(ticket, swap.face)
+  await slideLeft(swap, dir)
 }
 // 离开问卷页（开始规划等）后清掉，下次回到问卷照常播进场
 export function clearSwap() { delete document.querySelector<HTMLElement>('.journey-shell')?.dataset.swap }

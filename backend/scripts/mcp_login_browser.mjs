@@ -30,7 +30,7 @@ try {
   if(viewport.width===1440) {
     await page.getByLabel('用户名',{exact:true}).fill('onboarding_ui');
     await page.getByLabel('密码',{exact:true}).fill('fixture-password-only');
-    await page.getByRole('button',{name:'登船',exact:true}).click();
+    await page.getByRole('button',{name:'登录',exact:true}).click();
     await page.getByRole('button',{name:'授权并继续',exact:true}).waitFor();
     await page.screenshot({path:path.join(run,'consent-'+viewport.width+'.png'),animations:'disabled'});
     await page.getByRole('button',{name:'授权并继续',exact:true}).click();
