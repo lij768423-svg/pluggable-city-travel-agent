@@ -3,7 +3,7 @@
 // 从有行程票的页面进来，竖票直接展开成这张横票；返回或登录成功，横票收回竖票（gate.ts）。
 // 票上是哪座城跟着进来时的竖票走（face）；没有竖票就按当前城市，中性入口是空票。
 // going：选了城市、登录完就进城；gate：公网未登录时作为整站入口，不提供返回
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { PhArrowLeft, PhArrowRight, PhEye, PhEyeSlash } from '@phosphor-icons/vue'
 import JourneyMark from './JourneyMark.vue'
 import { cityArtwork } from '../cityArt'
@@ -41,9 +41,16 @@ const bars = computed(() => {
   for (const ch of face.value.code) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0
   return Array.from({ length: BARS }, () => { hash = Math.imul(hash ^ (hash >>> 13), 1274126177) >>> 0; return `${1 + (hash >>> 11) % 4}px` })
 })
+// 浏览器或密码管理器自动填上的格子算填满：Chrome 自动填的密码在用户碰页面之前读不到值，但框里已经看得见，条码要和看到的一致。
+// 自动填充出现、消失时输入框各起一次空动画（样式里的 gate-autofill-on / off），在 animationstart 里看它现在是不是自动填的
+const autofilled = reactive({ username: false, password: false, confirm: false, invite: false })
+function sense(field: keyof typeof autofilled, event: AnimationEvent) {
+  try { autofilled[field] = (event.target as HTMLInputElement).matches(':-webkit-autofill') } catch { autofilled[field] = false }
+}
 const filled = computed(() => {
-  const parts = [username.value.length / 3, password.value.length / 10]
-  if (mode.value === 'register') parts.push(confirm.value.length / 10, ...(props.inviteRequired ? [invite.value.length / 4] : []))
+  const part = (field: keyof typeof autofilled, value: string, need: number) => autofilled[field] ? 1 : value.length / need
+  const parts = [part('username', username.value, 3), part('password', password.value, 10)]
+  if (mode.value === 'register') parts.push(part('confirm', confirm.value, 10), ...(props.inviteRequired ? [part('invite', invite.value, 4)] : []))
   return Math.round(parts.reduce((sum, part) => sum + Math.min(1, part), 0) / parts.length * BARS)
 })
 
@@ -101,10 +108,10 @@ async function submit() {
           </div>
           <div class="gate-head" data-rise><h1 id="auth-title" ref="heading" tabindex="-1">{{ mode === 'login' ? '欢迎回来' : '先领一张票' }}</h1><p>{{ why }}</p></div>
           <fieldset data-rise :disabled="busy">
-            <label class="gate-field" :class="{ wide: mode === 'register' && !inviteRequired }"><span>用户名</span><span class="gate-input"><input v-model="username" autocomplete="username" autocapitalize="off" spellcheck="false" required pattern="[A-Za-z0-9_]{3,32}" minlength="3" maxlength="32" placeholder="字母、数字或下划线" /></span></label>
-            <label v-if="mode === 'register' && inviteRequired" class="gate-field"><span>邀请码</span><span class="gate-input"><input v-model="invite" autocomplete="off" required maxlength="64" placeholder="向网站管理员索取" /></span></label>
-            <label class="gate-field"><span>密码</span><span class="gate-input"><input v-model="password" :type="reveal ? 'text' : 'password'" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" required minlength="10" maxlength="128" placeholder="至少 10 位" /><button type="button" class="gate-reveal" :aria-pressed="reveal" :aria-label="reveal ? '隐藏密码' : '显示密码'" @click="reveal = !reveal"><component :is="reveal ? PhEyeSlash : PhEye" :size="17" /></button></span></label>
-            <label v-if="mode === 'register'" class="gate-field"><span>确认密码</span><span class="gate-input"><input v-model="confirm" :type="reveal ? 'text' : 'password'" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="再输入一次" /></span></label>
+            <label class="gate-field" :class="{ wide: mode === 'register' && !inviteRequired }"><span>用户名</span><span class="gate-input"><input v-model="username" @animationstart="sense('username', $event)" autocomplete="username" autocapitalize="off" spellcheck="false" required pattern="[A-Za-z0-9_]{3,32}" minlength="3" maxlength="32" placeholder="字母、数字或下划线" /></span></label>
+            <label v-if="mode === 'register' && inviteRequired" class="gate-field"><span>邀请码</span><span class="gate-input"><input v-model="invite" @animationstart="sense('invite', $event)" autocomplete="off" required maxlength="64" placeholder="向网站管理员索取" /></span></label>
+            <label class="gate-field"><span>密码</span><span class="gate-input"><input v-model="password" @animationstart="sense('password', $event)" :type="reveal ? 'text' : 'password'" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" required minlength="10" maxlength="128" placeholder="至少 10 位" /><button type="button" class="gate-reveal" :aria-pressed="reveal" :aria-label="reveal ? '隐藏密码' : '显示密码'" @click="reveal = !reveal"><component :is="reveal ? PhEyeSlash : PhEye" :size="17" /></button></span></label>
+            <label v-if="mode === 'register'" class="gate-field"><span>确认密码</span><span class="gate-input"><input v-model="confirm" @animationstart="sense('confirm', $event)" :type="reveal ? 'text' : 'password'" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="再输入一次" /></span></label>
           </fieldset>
           <p v-if="error" class="gate-note bad" data-rise role="alert">{{ error }}</p>
           <p v-else class="gate-note" data-rise>{{ mode === 'login' ? '还没有账号，先点上面的“创建账号”' : '用户名 3 到 32 位，密码至少 10 位' }}</p>
@@ -154,6 +161,8 @@ async function submit() {
 .gate-code { --w: calc(var(--ticket-w) - 44px); position: absolute; left: calc(84px - var(--w) / 2); top: calc(50% - 32px); width: var(--w); height: 64px; display: flex; justify-content: space-between; overflow: hidden; transform: rotate(-90deg); }
 .gate-code i { height: 100%; background: #d9dad5; transition: background-color .18s; }
 .gate-code i.lit { background: #151613; }
+/* 展开、收回时颜色由 gate.ts 接着当前状态演，自己的过渡别插进来 */
+.auth-page.morphing .gate-code i { transition: none; }
 .gate-code::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--signal); opacity: 0; }
 .gate-code.busy::after { animation: gate-scan .9s cubic-bezier(.5, 0, .5, 1) infinite alternate; }
 @keyframes gate-scan { 0% { opacity: 0; } 10%, 90% { opacity: 1; } 100% { left: calc(100% - 2px); opacity: 0; } }
@@ -177,6 +186,11 @@ async function submit() {
 .gate-input { display: flex; align-items: center; }
 .gate-input input { flex: 1; width: 100%; min-width: 0; height: 34px; padding: 0; border: 0; border-radius: 0; outline: none; background: transparent; font-size: 17px; font-weight: 550; color: #151613; }
 .gate-input input:focus { box-shadow: none; }
+/* 只为在自动填充出现、消失时各收到一次 animationstart（见 sense），动画本身什么都不改 */
+@keyframes gate-autofill-on { from { opacity: 1; } to { opacity: 1; } }
+@keyframes gate-autofill-off { from { opacity: 1; } to { opacity: 1; } }
+.gate-input input { animation: gate-autofill-off 1ms; }
+.gate-input input:-webkit-autofill { animation-name: gate-autofill-on; }
 .gate-input input::placeholder { color: #8f918a; font-size: 14px; font-weight: 400; opacity: 1; }
 [data-mode=register] .gate-input input::placeholder { font-size: 13px; }
 .gate-input input:-webkit-autofill, .gate-input input:-webkit-autofill:hover, .gate-input input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40px #fff inset; -webkit-text-fill-color: #151613; caret-color: #151613; transition: background-color 9999s; }

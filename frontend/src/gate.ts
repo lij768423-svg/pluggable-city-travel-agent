@@ -107,7 +107,7 @@ function morph(page: HTMLElement, v: Vertical, opening: boolean): Run | null {
   const style = (el: HTMLElement, ...keys: ('right' | 'bottom' | 'height' | 'width' | 'color' | 'backgroundColor')[]) => { const all = getComputedStyle(el); return Object.fromEntries(keys.map(key => [key, all[key]])) }
   const flatImage = image && style(image, 'right', 'bottom', 'height')
   const flatGround = style(go, 'backgroundColor', 'color')
-  const flatBars = [...bars.querySelectorAll<HTMLElement>('i')].map(bar => ({ bar, ...style(bar, 'backgroundColor', 'width') }) as { bar: HTMLElement; backgroundColor: string; width: string })
+  const flatBars = [...bars.querySelectorAll<HTMLElement>('i')].map(bar => ({ bar, ...style(bar, 'width') }) as { bar: HTMLElement; width: string })
 
   run(sheet, rect(v.sheet, origin), rect(flat.sheet, origin))
   run(art, { ...rect(v.art, origin), borderRadius: '16px 16px 0 0' }, { ...rect(flat.art, origin), borderRadius: '16px 0 0 16px' })
@@ -120,10 +120,13 @@ function morph(page: HTMLElement, v: Vertical, opening: boolean): Run | null {
   run(bars, { transform: `translate(${px(dx)}, ${px(dy)}) rotate(0deg) scale(${(v.bars.width / bars.offsetWidth).toFixed(4)}, ${(v.bars.height / bars.offsetHeight).toFixed(4)})` }, { transform: 'translate(0px, 0px) rotate(-90deg) scale(1, 1)' })
   // 转到斜着的时候两头会顶出票边、蹭到按钮，半路往里让一让
   list.push(bars.animate([{ translate: '0px 0px', easing: 'ease-in-out' }, { translate: '-30px -26px', offset: opening ? .4 : .42, easing: 'ease-in-out' }, { translate: '0px 0px' }], { duration: total }))
-  flatBars.forEach(({ bar, backgroundColor, width }, index) => {
+  // 条码黑灰的那一头不写死，跟着表单此刻填了多少走：密码管理器在展开途中把账号密码填上，条码就一直黑着，
+  // 不会先褪成空表单的灰、演完再跳回黑（2026-11-26 用户：“横过来的时候会先变淡再恢复”）。
+  // 展开时颜色放到后半段才变，给自动填充留出时间；收回时一开始就变回竖票的黑
+  flatBars.forEach(({ bar, width }, index) => {
     const from = v.widths[index]
-    const moved = from && from !== width
-    if (moved || backgroundColor !== INK) run(bar, { backgroundColor: INK, ...moved && { width: from } }, { backgroundColor, ...moved && { width } }, { easing: 'ease-in-out' })
+    if (from && from !== width) run(bar, { width: from }, { width }, { easing: 'ease-in-out' })
+    run(bar, { backgroundColor: INK }, {}, opening ? { delay: 340, duration: total - 340, easing: 'ease-in-out' } : { duration: 260, easing: 'ease-in-out' })
   })
   run(go, { transform: `translate(${px(v.go.left - flat.go.left)}, ${px(v.go.top - flat.go.top)})`, width: px(v.go.width), ...v.ground }, { transform: 'translate(0px, 0px)', width: px(flat.go.width), ...flatGround })
   const face = verticalFace(card, go, v, origin)

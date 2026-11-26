@@ -1,6 +1,6 @@
 {
   "distribution": "public-source",
-  "source_revision": "50161a0802b62849b47697c03f78dc7528ad627d",
+  "source_revision": "3430a6f6e10f79219d3600663d2b2af237f8d9fd",
   "guide_samples": 11,
   "excluded": [
     "internal history and deployment documents",
@@ -344,7 +344,7 @@
     "frontend/src/cityShowcase.ts": "2ec9572c9af5b5159933851955d063a2799799b2006731f150b9161583a41d32",
     "frontend/src/components/AgentChat.vue": "02d37c42782d623e5fd6432785f09ae23d30c70f338b85188835ca1c6c17e34f",
     "frontend/src/components/AmapView.vue": "c2abd8445cd719c89f176a999cec056d702cf5574a3feb11e60289523a0c796c",
-    "frontend/src/components/AuthView.vue": "33a60de3b177c1cb904fae2a2f3930b2ebb4fb93acf30b15bd86cbff5086433d",
+    "frontend/src/components/AuthView.vue": "dfe9772228106a2e88aa445b3613f4f6f944e8b2e457add005c8257156f6be8a",
     "frontend/src/components/BrandMark.vue": "3ac1834e801a80fbeb616c81cc51353ad9c90880483bf909c83452a40b169323",
     "frontend/src/components/CityLanding.vue": "e5e73bc60a6753fde05cf20d9b59b06e48302c297ecff0d52ebf030b387a4b6a",
     "frontend/src/components/CostBar.vue": "ea28aa955fe351e625b07101794580a48ede79368be8a9abb206f6c1106cdc84",
@@ -381,7 +381,7 @@
     "frontend/src/departure.ts": "d470a30c0f38153a9ff6bb8828f63fb5298243dfb84495c9973465790c924a9d",
     "frontend/src/destination.css": "ab12200193be157530d2ff3fa9c5f54eb360fdb86a70c2b902834c1310674595",
     "frontend/src/env.d.ts": "c97fc2b7935fad3e2d50e2fa9c629e4c41a5430aac42c6bdda0c17554bbd1111",
-    "frontend/src/gate.ts": "a506ec5a44b709aceac552fcc29282bf3cb6d7fc523477af29cc4142d5d54bda",
+    "frontend/src/gate.ts": "6af4be5b5fcf081735864ccd69e54abd8538e5401c60a08f0b567b9802ec38b7",
     "frontend/src/journey.css": "ce7321192966be2e0f3d48ba8e3b69ecf0ef3b66823f8ab680d57b8d8eedbb16",
     "frontend/src/main.ts": "c03a479f6d7e142a742526b7e994f47dfc6474d1a20641207e0883e518d172b9",
     "frontend/src/map/camera.ts": "e058dd774771d32d01dad07b099747ac43ea504b080a41f6795931a3f4555012",
