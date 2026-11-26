@@ -347,7 +347,8 @@ async function loadDayExtras(force = false) {
 
 watch([plan, activeDay], () => { void loadDayExtras() })
 
-function scrollPanelTop() { scroller.value?.scrollTo({ top: 0 }) }
+// 桌面是 .panel-scroll 在滚，手机是外层 .app 在滚，两处都回到顶部
+function scrollPanelTop() { scroller.value?.scrollTo({ top: 0 }); scroller.value?.closest<HTMLElement>(".app")?.scrollTo({ top: 0 }) }
 
 function pickDay(day: number) {
   drawerOpen.value = false
@@ -1001,7 +1002,7 @@ onBeforeUnmount(() => { clearTimeout(modeTimer); clearTimeout(coveredTimer); cit
         <template v-if="plan && !showForm && currentDay && !progressVisible">
           <div v-if="plan.delivery_status === 'draft'" class="history-status warning" role="status"><strong>测试草稿 · 待核实</strong><span>{{ plan.verification_notice || '开放时间、票价等尚未全部核实，请出发前确认。' }}</span></div>
           <div class="history-status" :class="{ warning: plan.history_error }"><template v-if="plan.history_readonly"><span>历史行程快照 · 时间与价格以当时安排为准</span><button @click="startEdit">按这些偏好重新规划</button></template><template v-else-if="plan.history_id && !plan.history_error"><span>已保存到 {{ user?.username }} 的历史行程</span></template><template v-else><span>{{ plan.history_error || (user ? '保存后，下次可以继续查看' : '登录账号，收藏这次旅程') }}</span><button :disabled="accountBusy" @click="saveCurrent">{{ accountBusy ? '保存中…' : user ? '保存行程' : '登录并保存' }}</button></template></div>
-          <LodgingCard v-if="plan.lodging" :lodging="plan.lodging" :can-replan="!!plan.plan_id && !plan.history_readonly && !plan.delivery_status" :busy-id="lodgingBusy" :error="lodgingError" @replan="replanLodging" />
+          <LodgingCard v-if="plan.lodging" :lodging="plan.lodging" :scope="planScope" :can-replan="!!plan.plan_id && !plan.history_readonly && !plan.delivery_status" :busy-id="lodgingBusy" :error="lodgingError" @replan="replanLodging" />
           <div v-if="plan.plan_id && !plan.history_readonly" class="self-meal-action pace-action">
             <span>这一天的节奏</span>
             <span class="pace-buttons">

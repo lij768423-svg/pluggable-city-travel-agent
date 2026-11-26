@@ -245,7 +245,10 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 /* ── 窄屏：上下切换，不再左右并排 ─────────────────────── */
 @media (max-width: 860px) {
   .app { display: block; height: auto; overflow: visible; }
-  .panel { min-height: 100dvh; border-right: 0; }
+  /* 外壳 .journey-shell 固定一屏高并裁掉溢出（journey.css、destination.css），.app 又被定成一屏高：
+     手机上必须由 .app 自己滚，不然行程页多出来的内容被裁掉、怎么滑都不动（2026-11-26 修） */
+  .journey-shell > .app { overflow-y: auto; overscroll-behavior-y: contain; }
+  .panel { min-height: 100%; border-right: 0; }
   .panel-scroll { overflow: visible; padding-bottom: 80px; }
   .trip-head { position: sticky; top: 0; background: var(--panel); z-index: 3; padding: 10px 16px 0; }
   .trip-head h1 { font-size: 17px; }
